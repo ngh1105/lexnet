@@ -61,7 +61,7 @@ Open [http://localhost:3000](http://localhost:3000). Connect wallet to your GenL
 
 Deploy the Intelligent Contract to your GenLayer network using the GenLayer CLI or SDK. Constructor argument: `fee_basis_points` (e.g. `250` = 2.5% protocol fee).
 
-See [GenLayer docs](https://docs.genlayer.org) for deployment and chain configuration.
+See [GenLayer docs](https://docs.genlayer.com/) for deployment and chain configuration.
 
 ### 4. Configure frontend
 
