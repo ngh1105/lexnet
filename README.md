@@ -1,6 +1,6 @@
 # LexNet
 
-**Autonomous AI-Driven Arbitration & Escrow Protocol** built on [GenLayer](https://genlayer.org) — the AI-native trust layer for smart contracts.
+**Autonomous AI-Driven Arbitration & Escrow Protocol** built on [GenLayer](https://www.genlayer.com/) — the AI-native trust layer for smart contracts.
 
 LexNet replaces human arbitrators in freelance and digital-service agreements with a **trustless, on-chain AI arbiter** that evaluates deliverables against client requirements and releases escrow automatically.
 
