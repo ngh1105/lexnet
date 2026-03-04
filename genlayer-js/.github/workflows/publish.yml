@@ -1,0 +1,47 @@
+name: Release & Publish Package to NPM
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - name: Get CI Bot Token
+        uses: tibdex/github-app-token@v1
+        id: ci_bot_token
+        with:
+          app_id: ${{ secrets.CI_BOT_APP_ID }}
+          private_key: ${{ secrets.CI_BOT_SECRET }}
+
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.ci_bot_token.outputs.token }}
+
+      - name: Initialize Git User
+        run: |
+          git config --global user.email "github-actions[bot]@genlayer.com"
+          git config --global user.name "github-actions[bot]"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - run: npm install -g npm@latest
+
+      - run: npm ci
+
+      - name: Release
+        run: npm run release
+        env:
+          GITHUB_TOKEN: ${{ steps.ci_bot_token.outputs.token }}
