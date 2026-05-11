@@ -8,6 +8,8 @@ const DATA_FILE = path.join(DATA_DIR, "store.json");
 
 const now = () => new Date().toISOString();
 
+const useDb = () => process.env.LEXNET_DB_MODE !== "json";
+
 const defaultStore = (): PlatformStore => ({
   workspaces: [{ id: "default", name: "Default Workspace", createdAt: now() }],
   users: [],
@@ -68,6 +70,10 @@ export function normalizeEvidenceUrl(url: string): string {
 }
 
 export async function readStore(): Promise<PlatformStore> {
+  if (useDb()) {
+    const { readStoreFromDb } = await import("./db-queries");
+    return readStoreFromDb();
+  }
   try {
     const raw = await readFile(DATA_FILE, "utf8");
     return migrateStore(JSON.parse(raw) as Partial<PlatformStore>);
@@ -79,14 +85,23 @@ export async function readStore(): Promise<PlatformStore> {
 }
 
 export async function writeStore(store: PlatformStore): Promise<void> {
+  if (useDb()) {
+    const { writeStoreToDb } = await import("./db-queries");
+    writeStoreToDb(store);
+    return;
+  }
   await mkdir(DATA_DIR, { recursive: true });
   await writeFile(DATA_FILE, JSON.stringify(store, null, 2), "utf8");
 }
 
 export async function appendAuditEvent(
   store: PlatformStore,
-  event: Omit<AuditEvent, "id" | "createdAt">
+  event: Omit<AuditEvent, "id" | "createdAt">,
 ): Promise<AuditEvent> {
+  if (useDb()) {
+    const { appendAuditEventToDb } = await import("./db-queries");
+    return appendAuditEventToDb(store, event);
+  }
   const auditEvent: AuditEvent = {
     ...event,
     id: createId("audit"),
