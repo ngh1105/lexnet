@@ -1,16 +1,33 @@
 type RateStore = Map<string, { count: number; resetAt: number }>;
 
 const stores = new Map<string, RateStore>();
+const EVICT_INTERVAL_MS = 60_000;
+let lastEvict = Date.now();
 
 function getStore(prefix: string): RateStore {
   if (!stores.has(prefix)) stores.set(prefix, new Map());
   return stores.get(prefix)!;
 }
 
+function evictExpired() {
+  const now = Date.now();
+  if (now - lastEvict < EVICT_INTERVAL_MS) return;
+  lastEvict = now;
+
+  for (const [prefix, store] of stores) {
+    for (const [key, entry] of store) {
+      if (now > entry.resetAt) store.delete(key);
+    }
+    if (store.size === 0) stores.delete(prefix);
+  }
+}
+
 export function rateLimit(
   key: string,
   opts: { maxRequests?: number; windowMs?: number } = {}
 ): { allowed: boolean; remaining: number; resetAt: number } {
+  evictExpired();
+
   const maxRequests = opts.maxRequests ?? 30;
   const windowMs = opts.windowMs ?? 60_000;
   const store = getStore(key);
