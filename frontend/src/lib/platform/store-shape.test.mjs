@@ -76,3 +76,24 @@ test("malformed security and demo account entries fall back safely", () => {
   assert.equal(migrated.demoAccounts[0].privateKey, undefined);
   assert.equal(migrated.demoAccounts[0].privateKeyRef, "local-demo:1234567890abcdef");
 });
+
+test("empty input produces valid default store", () => {
+  const migrated = migrateStore({});
+  assert.equal(migrated.workspaces.length, 1);
+  assert.equal(migrated.workspaces[0].name, "Default Workspace");
+  assert.equal(migrated.cases.length, 0);
+  assert.equal(migrated.demoAccounts.length, 0);
+});
+
+test("extra unknown fields are preserved without breaking migration", () => {
+  const migrated = migrateStore({ cases: [{ id: "c1" }], unknownField: "preserved" });
+  assert.equal(migrated.cases.length, 1);
+  assert.equal((migrated).unknownField, "preserved");
+});
+
+test("demoAccounts with only address field gets safe defaults", () => {
+  const migrated = migrateStore({ demoAccounts: [{ address: "0xabc" }] });
+  assert.equal(migrated.demoAccounts.length, 1);
+  assert.equal(migrated.demoAccounts[0].address, "0xabc");
+  assert.equal(migrated.demoAccounts[0].privateKey, undefined);
+});
