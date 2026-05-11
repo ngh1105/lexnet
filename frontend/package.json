@@ -10,12 +10,17 @@
     "verify:demo-account": "node scripts/verify-demo-account.mjs",
     "verify:testnet-account": "node scripts/verify-testnet-account.mjs",
     "verify:testnet-write": "node scripts/verify-testnet-account.mjs --write",
-    "test:platform": "node --test src/lib/platform/*.test.mjs"
+    "test:platform": "node --test src/lib/platform/*.test.mjs",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
     "@rainbow-me/rainbowkit": "^2.2.10",
     "@tanstack/react-query": "^5.90.21",
+    "better-sqlite3": "^12.9.0",
+    "drizzle-orm": "^0.45.2",
     "framer-motion": "^12.34.3",
     "genlayer-js": "file:../genlayer-js/genlayer-js-0.20.1.tgz",
     "next": "16.1.6",
@@ -26,9 +31,11 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.10",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
