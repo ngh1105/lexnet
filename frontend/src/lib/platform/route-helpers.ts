@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuth, AuthError } from "@/lib/platform/auth";
+import { resolveUserId } from "@/lib/platform/rbac";
 
 export async function withAuth(
   request: Request,
@@ -7,7 +8,8 @@ export async function withAuth(
 ): Promise<NextResponse> {
   try {
     const session = await requireAuth(request);
-    return handler(session.userId, session.address);
+    const userId = await resolveUserId(session.userId);
+    return handler(userId, session.address);
   } catch (err) {
     if (err instanceof AuthError) {
       return NextResponse.json({ error: err.message }, { status: err.status });

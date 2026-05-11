@@ -1,6 +1,6 @@
 import { getDb } from "./db";
 import * as schema from "./schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import type { WorkspaceRole } from "./types";
 
 const ROLE_HIERARCHY: Record<WorkspaceRole, number> = {
@@ -16,10 +16,11 @@ export function hasPermission(userRole: WorkspaceRole, requiredRole: WorkspaceRo
 
 export async function getUserRole(userId: string, workspaceId: string): Promise<WorkspaceRole | null> {
   const db = getDb();
+  // Match by either user.id or wallet address to handle both identity modes
   const rows = db.select()
     .from(schema.memberships)
     .where(and(
-      eq(schema.memberships.userId, userId),
+      or(eq(schema.memberships.userId, userId), eq(schema.memberships.userId, userId.toLowerCase())),
       eq(schema.memberships.workspaceId, workspaceId),
       eq(schema.memberships.status, "active"),
     ))
@@ -43,9 +44,19 @@ export async function getUserWorkspaceIds(userId: string): Promise<string[]> {
   const rows = db.select()
     .from(schema.memberships)
     .where(and(
-      eq(schema.memberships.userId, userId),
+      or(eq(schema.memberships.userId, userId), eq(schema.memberships.userId, userId.toLowerCase())),
       eq(schema.memberships.status, "active"),
     ))
     .all();
   return rows.map((r) => r.workspaceId);
+}
+
+export async function resolveUserId(userId: string): Promise<string> {
+  const db = getDb();
+  // If userId looks like a wallet address, find the actual user.id
+  if (userId.startsWith("0x")) {
+    const user = db.select().from(schema.users).where(eq(schema.users.address, userId.toLowerCase())).get();
+    if (user) return user.id;
+  }
+  return userId;
 }
