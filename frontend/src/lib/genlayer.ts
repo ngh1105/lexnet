@@ -328,7 +328,7 @@ export async function fundEscrow(
         });
         return;
     }
-    await callWrite("fund_escrow", [escrowId, amountWei], userAddress);
+    await callWriteWithValue("fund_escrow", [escrowId], BigInt(amountWei), userAddress);
 }
 
 /**
@@ -461,4 +461,128 @@ export const STATUS_ORDER: EscrowStatus[] = [
 export function getStatusIndex(status: EscrowStatus): number {
     if (status === "AI_EVALUATING") return 3;
     return STATUS_ORDER.indexOf(status);
+}
+
+// ─── Transaction Status ────────────────────────────────────────────────────────
+
+export type GenLayerTxStatus =
+    | "PENDING"
+    | "PROPOSING"
+    | "COMMITTING"
+    | "REVEALING"
+    | "ACCEPTED"
+    | "REJECTED"
+    | "TIMED_OUT"
+    | "UNKNOWN";
+
+export interface TxStatus {
+    hash: string;
+    status: GenLayerTxStatus;
+    consensus?: {
+        commits: number;
+        reveals: number;
+        agrees: number;
+        disagrees: number;
+    };
+}
+
+const STATUS_MAP: Record<string, GenLayerTxStatus> = {
+    [TransactionStatus.PENDING]: "PENDING",
+    [TransactionStatus.PROPOSING]: "PROPOSING",
+    [TransactionStatus.COMMITTING]: "COMMITTING",
+    [TransactionStatus.REVEALING]: "REVEALING",
+    [TransactionStatus.ACCEPTED]: "ACCEPTED",
+    [TransactionStatus.FINALIZED]: "ACCEPTED",
+};
+
+export async function getTransactionStatus(txHash: string): Promise<TxStatus> {
+    const client = await getClient();
+    try {
+        const receipt = await client.waitForTransactionReceipt({
+            hash: txHash as any,
+            status: TransactionStatus.ACCEPTED,
+            retries: 1,
+            interval: 1000,
+        });
+        const status = STATUS_MAP[(receipt as any).status as string] || "UNKNOWN";
+        return {
+            hash: txHash,
+            status,
+            consensus: (receipt as any).consensus ? {
+                commits: (receipt as any).consensus.commits ?? 0,
+                reveals: (receipt as any).consensus.reveals ?? 0,
+                agrees: (receipt as any).consensus.agrees ?? 0,
+                disagrees: (receipt as any).consensus.disagrees ?? 0,
+            } : undefined,
+        };
+    } catch {
+        return { hash: txHash, status: "PENDING" };
+    }
+}
+
+export async function sendCreateEscrow(
+    freelancerAddress: string,
+    requirementsText: string,
+    userAddress: string,
+): Promise<string> {
+    const client = await getClient();
+    const txHash = await client.writeContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        functionName: "create_escrow",
+        args: [freelancerAddress, requirementsText] as any[],
+        value: 0n,
+        // @ts-ignore
+        account: { address: userAddress as `0x${string}`, type: "json-rpc" } as any,
+    });
+    return txHash as string;
+}
+
+export async function sendFundEscrow(
+    escrowId: string,
+    amountWei: bigint,
+    userAddress: string,
+): Promise<string> {
+    const client = await getClient();
+    const txHash = await client.writeContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        functionName: "fund_escrow",
+        args: [escrowId] as any[],
+        value: amountWei,
+        // @ts-ignore
+        account: { address: userAddress as `0x${string}`, type: "json-rpc" } as any,
+    });
+    return txHash as string;
+}
+
+export async function sendSubmitWork(
+    escrowId: string,
+    workUrl: string,
+    userAddress: string,
+): Promise<string> {
+    const client = await getClient();
+    const txHash = await client.writeContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        functionName: "submit_work",
+        args: [escrowId, workUrl] as any[],
+        value: 0n,
+        // @ts-ignore
+        account: { address: userAddress as `0x${string}`, type: "json-rpc" } as any,
+    });
+    return txHash as string;
+}
+
+export async function sendEvaluateWork(
+    escrowId: string,
+    userAddress: string,
+): Promise<string> {
+    const client = await getClient();
+    const txHash = await client.writeContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        functionName: "evaluate_work",
+        args: [escrowId] as any[],
+        value: 0n,
+        // @ts-ignore
+        account: { address: userAddress as `0x${string}`, type: "json-rpc" } as any,
+    });
+    return txHash as string;
 }
