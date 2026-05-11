@@ -26,12 +26,13 @@ class LexNetEscrow(gl.Contract):
         escrow_id = str(self.escrow_count)
         self.escrow_count = self.escrow_count + u256(1)
 
-        client_address = gl.message.sender_address.as_hex.lower()
+        client_address = str(gl.message.sender_address.as_hex).lower()
+        freelancer_hex = str(freelancer_address.as_hex if hasattr(freelancer_address, 'as_hex') else freelancer_address).lower()
 
         self.escrows[escrow_id] = json.dumps({
             "id": escrow_id,
             "client": client_address,
-            "freelancer": freelancer_address.lower(),
+            "freelancer": freelancer_hex,
             "amount": "0",
             "fee_amount": "0",
             "requirements_text": requirements_text,
@@ -53,7 +54,7 @@ class LexNetEscrow(gl.Contract):
         
         if escrow["status"] != "CREATED":
             return "Error: Escrow is not in CREATED state"
-        if escrow["client"] != gl.message.sender_address.as_hex.lower():
+        if escrow["client"] != str(gl.message.sender_address.as_hex).lower():
             return "Error: Only the client can fund the escrow"
         if amount <= u256(0):
             return "Error: Funding amount must be greater than 0"
@@ -79,7 +80,7 @@ class LexNetEscrow(gl.Contract):
         
         if escrow["status"] != "FUNDED":
             return "Error: Escrow is not funded"
-        if escrow["freelancer"] != gl.message.sender_address.as_hex.lower():
+        if escrow["freelancer"] != str(gl.message.sender_address.as_hex).lower():
             return "Error: Only the freelancer can submit work"
         if work_url == "":
             return "Error: Work URL cannot be empty"
@@ -162,7 +163,7 @@ Do not output any other text."""
 
     @gl.public.write
     def withdraw_fees(self) -> str:
-        if gl.message.sender_address.as_hex.lower() != self.owner.as_hex.lower():
+        if str(gl.message.sender_address.as_hex).lower() != str(self.owner.as_hex).lower():
             return "Error: Only the owner can withdraw fees"
         
         amount_to_withdraw = self.treasury
