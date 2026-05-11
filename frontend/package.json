@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "seed:demo": "node scripts/seed-demo.mjs",
+    "verify:demo-account": "node scripts/verify-demo-account.mjs",
+    "verify:testnet-account": "node scripts/verify-testnet-account.mjs",
+    "verify:testnet-write": "node scripts/verify-testnet-account.mjs --write",
     "test:platform": "node --test src/lib/platform/*.test.mjs"
   },
   "dependencies": {
