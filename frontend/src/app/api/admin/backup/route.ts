@@ -3,8 +3,18 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { checksum, createId, now, readStore, writeStore } from "@/lib/platform/store";
 import { ensurePlatformDefaults } from "@/lib/platform/ops";
+import { requireAuth, AuthError } from "@/lib/platform/auth";
 
-export async function POST() {
+export async function POST(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+
   const store = await readStore();
   ensurePlatformDefaults(store);
   const backupDir = path.join(process.cwd(), ".lexnet-data", "backups");

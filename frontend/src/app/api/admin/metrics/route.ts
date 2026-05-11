@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
 import { readStore } from "@/lib/platform/store";
+import { requireAuth, AuthError } from "@/lib/platform/auth";
 
-export async function GET() {
+export async function GET(request: Request) {
+  try {
+    await requireAuth(request);
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
+
   const store = await readStore();
 
   const actionCounts: Record<string, number> = {};
