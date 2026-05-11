@@ -87,6 +87,11 @@ npx tsc --noEmit
 npx next build
 ```
 
+## Next Phase
+
+- See `docs/LEXNET_NEXT_PHASE.md` for the recommended development sequence after the completed demo/backend baseline.
+- Immediate next item: review and harden the demo baseline before replacing demo persistence or running live testnet flows.
+
 ## Notes
 
 - Existing `contracts/lexnet_escrow.py` remains the contract source; no replacement contract was added.
