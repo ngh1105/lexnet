@@ -56,3 +56,23 @@ test("partial security state keeps default fields", () => {
   assert.equal(migrated.security.lastBackupAt, "");
   assert.equal(migrated.security.incidents.length, 1);
 });
+
+test("malformed security and demo account entries fall back safely", () => {
+  const migrated = migrateStore({
+    security: {
+      rateLimits: null,
+      incidents: {},
+      envValidatedAt: 123,
+      lastBackupAt: false,
+    },
+    demoAccounts: [null, 42, { id: "acct_2", address: "0xdef", privateKey: "0xsecret", privateKeyRef: "local-demo:1234567890abcdef" }],
+  });
+
+  assert.deepEqual(migrated.security.rateLimits, []);
+  assert.deepEqual(migrated.security.incidents, []);
+  assert.equal(migrated.security.envValidatedAt, "");
+  assert.equal(migrated.security.lastBackupAt, "");
+  assert.equal(migrated.demoAccounts.length, 1);
+  assert.equal(migrated.demoAccounts[0].privateKey, undefined);
+  assert.equal(migrated.demoAccounts[0].privateKeyRef, "local-demo:1234567890abcdef");
+});

@@ -28,18 +28,26 @@ const defaultStore = (): PlatformStore => ({
 
 export function migrateStore(input: Partial<PlatformStore>): PlatformStore {
   const defaults = defaultStore();
+  const rawSecurity = (input.security || {}) as Partial<PlatformStore["security"]>;
   const migrated = {
     ...defaults,
     ...input,
-    security: { ...defaults.security, ...(input.security || {}) },
+    security: {
+      rateLimits: Array.isArray(rawSecurity.rateLimits) ? rawSecurity.rateLimits : defaults.security.rateLimits,
+      incidents: Array.isArray(rawSecurity.incidents) ? rawSecurity.incidents : defaults.security.incidents,
+      envValidatedAt: typeof rawSecurity.envValidatedAt === "string" ? rawSecurity.envValidatedAt : defaults.security.envValidatedAt,
+      lastBackupAt: typeof rawSecurity.lastBackupAt === "string" ? rawSecurity.lastBackupAt : defaults.security.lastBackupAt,
+    },
   } as PlatformStore;
-  migrated.demoAccounts = (Array.isArray(input.demoAccounts) ? input.demoAccounts : []).map((account) => ({
-    id: account.id,
-    label: account.label,
-    address: account.address,
-    privateKeyRef: account.privateKeyRef,
-    createdAt: account.createdAt,
-  }));
+  migrated.demoAccounts = (Array.isArray(input.demoAccounts) ? input.demoAccounts : [])
+    .filter((account) => account && typeof account === "object")
+    .map((account) => ({
+      id: account.id,
+      label: account.label,
+      address: account.address,
+      privateKeyRef: account.privateKeyRef,
+      createdAt: account.createdAt,
+    }));
   return migrated;
 }
 
