@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useSignMessage } from "wagmi";
 
 interface SessionData {
   token: string;
@@ -14,6 +14,7 @@ const SESSION_KEY = "lexnet_session";
 
 export function useSession() {
   const { address, isConnected } = useAccount();
+  const { signMessageAsync } = useSignMessage();
   const [session, setSession] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -41,10 +42,19 @@ export function useSession() {
   const login = useCallback(async (addr: string) => {
     setLoading(true);
     try {
+      // 1. Get nonce from server
+      const nonceRes = await fetch(`/api/auth/nonce?address=${addr}`);
+      if (!nonceRes.ok) throw new Error("Failed to get nonce");
+      const { nonce } = await nonceRes.json();
+
+      // 2. Sign nonce with wallet
+      const signature = await signMessageAsync({ message: nonce });
+
+      // 3. Login with signature
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address: addr }),
+        body: JSON.stringify({ address: addr, nonce, signature }),
       });
       if (!res.ok) throw new Error("Login failed");
       const data = await res.json();
@@ -62,7 +72,7 @@ export function useSession() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [signMessageAsync]);
 
   const logout = useCallback(async () => {
     if (session?.token) {
