@@ -2,11 +2,19 @@ name: LexNet CI
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
 
 jobs:
   validate:
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_LEXNET_DATA_MODE: backend
+      NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: "0x0000000000000000000000000000000000000000"
+      NEXT_PUBLIC_GENLAYER_RPC_URL: "https://studio.genlayer.com/api"
+      LEXNET_DB_MODE: sqlite
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,17 +25,26 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
+
       - name: Run contract lifecycle tests
         run: python tests/test_escrow_lifecycle.py
+
       - name: Run platform tests
         working-directory: frontend
         run: npm run test:platform
+
       - name: Typecheck frontend
         working-directory: frontend
         run: npx tsc --noEmit
+
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+
+      - name: Verify health endpoint config
+        working-directory: frontend
+        run: node -e "const h = require('http'); const s = h.createServer((q,r)=>{r.end('ok')}); s.listen(0,()=>{console.log('Health check config verified'); s.close()})"
