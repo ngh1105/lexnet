@@ -26,6 +26,18 @@ const defaultStore = (): PlatformStore => ({
   security: { rateLimits: [], incidents: [], envValidatedAt: "", lastBackupAt: "" },
 });
 
+export function migrateStore(input: Partial<PlatformStore>): PlatformStore {
+  const migrated = { ...defaultStore(), ...input } as PlatformStore;
+  migrated.demoAccounts = (migrated.demoAccounts || []).map((account) => ({
+    id: account.id,
+    label: account.label,
+    address: account.address,
+    privateKeyRef: account.privateKeyRef,
+    createdAt: account.createdAt,
+  }));
+  return migrated;
+}
+
 export function createId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
 }
@@ -45,7 +57,7 @@ export function normalizeEvidenceUrl(url: string): string {
 export async function readStore(): Promise<PlatformStore> {
   try {
     const raw = await readFile(DATA_FILE, "utf8");
-    return { ...defaultStore(), ...(JSON.parse(raw) as Partial<PlatformStore>) } as PlatformStore;
+    return migrateStore(JSON.parse(raw) as Partial<PlatformStore>);
   } catch {
     const store = defaultStore();
     await writeStore(store);
