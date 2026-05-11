@@ -1,4 +1,5 @@
 import { createClient } from "genlayer-js";
+import { TransactionStatus } from "genlayer-js/types";
 
 async function main() {
     const CONTRACT_ADDRESS = "0xe156F2b63f15666BFB9Be884f05267F6c1d86a33";
@@ -21,7 +22,7 @@ async function main() {
         console.log("Waiting for receipt...");
         const receipt = await client.waitForTransactionReceipt({
             hash: txHash,
-            status: "FINALIZED", // or "PENDING"
+            status: TransactionStatus.FINALIZED,
             retries: 30,
             interval: 1000,
         });

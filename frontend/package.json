@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "test:platform": "node --test src/lib/platform/*.test.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

@@ -97,6 +97,24 @@ export const MOCK_ESCROWS: Escrow[] = [
     },
 ];
 
+// ─── Data Mode ────────────────────────────────────────────────────────────────
+
+export type DataMode = "local" | "backend" | "contract";
+
+function requestedDataMode(): DataMode | null {
+    const mode = process.env.NEXT_PUBLIC_LEXNET_DATA_MODE;
+    if (mode === "local" || mode === "backend" || mode === "contract") return mode;
+    return null;
+}
+
+export function getDataMode(): DataMode {
+    const explicit = requestedDataMode();
+    if (explicit === "backend") return "backend";
+    if (explicit === "local") return "local";
+    if (explicit === "contract") return "contract";
+    return CONTRACT_ADDRESS ? "contract" : "local";
+}
+
 // ─── Client Factory ───────────────────────────────────────────────────────────
 
 function getContractAddress(): string {
@@ -107,7 +125,8 @@ function getContractAddress(): string {
 }
 
 const CONTRACT_ADDRESS = getContractAddress();
-const IS_DEMO_MODE = !CONTRACT_ADDRESS;
+const ACTIVE_DATA_MODE = getDataMode();
+const IS_DEMO_MODE = ACTIVE_DATA_MODE === "local";
 
 type LiveClient = ReturnType<typeof createClient>;
 
@@ -130,23 +149,34 @@ async function getClient(): Promise<LiveClient> {
 
 async function callWrite(functionName: string, args: unknown[], account?: string): Promise<void> {
     const client = await getClient();
-    if (!account) throw new Error("Wallet not connected");
+    if (!account) throw new Error("Wallet not connected. Please connect your wallet to perform this action.");
 
-    const txHash = await client.writeContract({
-        address: CONTRACT_ADDRESS as `0x${string}`,
-        functionName,
-        args: args as import("genlayer-js/types").CalldataEncodable[],
-        value: 0n,
-        // @ts-ignore
-        account: { address: account as `0x${string}`, type: "json-rpc" } as any,
-    });
-    // Wait for finalization
-    await client.waitForTransactionReceipt({
-        hash: txHash,
-        status: TransactionStatus.FINALIZED,
-        retries: 120,
-        interval: 1000,
-    });
+    try {
+        const txHash = await client.writeContract({
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            functionName,
+            args: args as import("genlayer-js/types").CalldataEncodable[],
+            value: 0n,
+            // @ts-ignore
+            account: { address: account as `0x${string}`, type: "json-rpc" } as any,
+        });
+        // Wait for finalization
+        await client.waitForTransactionReceipt({
+            hash: txHash,
+            status: TransactionStatus.FINALIZED,
+            retries: 120,
+            interval: 1000,
+        });
+    } catch (err: any) {
+        const msg = err?.message || String(err);
+        if (msg.includes("CONNECTION") || msg.includes("network") || msg.includes("fetch")) {
+            throw new Error(`Network error: Could not reach GenLayer RPC. Check your network and RPC URL. (${msg})`);
+        }
+        if (msg.includes("reverted") || msg.includes("Error:")) {
+            throw new Error(`Contract error in ${functionName}: ${msg}`);
+        }
+        throw new Error(`Transaction failed: ${msg}`);
+    }
 }
 
 async function callWriteWithValue(
@@ -156,22 +186,30 @@ async function callWriteWithValue(
     account?: string
 ): Promise<void> {
     const client = await getClient();
-    if (!account) throw new Error("Wallet not connected");
+    if (!account) throw new Error("Wallet not connected. Please connect your wallet to perform this action.");
 
-    const txHash = await client.writeContract({
-        address: CONTRACT_ADDRESS as `0x${string}`,
-        functionName,
-        args: args as import("genlayer-js/types").CalldataEncodable[],
-        value,
-        // @ts-ignore
-        account: { address: account },
-    });
-    await client.waitForTransactionReceipt({
-        hash: txHash,
-        status: TransactionStatus.FINALIZED,
-        retries: 120,
-        interval: 1000,
-    });
+    try {
+        const txHash = await client.writeContract({
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            functionName,
+            args: args as import("genlayer-js/types").CalldataEncodable[],
+            value,
+            // @ts-ignore
+            account: { address: account },
+        });
+        await client.waitForTransactionReceipt({
+            hash: txHash,
+            status: TransactionStatus.FINALIZED,
+            retries: 120,
+            interval: 1000,
+        });
+    } catch (err: any) {
+        const msg = err?.message || String(err);
+        if (msg.includes("CONNECTION") || msg.includes("network") || msg.includes("fetch")) {
+            throw new Error(`Network error: Could not reach GenLayer RPC. Check your network and RPC URL. (${msg})`);
+        }
+        throw new Error(`Transaction failed in ${functionName}: ${msg}`);
+    }
 }
 
 async function callRead(
@@ -179,11 +217,50 @@ async function callRead(
     args: unknown[]
 ): Promise<unknown> {
     const client = await getClient();
-    return client.readContract({
-        address: CONTRACT_ADDRESS as `0x${string}`,
-        functionName,
-        args: args as import("genlayer-js/types").CalldataEncodable[],
+    try {
+        return await client.readContract({
+            address: CONTRACT_ADDRESS as `0x${string}`,
+            functionName,
+            args: args as import("genlayer-js/types").CalldataEncodable[],
+        });
+    } catch (err: any) {
+        const msg = err?.message || String(err);
+        if (msg.includes("CONNECTION") || msg.includes("network") || msg.includes("fetch")) {
+            throw new Error(`Network error: Could not reach GenLayer RPC. Check your network and RPC URL. (${msg})`);
+        }
+        throw new Error(`Contract read failed in ${functionName}: ${msg}`);
+    }
+}
+
+// ─── Backend Helpers ──────────────────────────────────────────────────────────
+
+function toEscrow(item: any): Escrow {
+    const report = item.report ?? item.reports?.at?.(-1);
+    return {
+        id: item.id,
+        client: item.client,
+        freelancer: item.freelancer,
+        amount: item.amount,
+        fee_amount: item.feeAmount,
+        requirements_text: item.requirementsText,
+        submitted_work_url: item.submittedWorkUrl,
+        status: item.status,
+        resolved_at: item.resolvedAt,
+        impact_score: report?.impactScore ?? 0,
+        is_approved: report?.verdict === "approved",
+    };
+}
+
+async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(url, {
+        ...init,
+        headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
     });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(payload?.error || `Backend request failed: ${response.status}`);
+    }
+    return payload as T;
 }
 
 // ─── Contract Helpers ─────────────────────────────────────────────────────────
@@ -211,6 +288,17 @@ export async function createEscrow(
         });
         return newId;
     }
+    if (ACTIVE_DATA_MODE === "backend") {
+        const result = await apiJson<{ case: any }>("/api/cases", {
+            method: "POST",
+            body: JSON.stringify({
+                client: userAddress || "0xbackend-demo-client",
+                freelancer: freelancerAddress,
+                requirementsText,
+            }),
+        });
+        return result.case.id;
+    }
     await callWrite("create_escrow", [freelancerAddress, requirementsText], userAddress);
     return "created";
 }
@@ -233,6 +321,13 @@ export async function fundEscrow(
         }
         return;
     }
+    if (ACTIVE_DATA_MODE === "backend") {
+        await apiJson(`/api/cases/${escrowId}`, {
+            method: "PATCH",
+            body: JSON.stringify({ amount: String(amountWei), actor: userAddress }),
+        });
+        return;
+    }
     await callWrite("fund_escrow", [escrowId, amountWei], userAddress);
 }
 
@@ -251,6 +346,13 @@ export async function submitWork(
             escrow.submitted_work_url = workUrl;
             escrow.status = "WORK_SUBMITTED";
         }
+        return;
+    }
+    if (ACTIVE_DATA_MODE === "backend") {
+        await apiJson(`/api/cases/${escrowId}/evidence`, {
+            method: "POST",
+            body: JSON.stringify({ url: workUrl, submittedBy: userAddress || "system" }),
+        });
         return;
     }
     await callWrite("submit_work", [escrowId, workUrl], userAddress);
@@ -272,6 +374,13 @@ export async function evaluateWork(escrowId: string, userAddress?: string): Prom
         }
         return;
     }
+    if (ACTIVE_DATA_MODE === "backend") {
+        await apiJson(`/api/cases/${escrowId}/verify`, {
+            method: "POST",
+            body: JSON.stringify({ actor: userAddress || "system" }),
+        });
+        return;
+    }
     await callWrite("evaluate_work", [escrowId], userAddress);
 }
 
@@ -283,14 +392,14 @@ export async function getEscrow(escrowId: string): Promise<Escrow | null> {
         await simulateDelay(300);
         return MOCK_ESCROWS.find((e) => e.id === escrowId) ?? null;
     }
-    try {
-        const raw = await callRead("get_escrow", [escrowId]);
-        const rawStr = String(raw ?? "");
-        if (!rawStr || rawStr.startsWith("Error:")) return null;
-        return JSON.parse(rawStr) as Escrow;
-    } catch {
-        return null;
+    if (ACTIVE_DATA_MODE === "backend") {
+        const result = await apiJson<{ case: any; reports: any[] }>(`/api/cases/${escrowId}`);
+        return toEscrow({ ...result.case, reports: result.reports });
     }
+    const raw = await callRead("get_escrow", [escrowId]);
+    const rawStr = String(raw ?? "");
+    if (!rawStr || rawStr.startsWith("Error:")) return null;
+    return JSON.parse(rawStr) as Escrow;
 }
 
 /**
@@ -300,6 +409,10 @@ export async function getAllEscrows(): Promise<Escrow[]> {
     if (IS_DEMO_MODE) {
         await simulateDelay(400);
         return [...MOCK_ESCROWS];
+    }
+    if (ACTIVE_DATA_MODE === "backend") {
+        const result = await apiJson<{ cases: any[] }>("/api/cases");
+        return result.cases.map(toEscrow);
     }
     const results: Escrow[] = [];
     let id = 0;
@@ -315,7 +428,7 @@ export async function getAllEscrows(): Promise<Escrow[]> {
 // ─── Utility Helpers ──────────────────────────────────────────────────────────
 
 export function isDemoMode(): boolean {
-    return IS_DEMO_MODE;
+    return ACTIVE_DATA_MODE === "local";
 }
 
 /** Format wei amount to human-readable ETH */

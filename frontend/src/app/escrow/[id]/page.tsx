@@ -12,11 +12,17 @@ import {
     Copy,
     CheckCircle,
     ArrowsClockwise,
+    Fingerprint,
+    ClockCounterClockwise,
+    LinkSimple,
+    WarningCircle,
 } from "@phosphor-icons/react";
 import { motion } from "framer-motion";
 import Sidebar from "@/components/Sidebar";
 import StatusTimeline from "@/components/StatusTimeline";
 import ActionPanel from "@/components/ActionPanel";
+import ModeIndicator from "@/components/ModeIndicator";
+import { getCaseArtifacts, reportExportUrl, reviewLatestReport, type CaseArtifacts } from "@/lib/backend-client";
 import { getEscrow, formatAmount, truncateAddress, type Escrow } from "@/lib/genlayer";
 
 export default function EscrowDetailPage() {
@@ -25,17 +31,29 @@ export default function EscrowDetailPage() {
     const escrowId = String(params?.id ?? "");
 
     const [escrow, setEscrow] = useState<Escrow | null>(null);
+    const [artifacts, setArtifacts] = useState<CaseArtifacts | null>(null);
+    const [artifactError, setArtifactError] = useState<string | null>(null);
+    const [reviewingReport, setReviewingReport] = useState(false);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
     async function fetchEscrow() {
         setLoading(true);
+        setArtifactError(null);
         const data = await getEscrow(escrowId);
         if (!data) {
             setNotFound(true);
+            setArtifacts(null);
         } else {
+            setNotFound(false);
             setEscrow(data);
+            try {
+                setArtifacts(await getCaseArtifacts(escrowId));
+            } catch (error) {
+                setArtifacts(null);
+                setArtifactError(error instanceof Error ? error.message : "Unable to load evidence timeline");
+            }
         }
         setLoading(false);
     }
@@ -48,6 +66,16 @@ export default function EscrowDetailPage() {
         navigator.clipboard.writeText(text).catch(() => { });
         setCopiedField(field);
         setTimeout(() => setCopiedField(null), 2000);
+    }
+
+    async function markReportReviewed() {
+        setReviewingReport(true);
+        try {
+            await reviewLatestReport(escrowId, { status: "reviewed", actor: escrow?.client || "system" });
+            await fetchEscrow();
+        } finally {
+            setReviewingReport(false);
+        }
     }
 
     if (loading) {
@@ -84,6 +112,9 @@ export default function EscrowDetailPage() {
         : escrow.status === "WORK_SUBMITTED" ? "#FCD34D"
             : escrow.status === "FUNDED" ? "#60A5FA"
                 : "#94A3B8";
+    const evidenceItems = artifacts?.evidence ?? [];
+    const auditItems = artifacts?.auditEvents ?? [];
+    const latestReport = artifacts?.reports.at(-1) ?? null;
 
     return (
         <div style={{ display: "flex", width: "100%", minHeight: "100vh" }}>
@@ -91,6 +122,9 @@ export default function EscrowDetailPage() {
 
             <main style={{ flex: 1, overflowY: "auto", padding: "32px 36px" }}>
                 <div style={{ maxWidth: 960, margin: "0 auto" }}>
+                    {/* Mode Indicator */}
+                    <ModeIndicator />
+
                     {/* Back nav */}
                     <button
                         onClick={() => router.push("/")}
@@ -281,6 +315,74 @@ export default function EscrowDetailPage() {
                                     </a>
                                 </motion.div>
                             )}
+
+                            <motion.div
+                                initial={{ opacity: 0, y: 16 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.38, duration: 0.4 }}
+                                className="glass-card"
+                                style={{ padding: "22px 24px" }}
+                            >
+                                <h3 style={{ fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
+                                    <Fingerprint size={13} />
+                                    Evidence Timeline
+                                </h3>
+                                {artifactError ? (
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#FCA5A5", fontSize: 13 }}>
+                                        <WarningCircle size={16} />
+                                        {artifactError}
+                                    </div>
+                                ) : evidenceItems.length === 0 ? (
+                                    <p style={{ color: "#64748B", fontSize: 13 }}>No evidence artifacts have been submitted yet.</p>
+                                ) : (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                                        {evidenceItems.map((item) => (
+                                            <div key={item.id} style={{ padding: "13px 14px", borderRadius: 10, background: "rgba(15,27,48,0.62)", border: "1px solid rgba(96,165,250,0.12)" }}>
+                                                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
+                                                    <span style={{ color: "#CBD5E1", fontSize: 13, fontWeight: 700 }}>{item.status.toUpperCase()}</span>
+                                                    <span style={{ color: "#64748B", fontSize: 11 }}>{new Date(item.createdAt).toLocaleString()}</span>
+                                                </div>
+                                                <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 6, color: "#60A5FA", fontSize: 13, wordBreak: "break-all", marginBottom: 8 }}>
+                                                    <LinkSimple size={14} />
+                                                    {item.normalizedUrl}
+                                                </a>
+                                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, color: "#64748B", fontSize: 11 }}>
+                                                    <span>By {truncateAddress(item.submittedBy)}</span>
+                                                    <span title={item.checksum} style={{ fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis" }}>sha256 {item.checksum.slice(0, 12)}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </motion.div>
+
+                            <motion.div
+                                initial={{ opacity: 0, y: 16 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.44, duration: 0.4 }}
+                                className="glass-card"
+                                style={{ padding: "22px 24px" }}
+                            >
+                                <h3 style={{ fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
+                                    <ClockCounterClockwise size={13} />
+                                    Audit Trail
+                                </h3>
+                                {auditItems.length === 0 ? (
+                                    <p style={{ color: "#64748B", fontSize: 13 }}>No audit events recorded for this case.</p>
+                                ) : (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                        {auditItems.map((event) => (
+                                            <div key={event.id} style={{ display: "grid", gridTemplateColumns: "110px 1fr", gap: 12, padding: "11px 0", borderBottom: "1px solid rgba(148,163,184,0.08)" }}>
+                                                <span style={{ color: "#64748B", fontSize: 11 }}>{new Date(event.createdAt).toLocaleString()}</span>
+                                                <div>
+                                                    <div style={{ color: "#CBD5E1", fontSize: 13, fontWeight: 700 }}>{event.action}</div>
+                                                    <div style={{ color: "#64748B", fontSize: 11, marginTop: 3 }}>Actor {truncateAddress(event.actor)}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </motion.div>
                         </div>
 
                         {/* Right: Action Panel */}
@@ -288,8 +390,34 @@ export default function EscrowDetailPage() {
                             initial={{ opacity: 0, x: 16 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: 0.15, duration: 0.4 }}
+                            style={{ display: "flex", flexDirection: "column", gap: 20 }}
                         >
                             <ActionPanel escrow={escrow} onRefresh={fetchEscrow} />
+                            {latestReport && (
+                                <div className="glass-card" style={{ padding: 22 }}>
+                                    <h3 style={{ fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14 }}>
+                                        Verification Report
+                                    </h3>
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+                                        <div style={{ padding: 10, borderRadius: 8, background: "rgba(15,27,48,0.5)" }}>
+                                            <div style={{ fontSize: 10, color: "#64748B", marginBottom: 4 }}>Schema</div>
+                                            <div style={{ color: "#CBD5E1", fontSize: 12 }}>{latestReport.version}</div>
+                                        </div>
+                                        <div style={{ padding: 10, borderRadius: 8, background: "rgba(15,27,48,0.5)" }}>
+                                            <div style={{ fontSize: 10, color: "#64748B", marginBottom: 4 }}>Review</div>
+                                            <div style={{ color: latestReport.status === "reviewed" ? "#34D399" : "#FCD34D", fontSize: 12 }}>{latestReport.status}</div>
+                                        </div>
+                                    </div>
+                                    <p style={{ color: "#94A3B8", fontSize: 12, lineHeight: 1.6, marginBottom: 14 }}>{latestReport.rationale}</p>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                        <button className="btn-ghost" onClick={markReportReviewed} disabled={reviewingReport || latestReport.status === "reviewed"} style={{ width: "100%" }}>
+                                            {latestReport.status === "reviewed" ? "Reviewed" : reviewingReport ? "Marking..." : "Mark Reviewed"}
+                                        </button>
+                                        <a className="btn-primary" href={reportExportUrl(escrow.id, "download")} style={{ textAlign: "center", textDecoration: "none" }}>Download JSON</a>
+                                        <a className="btn-ghost" href={reportExportUrl(escrow.id, "print")} target="_blank" rel="noopener noreferrer" style={{ textAlign: "center", textDecoration: "none" }}>Printable Report</a>
+                                    </div>
+                                </div>
+                            )}
                         </motion.div>
                     </div>
                 </div>
