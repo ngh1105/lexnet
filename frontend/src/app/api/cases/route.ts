@@ -10,43 +10,46 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null) as {
-    client?: string;
-    freelancer?: string;
-    requirementsText?: string;
-    workspaceId?: string;
-  } | null;
+  const { withAuth } = await import("@/lib/platform/route-helpers");
+  return withAuth(request, async (userId, address) => {
+    const body = await request.json().catch(() => null) as {
+      client?: string;
+      freelancer?: string;
+      requirementsText?: string;
+      workspaceId?: string;
+    } | null;
 
-  if (!body?.client || !body?.freelancer || !body?.requirementsText) {
-    return NextResponse.json({ error: "client, freelancer, and requirementsText are required" }, { status: 400 });
-  }
+    if (!body?.client || !body?.freelancer || !body?.requirementsText) {
+      return NextResponse.json({ error: "client, freelancer, and requirementsText are required" }, { status: 400 });
+    }
 
-  const store = await readStore();
-  const timestamp = now();
-  const item: PlatformCase = {
-    id: createId("case"),
-    workspaceId: body.workspaceId || DEFAULT_WORKSPACE,
-    client: body.client.toLowerCase(),
-    freelancer: body.freelancer.toLowerCase(),
-    requirementsText: body.requirementsText,
-    amount: "0",
-    feeAmount: "0",
-    status: "CREATED",
-    submittedWorkUrl: "",
-    createdAt: timestamp,
-    updatedAt: timestamp,
-    resolvedAt: "0",
-  };
+    const store = await readStore();
+    const timestamp = now();
+    const item: PlatformCase = {
+      id: createId("case"),
+      workspaceId: body.workspaceId || DEFAULT_WORKSPACE,
+      client: body.client.toLowerCase(),
+      freelancer: body.freelancer.toLowerCase(),
+      requirementsText: body.requirementsText,
+      amount: "0",
+      feeAmount: "0",
+      status: "CREATED",
+      submittedWorkUrl: "",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      resolvedAt: "0",
+    };
 
-  store.cases.push(item);
-  await appendAuditEvent(store, {
-    workspaceId: item.workspaceId,
-    caseId: item.id,
-    actor: item.client,
-    action: "case.created",
-    payload: { freelancer: item.freelancer },
+    store.cases.push(item);
+    await appendAuditEvent(store, {
+      workspaceId: item.workspaceId,
+      caseId: item.id,
+      actor: address,
+      action: "case.created",
+      payload: { freelancer: item.freelancer },
+    });
+    await writeStore(store);
+
+    return NextResponse.json({ case: item }, { status: 201 });
   });
-  await writeStore(store);
-
-  return NextResponse.json({ case: item }, { status: 201 });
 }

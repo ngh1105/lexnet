@@ -59,31 +59,34 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!latest) return NextResponse.json({ error: "Report not found" }, { status: 404 });
 
   if (format === "download" || format === "print") {
-    latest.status = "exported";
-    latest.exportedAt = now();
-    await appendAuditEvent(store, {
-      workspaceId: latest.workspaceId,
-      caseId: id,
-      actor: "system",
-      action: "report.exported",
-      payload: { reportId: latest.id, format },
-    });
-    await writeStore(store);
+    const { withAuth } = await import("@/lib/platform/route-helpers");
+    return withAuth(request, async (userId, address) => {
+      latest.status = "exported";
+      latest.exportedAt = now();
+      await appendAuditEvent(store, {
+        workspaceId: latest.workspaceId,
+        caseId: id,
+        actor: address,
+        action: "report.exported",
+        payload: { reportId: latest.id, format },
+      });
+      await writeStore(store);
 
-    if (format === "print") {
-      return new NextResponse(reportHtml(latest), {
+      if (format === "print") {
+        return new NextResponse(reportHtml(latest), {
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Content-Disposition": `inline; filename="${reportFileName(latest.id, "html")}"`,
+          },
+        });
+      }
+
+      return new NextResponse(JSON.stringify(latest, null, 2), {
         headers: {
-          "Content-Type": "text/html; charset=utf-8",
-          "Content-Disposition": `inline; filename="${reportFileName(latest.id, "html")}"`,
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Disposition": `attachment; filename="${reportFileName(latest.id, "json")}"`,
         },
       });
-    }
-
-    return new NextResponse(JSON.stringify(latest, null, 2), {
-      headers: {
-        "Content-Type": "application/json; charset=utf-8",
-        "Content-Disposition": `attachment; filename="${reportFileName(latest.id, "json")}"`,
-      },
     });
   }
 
@@ -91,23 +94,27 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { withAuth } = await import("@/lib/platform/route-helpers");
   const { id } = await params;
-  const body = await request.json().catch(() => null) as { status?: "draft" | "reviewed"; reviewerNotes?: string; actor?: string } | null;
-  const store = await readStore();
-  const reports = store.reports.filter((entry) => entry.caseId === id);
-  const latest = reports.at(-1);
-  if (!latest) return NextResponse.json({ error: "Report not found" }, { status: 404 });
 
-  if (body?.status) latest.status = body.status;
-  if (typeof body?.reviewerNotes === "string") latest.reviewerNotes = body.reviewerNotes.slice(0, 2000);
-  await appendAuditEvent(store, {
-    workspaceId: latest.workspaceId,
-    caseId: id,
-    actor: body?.actor || "system",
-    action: "report.reviewed",
-    payload: { reportId: latest.id, status: latest.status },
+  return withAuth(request, async (userId, address) => {
+    const body = await request.json().catch(() => null) as { status?: "draft" | "reviewed"; reviewerNotes?: string; actor?: string } | null;
+    const store = await readStore();
+    const reports = store.reports.filter((entry) => entry.caseId === id);
+    const latest = reports.at(-1);
+    if (!latest) return NextResponse.json({ error: "Report not found" }, { status: 404 });
+
+    if (body?.status) latest.status = body.status;
+    if (typeof body?.reviewerNotes === "string") latest.reviewerNotes = body.reviewerNotes.slice(0, 2000);
+    await appendAuditEvent(store, {
+      workspaceId: latest.workspaceId,
+      caseId: id,
+      actor: address,
+      action: "report.reviewed",
+      payload: { reportId: latest.id, status: latest.status },
+    });
+    await writeStore(store);
+
+    return NextResponse.json({ report: latest });
   });
-  await writeStore(store);
-
-  return NextResponse.json({ report: latest });
 }
