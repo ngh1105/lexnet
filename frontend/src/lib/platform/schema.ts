@@ -119,6 +119,15 @@ export const queue = sqliteTable("queue", {
   createdAt: text("created_at").notNull(),
 });
 
+export const sessions = sqliteTable("sessions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  token: text("token").notNull(),
+  address: text("address").notNull(),
+  createdAt: text("created_at").notNull(),
+  expiresAt: text("expires_at").notNull(),
+});
+
 export const demoAccounts = sqliteTable("demo_accounts", {
   id: text("id").primaryKey(),
   label: text("label").notNull().default(""),
