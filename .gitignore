@@ -17,3 +17,9 @@ out/
 # IDE / misc
 *.log
 .vercel
+
+# Claude Code
+.claude/
+
+# LexNet demo data
+.lexnet-data/
