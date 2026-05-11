@@ -43,3 +43,16 @@ test("demo accounts only persist references, never raw private keys", () => {
   assert.equal(migrated.demoAccounts[0].privateKey, undefined);
   assert.match(migrated.demoAccounts[0].privateKeyRef, /^local-demo:[a-f0-9]{16}$/);
 });
+
+test("partial security state keeps default fields", () => {
+  const migrated = migrateStore({
+    security: {
+      incidents: [{ id: "inc_1", severity: "low", title: "Demo incident", status: "open", createdAt: "2026-05-11T00:00:00.000Z" }],
+    },
+  });
+
+  assert.deepEqual(migrated.security.rateLimits, []);
+  assert.equal(migrated.security.envValidatedAt, "");
+  assert.equal(migrated.security.lastBackupAt, "");
+  assert.equal(migrated.security.incidents.length, 1);
+});

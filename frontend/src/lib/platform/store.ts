@@ -27,8 +27,13 @@ const defaultStore = (): PlatformStore => ({
 });
 
 export function migrateStore(input: Partial<PlatformStore>): PlatformStore {
-  const migrated = { ...defaultStore(), ...input } as PlatformStore;
-  migrated.demoAccounts = (migrated.demoAccounts || []).map((account) => ({
+  const defaults = defaultStore();
+  const migrated = {
+    ...defaults,
+    ...input,
+    security: { ...defaults.security, ...(input.security || {}) },
+  } as PlatformStore;
+  migrated.demoAccounts = (Array.isArray(input.demoAccounts) ? input.demoAccounts : []).map((account) => ({
     id: account.id,
     label: account.label,
     address: account.address,
