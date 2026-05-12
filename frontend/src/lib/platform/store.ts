@@ -500,6 +500,7 @@ function isPublishedPassport(value: unknown): boolean {
     isString(value.id) &&
     isString(value.slug) &&
     isString(value.workspaceId) &&
+    ["draft", "published"].includes(String(value.status)) &&
     isString(value.party) &&
     ["buyer", "seller"].includes(String(value.role)) &&
     ["Established", "Reliable", "Developing", "At Risk"].includes(String(value.trustLevel)) &&

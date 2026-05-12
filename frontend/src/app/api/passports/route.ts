@@ -47,6 +47,7 @@ export async function POST(request: Request) {
       return existing
         ? {
             ...passport,
+            status: existing.status,
             publishedAt: existing.publishedAt,
             updatedAt,
           }
@@ -95,6 +96,7 @@ export async function PATCH(request: Request) {
       return;
     }
 
+    target.status = body.published ? "published" : "draft";
     target.publishedAt = body.published ? target.publishedAt || updatedAt : "";
     target.updatedAt = updatedAt;
     passport = { ...target, riskFlags: [...target.riskFlags], caseIds: [...target.caseIds] };

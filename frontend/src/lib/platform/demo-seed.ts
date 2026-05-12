@@ -25,7 +25,7 @@ export function buildDemoPlatformStore(): PlatformStore {
       (passport.role === "buyer" && passport.party === DEMO_BUYER) ||
       (passport.role === "seller" && passport.party === DEMO_SELLER)
     ) {
-      return { ...passport, publishedAt: NOW };
+      return { ...passport, status: "published", publishedAt: NOW };
     }
 
     return passport;

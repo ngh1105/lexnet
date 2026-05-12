@@ -62,10 +62,13 @@ export type DashboardQueueItem = Pick<
   "id" | "caseId" | "status" | "priority" | "createdAt" | "updatedAt"
 >;
 
+export type PublishedPassportStatus = "draft" | "published";
+
 export interface PublishedPassport {
   id: string;
   slug: string;
   workspaceId: string;
+  status: PublishedPassportStatus;
   party: string;
   role: TrustPassportRole;
   trustLevel: TrustPassportLevel;

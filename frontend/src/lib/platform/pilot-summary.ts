@@ -38,10 +38,9 @@ export function buildPilotSummary(
     runtimeMode: readiness.runtimeMode,
     caseCount: store.cases.length,
     queueCount: store.queue.length,
-    publishedPassportCount: store.publishedPassports.filter((passport) => {
-      const status = (passport as { status?: string }).status;
-      return status === "published" || status === undefined;
-    }).length,
+    publishedPassportCount: store.publishedPassports.filter(
+      (passport) => passport.status === "published",
+    ).length,
     genLayerExecutionCounts,
     blockingReasons: readiness.blockingReasons,
   };

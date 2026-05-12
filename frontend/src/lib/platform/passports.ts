@@ -57,6 +57,7 @@ function toPublishedPassport(
     id: `passport-${buildSlug(passport)}`,
     slug: buildSlug(passport),
     workspaceId,
+    status: "draft",
     party: passport.party,
     role: passport.role,
     trustLevel: passport.trustLevel,

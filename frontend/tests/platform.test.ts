@@ -604,6 +604,16 @@ test("buildDemoPlatformStore publishes deterministic public passports", () => {
 
 test("buildPilotSummary counts store records and GenLayer execution statuses", () => {
   const store = buildDemoPlatformStore();
+  store.publishedPassports = store.publishedPassports.map((passport, index) => {
+    if (index === 0) {
+      return { ...passport, status: "published" };
+    }
+    if (index === 1) {
+      return { ...passport, status: undefined };
+    }
+    return { ...passport, status: "draft" };
+  });
+
   store.genLayerExecutions.push(
     {
       id: "submitted",
@@ -634,7 +644,7 @@ test("buildPilotSummary counts store records and GenLayer execution statuses", (
   assert.equal(summary.runtimeMode, "pilot");
   assert.equal(summary.caseCount, store.cases.length);
   assert.equal(summary.queueCount, store.queue.length);
-  assert.equal(summary.publishedPassportCount, store.publishedPassports.length);
+  assert.equal(summary.publishedPassportCount, 1);
   assert.equal(summary.genLayerExecutionCounts.submitted, 1);
   assert.equal(summary.genLayerExecutionCounts.state_verified, 1);
   assert.match(summary.blockingReasons.join("\n"), /Local filesystem persistence is pilot infrastructure/);
