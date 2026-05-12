@@ -3,9 +3,20 @@ export interface GenLayerVerifyCaseInput {
   caseId: string;
 }
 
+export interface GenLayerReadCaseInput {
+  contractAddress: string;
+  caseId: string;
+}
+
 export interface GenLayerContractRequest {
   contractAddress: string;
   method: "verify_case";
+  args: string[];
+}
+
+export interface GenLayerGetCaseRequest {
+  contractAddress: string;
+  method: "get_case";
   args: string[];
 }
 
@@ -16,15 +27,28 @@ interface GenLayerWriteContractRequest {
   value: bigint;
 }
 
+interface GenLayerReadContractRequest {
+  address: `0x${string}`;
+  functionName: "get_case";
+  args: string[];
+}
+
 export interface GenLayerExecutionResult {
   transactionHash?: string;
   status?: string;
   raw: unknown;
 }
 
+export interface GenLayerCaseReadResult {
+  caseId: string;
+  raw: unknown;
+  parsedCase: Record<string, unknown> | null;
+}
+
 export interface GenLayerSdkClient {
   writeContract?: (request: GenLayerWriteContractRequest) => Promise<unknown>;
   callContract?: (request: GenLayerWriteContractRequest) => Promise<unknown>;
+  readContract?: (request: GenLayerReadContractRequest) => Promise<unknown>;
 }
 
 export interface GenLayerSdkModule {
@@ -39,6 +63,7 @@ export interface GenLayerClientAdapterOptions {
 
 export interface GenLayerClientAdapter {
   verifyCase(input: GenLayerVerifyCaseInput): Promise<GenLayerExecutionResult>;
+  readCase(input: GenLayerReadCaseInput): Promise<GenLayerCaseReadResult>;
 }
 
 export function buildGenLayerVerifyCaseRequest({
@@ -54,6 +79,48 @@ export function buildGenLayerVerifyCaseRequest({
     contractAddress,
     method,
     args: [payload.case_id],
+  };
+}
+
+export function buildGenLayerGetCaseRequest({
+  contractAddress,
+  caseId,
+}: GenLayerReadCaseInput): GenLayerGetCaseRequest {
+  return {
+    contractAddress,
+    method: "get_case",
+    args: [caseId],
+  };
+}
+
+export function parseGenLayerCase(raw: unknown): Record<string, unknown> | null {
+  if (raw === "") {
+    return null;
+  }
+
+  if (typeof raw === "string") {
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  }
+
+  return raw && typeof raw === "object" && !Array.isArray(raw)
+    ? (raw as Record<string, unknown>)
+    : null;
+}
+
+export function classifyGenLayerCaseProof(parsedCase: Record<string, unknown> | null): {
+  status: "confirmed" | "state_verified";
+  contractCaseStatus?: string;
+  verificationReport?: unknown;
+} {
+  const verificationReport = parsedCase?.verification_report;
+  return {
+    status: verificationReport ? "state_verified" : "confirmed",
+    contractCaseStatus:
+      typeof parsedCase?.status === "string" ? parsedCase.status : undefined,
+    verificationReport,
   };
 }
 
@@ -88,6 +155,24 @@ export function createGenLayerClientAdapter({
           value: 0n,
         }),
       );
+    },
+    async readCase(input) {
+      if (!client.readContract) {
+        throw new Error("genlayer-js contract read method is unavailable.");
+      }
+
+      const request = buildGenLayerGetCaseRequest(input);
+      const raw = await client.readContract({
+        address: request.contractAddress as `0x${string}`,
+        functionName: request.method,
+        args: request.args,
+      });
+
+      return {
+        caseId: input.caseId,
+        raw,
+        parsedCase: parseGenLayerCase(raw),
+      };
     },
   };
 }

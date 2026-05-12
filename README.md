@@ -136,6 +136,8 @@ The public passport page is privacy-safe. It exposes redacted subject data and a
 
 LexNet uses `genlayer-js` only behind the local `genlayer-client` adapter. The guarded `verify_case` path may submit a real SDK call when contract address, RPC URL, wallet/operator readiness, and demo-private authorization all pass.
 
+A GenLayer transaction hash is submission evidence only. LexNet marks a GenLayer verification as contract-state verified only after reading `get_case(case_id)` and finding a `verification_report` in the contract state.
+
 Local verification remains the fallback. The UI must not claim settlement completion, fund movement, or on-chain finality unless a real SDK result and later contract-state verification prove it.
 
 ## Production Boundary

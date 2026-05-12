@@ -123,6 +123,7 @@ export function buildDemoPlatformStore(): PlatformStore {
     cases,
     publishedPassports,
     auditEvents,
+    genLayerExecutions: [],
   };
 }
 

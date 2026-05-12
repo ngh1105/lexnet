@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { jsonError, jsonOk, readJsonBody } from "@/lib/platform/api";
 import { authorizeDemoPrivateApi } from "@/lib/platform/auth";
-import { readPlatformStore } from "@/lib/platform/store";
+import { appendGenLayerExecution, readPlatformStore } from "@/lib/platform/store";
 import { createGenLayerClientAdapter, loadGenLayerSdk } from "@/lib/genlayer-client";
 import {
   buildVerifyCaseExecutionPlan,
@@ -41,12 +41,46 @@ export async function POST(request: Request) {
     );
   }
 
-  const sdk = await loadGenLayerSdk();
-  const adapter = createGenLayerClientAdapter({ sdk, rpcUrl: readiness.rpcUrl });
-  const result = await adapter.verifyCase({
-    contractAddress: plan.request.contractAddress,
-    caseId: commerceCase.id,
-  });
+  try {
+    const sdk = await loadGenLayerSdk();
+    const adapter = createGenLayerClientAdapter({ sdk, rpcUrl: readiness.rpcUrl });
+    const result = await adapter.verifyCase({
+      contractAddress: plan.request.contractAddress,
+      caseId: commerceCase.id,
+    });
+    const submittedAt = new Date().toISOString();
+    const execution = await appendGenLayerExecution({
+      id: `glex-${commerceCase.id}-verify-case-${submittedAt}`,
+      caseId: commerceCase.id,
+      method: "verify_case",
+      status: "submitted",
+      transactionHash: result.transactionHash,
+      contractAddress: plan.request.contractAddress,
+      rpcUrl: readiness.rpcUrl,
+      networkLabel: readiness.networkLabel,
+      submittedAt,
+      blockingReasons: [],
+    });
 
-  return jsonOk({ status: "submitted", result });
+    return jsonOk({ status: "submitted", proofPending: true, execution, result });
+  } catch (error) {
+    const submittedAt = new Date().toISOString();
+    const execution = await appendGenLayerExecution({
+      id: `glex-${commerceCase.id}-verify-case-${submittedAt}`,
+      caseId: commerceCase.id,
+      method: "verify_case",
+      status: "failed",
+      contractAddress: plan.request.contractAddress,
+      rpcUrl: readiness.rpcUrl,
+      networkLabel: readiness.networkLabel,
+      submittedAt,
+      blockingReasons: [],
+      sanitizedError: error instanceof Error ? error.message : "GenLayer execution failed.",
+    });
+
+    return NextResponse.json(
+      { error: "GenLayer execution failed.", execution },
+      { status: 502 },
+    );
+  }
 }

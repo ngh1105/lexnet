@@ -21,6 +21,7 @@ The current implementation is recommendation-only. It does not custody funds, ex
 - `frontend/src/lib/lexnet-verification.ts` — verification adapter interface and deterministic scoring.
 - `frontend/src/lib/lexnet-contract.ts` — GenLayer readiness/config facade, guarded contract payload previews, and verify-case execution planning.
 - `frontend/src/lib/genlayer-client.ts` — narrow adapter around `genlayer-js`; app code should use this boundary instead of SDK internals.
+- `frontend/src/lib/genlayer-execution.ts` — maps GenLayer execution records to safe UI labels and proof actions.
 - `frontend/src/lib/lexnet-service.ts` — seed cases, runtime mode, and backend-aware case reads.
 - `frontend/src/lib/lexnet-client-store.ts` — browser localStorage fallback/cache for demo-created cases.
 
@@ -82,6 +83,7 @@ The current implementation is recommendation-only. It does not custody funds, ex
 - `/api/passports/public/[slug]` — public privacy-safe passport JSON.
 - `/api/admin/backup` — demo-private backup/export summary.
 - `/api/genlayer/verify-case` — demo-private guarded SDK write endpoint for `verify_case`.
+- `/api/genlayer/cases/[caseId]` — demo-private contract state read-back for verification proof.
 - `/api/security/status` — platform/security readiness status.
 
 ## Commands

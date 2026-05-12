@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { buildSubjectKey, findPublicPassport, redactSubject } from "./passports";
 import type {
   DashboardQueueItem,
+  GenLayerExecutionRecord,
   PlatformAuditEvent,
   PlatformAuditType,
   PlatformEntityType,
@@ -58,6 +59,7 @@ export function createDefaultPlatformStore(
     cases: [],
     publishedPassports: [],
     auditEvents: [],
+    genLayerExecutions: [],
   };
 }
 
@@ -147,6 +149,41 @@ export async function appendAuditEvent(
   }, storePath);
 
   return event;
+}
+
+export async function appendGenLayerExecution(
+  execution: GenLayerExecutionRecord,
+  storePath = DEFAULT_PLATFORM_STORE_PATH,
+): Promise<GenLayerExecutionRecord> {
+  await mutatePlatformStore((store) => {
+    store.genLayerExecutions.push(execution);
+  }, storePath);
+
+  return execution;
+}
+
+export async function updateLatestGenLayerExecutionProof(
+  caseId: string,
+  update: Pick<
+    GenLayerExecutionRecord,
+    "status" | "checkedAt" | "proof" | "sanitizedError"
+  >,
+  storePath = DEFAULT_PLATFORM_STORE_PATH,
+): Promise<GenLayerExecutionRecord | null> {
+  let updated: GenLayerExecutionRecord | null = null;
+
+  await mutatePlatformStore((store) => {
+    for (let index = store.genLayerExecutions.length - 1; index >= 0; index -= 1) {
+      const execution = store.genLayerExecutions[index];
+      if (execution.caseId === caseId && execution.method === "verify_case") {
+        store.genLayerExecutions[index] = { ...execution, ...update };
+        updated = store.genLayerExecutions[index];
+        break;
+      }
+    }
+  }, storePath);
+
+  return updated;
 }
 
 export function buildPlatformSummary(store: PlatformStore): PlatformSummary {
@@ -333,7 +370,9 @@ function isPlatformStore(value: unknown): value is PlatformStore {
     Array.isArray(value.publishedPassports) &&
     value.publishedPassports.every(isPublishedPassport) &&
     Array.isArray(value.auditEvents) &&
-    value.auditEvents.every(isPlatformAuditEvent)
+    value.auditEvents.every(isPlatformAuditEvent) &&
+    Array.isArray(value.genLayerExecutions) &&
+    value.genLayerExecutions.every(isGenLayerExecutionRecord)
   );
 }
 
@@ -493,6 +532,33 @@ function isPlatformAuditEvent(value: unknown): boolean {
     isString(value.entityId) &&
     isString(value.detail) &&
     isString(value.createdAt)
+  );
+}
+
+function isGenLayerExecutionRecord(value: unknown): value is GenLayerExecutionRecord {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    isString(value.caseId) &&
+    value.method === "verify_case" &&
+    ["submitted", "confirmed", "failed", "state_verified"].includes(String(value.status)) &&
+    isOptionalString(value.transactionHash) &&
+    isString(value.contractAddress) &&
+    isString(value.rpcUrl) &&
+    isString(value.networkLabel) &&
+    isString(value.submittedAt) &&
+    isOptionalString(value.checkedAt) &&
+    isStringArray(value.blockingReasons) &&
+    isOptionalString(value.sanitizedError) &&
+    (value.proof === undefined || isGenLayerExecutionProof(value.proof))
+  );
+}
+
+function isGenLayerExecutionProof(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isOptionalString(value.contractCaseStatus) &&
+    (value.verificationReport === undefined || value.verificationReport !== null)
   );
 }
 

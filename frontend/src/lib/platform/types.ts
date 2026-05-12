@@ -103,6 +103,31 @@ export interface PlatformAuditEvent {
   createdAt: string;
 }
 
+export type GenLayerExecutionStatus =
+  | "submitted"
+  | "confirmed"
+  | "failed"
+  | "state_verified";
+
+export interface GenLayerExecutionRecord {
+  id: string;
+  caseId: string;
+  method: "verify_case";
+  status: GenLayerExecutionStatus;
+  transactionHash?: string;
+  contractAddress: string;
+  rpcUrl: string;
+  networkLabel: string;
+  submittedAt: string;
+  checkedAt?: string;
+  blockingReasons: string[];
+  sanitizedError?: string;
+  proof?: {
+    contractCaseStatus?: string;
+    verificationReport?: unknown;
+  };
+}
+
 export interface PlatformStore {
   version: 1;
   workspaces: PlatformWorkspace[];
@@ -112,6 +137,7 @@ export interface PlatformStore {
   cases: CommerceCase[];
   publishedPassports: PublishedPassport[];
   auditEvents: PlatformAuditEvent[];
+  genLayerExecutions: GenLayerExecutionRecord[];
 }
 
 export interface PlatformSummary {

@@ -33,8 +33,13 @@ import {
   buildEvidenceQualitySummary,
   buildVerificationSummary,
 } from "@/lib/lexnet-domain";
-import { type LexNetContractEnvironment } from "@/lib/lexnet-contract";
+import { buildGenLayerExecutionViewModel } from "@/lib/genlayer-execution";
+import {
+  getLexNetContractReadiness,
+  type LexNetContractEnvironment,
+} from "@/lib/lexnet-contract";
 import type { CommerceCase } from "@/lib/lexnet-types";
+import type { GenLayerExecutionRecord } from "@/lib/platform/types";
 
 export default function CaseDetailClient({
   caseId,
@@ -51,6 +56,10 @@ export default function CaseDetailClient({
   const [message, setMessage] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [genLayerExecution, setGenLayerExecution] =
+    useState<GenLayerExecutionRecord | null>(null);
+  const [isSubmittingGenLayer, setIsSubmittingGenLayer] = useState(false);
+  const [isCheckingGenLayer, setIsCheckingGenLayer] = useState(false);
 
   useEffect(() => {
     const mergedCase =
@@ -107,6 +116,62 @@ export default function CaseDetailClient({
     setMessage("Local AI verification report generated.");
   }
 
+  async function submitGenLayerVerification() {
+    if (!commerceCase) {
+      return;
+    }
+
+    setMessage("");
+    setIsSubmittingGenLayer(true);
+    const response = await fetch("/api/genlayer/verify-case", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-lexnet-operator-id": "operator-demo",
+      },
+      body: JSON.stringify({ caseId: commerceCase.id, walletConnected: true }),
+    });
+    const payload = await response.json();
+    setIsSubmittingGenLayer(false);
+
+    if (payload.execution) {
+      setGenLayerExecution(payload.execution);
+    }
+    setMessage(
+      response.ok
+        ? "GenLayer verification submitted. Contract state proof is pending."
+        : payload.error ?? "GenLayer verification submission failed.",
+    );
+  }
+
+  async function checkGenLayerState() {
+    if (!commerceCase) {
+      return;
+    }
+
+    setMessage("");
+    setIsCheckingGenLayer(true);
+    const response = await fetch(`/api/genlayer/cases/${commerceCase.id}`, {
+      headers: {
+        "x-lexnet-operator-id": "operator-demo",
+        "x-lexnet-wallet-connected": "true",
+      },
+    });
+    const payload = await response.json();
+    setIsCheckingGenLayer(false);
+
+    if (payload.execution) {
+      setGenLayerExecution(payload.execution);
+    }
+    setMessage(
+      response.ok
+        ? payload.stateVerified
+          ? "GenLayer contract state contains a verification report."
+          : "GenLayer contract state is readable, but proof is still pending."
+        : payload.error ?? "GenLayer state check failed.",
+    );
+  }
+
   if (!commerceCase && isHydrated) {
     return (
       <div className="app-shell">
@@ -140,6 +205,18 @@ export default function CaseDetailClient({
   const riskFlags = report?.riskFlags ?? [];
   const timeline = buildCaseTimeline(commerceCase);
   const evidenceQuality = buildEvidenceQualitySummary(commerceCase);
+  const contractReadiness = getLexNetContractReadiness({
+    env: {
+      NEXT_PUBLIC_GENLAYER_RPC_URL: contractEnvironment.rpcUrl,
+      NEXT_PUBLIC_GENLAYER_NETWORK_LABEL: contractEnvironment.networkLabel,
+      NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: contractEnvironment.contractAddress ?? undefined,
+    },
+    walletConnected: true,
+  });
+  const genLayerView = buildGenLayerExecutionViewModel(
+    genLayerExecution,
+    contractReadiness.isReady,
+  );
 
   return (
     <div className="app-shell">
@@ -379,6 +456,37 @@ export default function CaseDetailClient({
                   onCopy={setMessage}
                 />
               )}
+
+              <div className="panel" style={{ background: "var(--surface)", display: "grid", gap: 10 }}>
+                <div className="section-label">
+                  <ShieldCheck size={14} strokeWidth={1.75} />
+                  GenLayer Execution Proof
+                </div>
+                <span className={`status-chip ${genLayerView.tone === "danger" ? "danger" : genLayerView.tone === "success" ? "success" : "info"}`}>
+                  {genLayerView.label}
+                </span>
+                <p className="muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.55 }}>
+                  {genLayerView.description}
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    disabled={!genLayerView.canSubmit || isSubmittingGenLayer}
+                    onClick={submitGenLayerVerification}
+                  >
+                    {isSubmittingGenLayer ? "Submitting" : "Submit verify_case"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    disabled={!genLayerView.canCheckState || isCheckingGenLayer}
+                    onClick={checkGenLayerState}
+                  >
+                    {isCheckingGenLayer ? "Checking" : "Check contract state"}
+                  </button>
+                </div>
+              </div>
 
               {message ? (
                 <div

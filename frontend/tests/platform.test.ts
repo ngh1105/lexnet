@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 
 import {
   appendAuditEvent,
+  appendGenLayerExecution,
   createDefaultPlatformStore,
   getDashboardPlatformData,
   getPlatformCommerceCases,
@@ -14,6 +15,7 @@ import {
   getSafePassportRecords,
   readPlatformStore,
   toSafePassportRecords,
+  updateLatestGenLayerExecutionProof,
   writePlatformStore,
 } from "../src/lib/platform/store";
 import {
@@ -39,7 +41,9 @@ import {
   restorePlatformStore,
 } from "../src/lib/platform/backup";
 import {
+  buildGenLayerGetCaseRequest,
   buildGenLayerVerifyCaseRequest,
+  classifyGenLayerCaseProof,
   createGenLayerClientAdapter,
   type GenLayerSdkModule,
 } from "../src/lib/genlayer-client";
@@ -50,6 +54,8 @@ import {
 import { chooseDemoDevPort } from "../scripts/dev-port";
 import { createCommerceCase } from "../src/lib/lexnet-domain";
 import type { CommerceCase } from "../src/lib/lexnet-types";
+import type { GenLayerExecutionRecord } from "../src/lib/platform/types";
+import { buildGenLayerExecutionViewModel } from "../src/lib/genlayer-execution";
 import packageJson from "../package.json" with { type: "json" };
 
 async function withTempStore(run: (storePath: string) => Promise<void>) {
@@ -105,6 +111,66 @@ test("createDefaultPlatformStore includes demo workspace, operator, queue, and a
   assert.equal(store.memberships.length, 1);
   assert.equal(Array.isArray(store.queue), true);
   assert.equal(Array.isArray(store.auditEvents), true);
+  assert.deepEqual(store.genLayerExecutions, []);
+});
+
+test("appendGenLayerExecution records submitted execution metadata", async () => {
+  await withTempStore(async (storePath) => {
+    const execution = await appendGenLayerExecution(
+      {
+        id: "glex-lx-1-verify-case-2026-05-13T00:00:00.000Z",
+        caseId: "lx-1",
+        method: "verify_case",
+        status: "submitted",
+        transactionHash: "0xabc",
+        contractAddress: "0x1111111111111111111111111111111111111111",
+        rpcUrl: "https://studio.genlayer.com/api",
+        networkLabel: "Studionet",
+        submittedAt: "2026-05-13T00:00:00.000Z",
+        blockingReasons: [],
+      },
+      storePath,
+    );
+    const store = await readPlatformStore(storePath);
+
+    assert.equal(execution.status, "submitted");
+    assert.equal(store.genLayerExecutions.length, 1);
+    assert.equal(store.genLayerExecutions[0]?.caseId, "lx-1");
+  });
+});
+
+test("updateLatestGenLayerExecutionProof marks latest case execution as state verified", async () => {
+  await withTempStore(async (storePath) => {
+    await appendGenLayerExecution(
+      {
+        id: "older",
+        caseId: "lx-1",
+        method: "verify_case",
+        status: "submitted",
+        contractAddress: "0x1111111111111111111111111111111111111111",
+        rpcUrl: "https://studio.genlayer.com/api",
+        networkLabel: "Studionet",
+        submittedAt: "2026-05-13T00:00:00.000Z",
+        blockingReasons: [],
+      },
+      storePath,
+    );
+    const updated = await updateLatestGenLayerExecutionProof(
+      "lx-1",
+      {
+        status: "state_verified",
+        checkedAt: "2026-05-13T00:05:00.000Z",
+        proof: {
+          contractCaseStatus: "VERIFIED",
+          verificationReport: { verdict: "APPROVE", score: 91 },
+        },
+      },
+      storePath,
+    );
+
+    assert.equal(updated?.status, "state_verified");
+    assert.equal(updated?.proof?.contractCaseStatus, "VERIFIED");
+  });
 });
 
 test("readPlatformStore creates a persisted default store when missing", async () => {
@@ -741,6 +807,58 @@ test("createGenLayerClientAdapter submits through injected genlayer-js client an
   assert.equal(calls.length, 1);
 });
 
+test("buildGenLayerGetCaseRequest maps LexNet get_case payload for genlayer-js", () => {
+  const request = buildGenLayerGetCaseRequest({
+    contractAddress: "0xcontract",
+    caseId: "lx-case-demo-settlement",
+  });
+
+  assert.equal(request.contractAddress, "0xcontract");
+  assert.equal(request.method, "get_case");
+  assert.deepEqual(request.args, ["lx-case-demo-settlement"]);
+});
+
+test("createGenLayerClientAdapter reads contract case state through injected genlayer-js client", async () => {
+  const sdk: GenLayerSdkModule = {
+    createClient: ({ endpoint }) => ({
+      readContract: async (request) => {
+        assert.equal(endpoint, "https://studio.genlayer.com/api");
+        assert.equal(request.functionName, "get_case");
+        assert.deepEqual(request.args, ["lx-case-demo-settlement"]);
+        return JSON.stringify({
+          id: "lx-case-demo-settlement",
+          status: "VERIFIED",
+          verification_report: { verdict: "APPROVE", score: 95 },
+        });
+      },
+    }),
+  };
+
+  const adapter = createGenLayerClientAdapter({ sdk, rpcUrl: "https://studio.genlayer.com/api" });
+  const result = await adapter.readCase({
+    contractAddress: "0xcontract",
+    caseId: "lx-case-demo-settlement",
+  });
+
+  assert.equal(result.caseId, "lx-case-demo-settlement");
+  assert.equal(result.parsedCase?.status, "VERIFIED");
+});
+
+test("classifyGenLayerCaseProof requires a verification report before state_verified", () => {
+  assert.equal(
+    classifyGenLayerCaseProof({ id: "lx-case-demo-settlement", status: "VERIFIED" }).status,
+    "confirmed",
+  );
+  assert.equal(
+    classifyGenLayerCaseProof({
+      id: "lx-case-demo-settlement",
+      status: "VERIFIED",
+      verification_report: { verdict: "APPROVE" },
+    }).status,
+    "state_verified",
+  );
+});
+
 test("buildVerifyCaseExecutionPlan blocks SDK execution until readiness passes", () => {
   const readiness = getLexNetContractReadiness({
     env: {
@@ -776,6 +894,24 @@ test("buildVerifyCaseExecutionPlan enables SDK execution only with full readines
   assert.equal(plan.enabled, true);
   assert.equal(plan.request.contractAddress, "0xcontract");
   assert.deepEqual(plan.request.args, ["lx-case-demo-settlement"]);
+});
+
+test("buildGenLayerExecutionViewModel avoids settlement and payment finality labels", () => {
+  const models = [
+    buildGenLayerExecutionViewModel(null, true),
+    buildGenLayerExecutionViewModel({ status: "submitted" } as GenLayerExecutionRecord, true),
+    buildGenLayerExecutionViewModel({ status: "confirmed" } as GenLayerExecutionRecord, true),
+    buildGenLayerExecutionViewModel({ status: "state_verified" } as GenLayerExecutionRecord, true),
+    buildGenLayerExecutionViewModel(
+      { status: "failed", sanitizedError: "boom" } as GenLayerExecutionRecord,
+      true,
+    ),
+  ];
+  const forbidden = /settled|paid|funds released|escrow completed|final on-chain settlement/i;
+
+  for (const model of models) {
+    assert.equal(forbidden.test(`${model.label} ${model.description}`), false);
+  }
 });
 
 test("checkRateLimit blocks the third call within a time window", () => {

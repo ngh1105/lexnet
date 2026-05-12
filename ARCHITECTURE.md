@@ -123,7 +123,7 @@ Public views do not expose raw wallet addresses, raw party identifiers, evidence
 
 The UI may show contract readiness, blocking reasons, and guarded payload previews. `genlayer-js` is used only through `frontend/src/lib/genlayer-client.ts`, which maps LexNet `verify_case` intent to the SDK's contract write shape.
 
-The guarded SDK endpoint can submit a real `verify_case` call only when demo-private authorization and contract readiness pass. It does not custody funds, does not store private keys, and does not claim settlement finality unless a later contract-state verification proves it.
+The guarded SDK endpoint can submit a real `verify_case` call only when demo-private authorization and contract readiness pass. GenLayer execution records are stored separately from local verification reports: `submitted` means the SDK call returned, while `state_verified` means contract `get_case` returned a verification report. It does not custody funds, does not store private keys, and does not claim settlement finality unless a later contract-state verification proves it.
 
 ## Demo Hardening Boundary
 
