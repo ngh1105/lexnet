@@ -16,8 +16,21 @@ import {
   buildTrustPassports,
 } from "@/lib/lexnet-domain";
 import type { CommerceCase, TrustPassport } from "@/lib/lexnet-types";
+import type { SafePassportRecord } from "@/lib/platform/store";
 
 type PassportFilter = "all" | "buyers" | "sellers";
+type PassportActionState = {
+  status: "idle" | "loading" | "error" | "success";
+  message: string;
+};
+
+function redactSubject(party: string): string {
+  if (party.length <= 10) {
+    return party;
+  }
+
+  return `${party.slice(0, 6)}...${party.slice(-4)}`;
+}
 
 const trustColors: Record<string, string> = {
   Established: "var(--green)",
@@ -28,18 +41,37 @@ const trustColors: Record<string, string> = {
 
 export default function TrustPassportsClient({
   seedCases,
+  initialBackendPassports = [],
 }: {
   seedCases: CommerceCase[];
+  initialBackendPassports?: SafePassportRecord[];
 }) {
   const [cases, setCases] = useState(seedCases);
+  const [backendPassports, setBackendPassports] = useState(initialBackendPassports);
   const [filter, setFilter] = useState<PassportFilter>("all");
   const [search, setSearch] = useState("");
+  const [actionState, setActionState] = useState<PassportActionState>({
+    status: "idle",
+    message: "",
+  });
 
   useEffect(() => {
     setCases(getMergedCommerceCases(seedCases));
   }, [seedCases]);
 
+  useEffect(() => {
+    void refreshBackendPassports({ silent: true });
+  }, []);
+
   const passports = useMemo(() => buildTrustPassports(cases), [cases]);
+  const backendByRoleSubject = useMemo(() => {
+    return new Map(
+      backendPassports.map((passport) => [
+        `${passport.role}:${passport.redactedSubject}`,
+        passport,
+      ]),
+    );
+  }, [backendPassports]);
 
   const filteredPassports = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -50,16 +82,123 @@ export default function TrustPassportsClient({
         (filter === "buyers" && passport.role === "buyer") ||
         (filter === "sellers" && passport.role === "seller");
 
+      const backendPassport = backendByRoleSubject.get(
+        `${passport.role}:${redactSubject(passport.party)}`,
+      );
       const matchesSearch =
         !normalizedSearch ||
-        [passport.party, passport.role, passport.trustLevel]
+        [
+          passport.party,
+          backendPassport?.redactedSubject,
+          passport.role,
+          passport.trustLevel,
+          backendPassport?.slug,
+        ]
           .join(" ")
           .toLowerCase()
           .includes(normalizedSearch);
 
       return matchesFilter && matchesSearch;
     });
-  }, [filter, passports, search]);
+  }, [backendByRoleSubject, filter, passports, search]);
+
+  async function refreshBackendPassports({ silent = false } = {}) {
+    try {
+      const response = await fetch("/api/passports", {
+        headers: { "x-lexnet-operator-id": "operator-demo" },
+      });
+      if (!response.ok) {
+        if (!silent) {
+          setActionState({
+            status: "error",
+            message: "Backend passport API is not enabled for this demo session.",
+          });
+        }
+        return;
+      }
+
+      const payload = (await response.json()) as { passports?: SafePassportRecord[] };
+      setBackendPassports(Array.isArray(payload.passports) ? payload.passports : []);
+      if (!silent) {
+        setActionState({ status: "success", message: "Backend passports refreshed." });
+      }
+    } catch {
+      if (!silent) {
+        setActionState({
+          status: "error",
+          message: "Could not reach the backend passport API.",
+        });
+      }
+    }
+  }
+
+  async function generateBackendPassports() {
+    setActionState({ status: "loading", message: "Generating backend passports..." });
+    try {
+      const response = await fetch("/api/passports", {
+        method: "POST",
+        headers: { "x-lexnet-operator-id": "operator-demo" },
+      });
+      if (!response.ok) {
+        setActionState({
+          status: "error",
+          message: "Backend generation is unavailable. Enable LEXNET_ENABLE_DEMO_PRIVATE_API=true to use it.",
+        });
+        return;
+      }
+
+      const payload = (await response.json()) as { passports?: SafePassportRecord[] };
+      setBackendPassports(Array.isArray(payload.passports) ? payload.passports : []);
+      setActionState({ status: "success", message: "Backend passport records generated." });
+    } catch {
+      setActionState({
+        status: "error",
+        message: "Could not generate backend passport records.",
+      });
+    }
+  }
+
+  async function togglePassportPublication(slug: string, published: boolean) {
+    setActionState({
+      status: "loading",
+      message: published ? "Publishing passport..." : "Unpublishing passport...",
+    });
+    try {
+      const response = await fetch("/api/passports", {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "x-lexnet-operator-id": "operator-demo",
+        },
+        body: JSON.stringify({ slug, published }),
+      });
+      if (!response.ok) {
+        setActionState({
+          status: "error",
+          message: "Publishing is unavailable. Enable LEXNET_ENABLE_DEMO_PRIVATE_API=true to use it.",
+        });
+        return;
+      }
+
+      const payload = (await response.json()) as { passport?: SafePassportRecord };
+      if (payload.passport) {
+        setBackendPassports((current) =>
+          current.map((passport) =>
+            passport.slug === payload.passport?.slug ? payload.passport : passport,
+          ),
+        );
+      }
+      setActionState({
+        status: "success",
+        message: published ? "Passport published." : "Passport unpublished.",
+      });
+    } catch {
+      setActionState({
+        status: "error",
+        message: "Could not update passport publication state.",
+      });
+    }
+  }
 
   return (
     <div className="app-shell">
@@ -78,6 +217,14 @@ export default function TrustPassportsClient({
               </p>
             </div>
             <div className="topbar-actions">
+              <button
+                type="button"
+                className="primary-button"
+                onClick={generateBackendPassports}
+                disabled={actionState.status === "loading"}
+              >
+                Generate backend records
+              </button>
               <label className="search-box">
                 <Search size={15} strokeWidth={1.75} />
                 <input
@@ -104,6 +251,22 @@ export default function TrustPassportsClient({
               </div>
             </div>
           </header>
+
+          {actionState.message ? (
+            <div
+              className="panel"
+              style={{
+                marginBottom: 16,
+                borderColor:
+                  actionState.status === "error" ? "rgba(220,38,38,0.28)" : "var(--border)",
+                color: actionState.status === "error" ? "var(--red)" : "var(--muted)",
+                fontSize: 13,
+                fontWeight: 800,
+              }}
+            >
+              {actionState.message}
+            </div>
+          ) : null}
 
           <section className="metric-grid" style={{ marginBottom: 16 }}>
             <PassportMetric
@@ -146,9 +309,20 @@ export default function TrustPassportsClient({
                 </p>
               </div>
             ) : (
-              filteredPassports.map((passport) => (
-                <PassportCard key={`${passport.role}:${passport.party}`} passport={passport} />
-              ))
+              filteredPassports.map((passport) => {
+                const backendPassport = backendByRoleSubject.get(
+                  `${passport.role}:${redactSubject(passport.party)}`,
+                );
+                return (
+                  <PassportCard
+                    key={`${passport.role}:${passport.party}`}
+                    passport={passport}
+                    backendPassport={backendPassport}
+                    actionDisabled={actionState.status === "loading"}
+                    onTogglePublication={togglePassportPublication}
+                  />
+                );
+              })
             )}
           </section>
         </div>
@@ -157,9 +331,20 @@ export default function TrustPassportsClient({
   );
 }
 
-function PassportCard({ passport }: { passport: TrustPassport }) {
+function PassportCard({
+  passport,
+  backendPassport,
+  actionDisabled,
+  onTogglePublication,
+}: {
+  passport: TrustPassport;
+  backendPassport?: SafePassportRecord;
+  actionDisabled: boolean;
+  onTogglePublication: (slug: string, published: boolean) => void;
+}) {
   const color = trustColors[passport.trustLevel] ?? "var(--muted)";
   const breakdown = buildPassportScoreBreakdown(passport);
+  const publicPath = backendPassport ? `/passport/${backendPassport.slug}` : "";
 
   return (
     <article className="panel" style={{ display: "grid", gap: 16, minWidth: 0, overflow: "hidden" }}>
@@ -211,6 +396,8 @@ function PassportCard({ passport }: { passport: TrustPassport }) {
 
       <div
         style={{
+          display: "grid",
+          gap: 10,
           padding: 12,
           borderRadius: 8,
           border: "1px solid rgba(37,99,235,0.18)",
@@ -220,7 +407,33 @@ function PassportCard({ passport }: { passport: TrustPassport }) {
           fontWeight: 800,
         }}
       >
-        Public preview ready after backend publishing is enabled.
+        {backendPassport ? (
+          <>
+            <div>
+              Backend record: {backendPassport.published ? "Published" : "Unpublished"} · {backendPassport.redactedSubject}
+            </div>
+            {backendPassport.published ? (
+              <a href={publicPath} style={{ color: "inherit", textDecoration: "underline" }}>
+                Public preview: {publicPath}
+              </a>
+            ) : (
+              <span>Publish to create a public preview link.</span>
+            )}
+            <button
+              type="button"
+              className="primary-button"
+              style={{ width: "fit-content", padding: "8px 10px", fontSize: 12 }}
+              disabled={actionDisabled}
+              onClick={() => onTogglePublication(backendPassport.slug, !backendPassport.published)}
+            >
+              {backendPassport.published ? "Unpublish" : "Publish"}
+            </button>
+          </>
+        ) : (
+          <>
+            <span>Local demo passport. Generate backend records to enable publishing state.</span>
+          </>
+        )}
       </div>
 
       {passport.riskFlags.length > 0 ? (

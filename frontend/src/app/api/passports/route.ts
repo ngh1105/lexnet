@@ -1,4 +1,4 @@
-import { buildPublishedPassports, redactSubject } from "@/lib/platform/passports";
+import { buildPublishedPassports } from "@/lib/platform/passports";
 import {
   checkRateLimit,
   jsonError,
@@ -6,28 +6,8 @@ import {
   readJsonBody,
 } from "@/lib/platform/api";
 import { authorizeDemoPrivateApi, requireDemoOperator } from "@/lib/platform/auth";
-import { mutatePlatformStore, readPlatformStore } from "@/lib/platform/store";
+import { mutatePlatformStore, readPlatformStore, toSafePassportRecord } from "@/lib/platform/store";
 import type { PublishedPassport } from "@/lib/platform/types";
-
-function buildPrivatePassportDto(passport: PublishedPassport) {
-  return {
-    id: passport.id,
-    workspaceId: passport.workspaceId,
-    slug: passport.slug,
-    redactedSubject: redactSubject(passport.party),
-    role: passport.role,
-    trustLevel: passport.trustLevel,
-    averageScore: passport.averageScore,
-    totalCases: passport.totalCases,
-    verifiedCases: passport.verifiedCases,
-    totalReferencedValue: passport.totalReferencedValue,
-    sourceReportCount: passport.caseIds.length,
-    riskFlags: [...passport.riskFlags],
-    published: Boolean(passport.publishedAt),
-    publishedAt: passport.publishedAt,
-    updatedAt: passport.updatedAt,
-  };
-}
 
 export async function GET(request: Request) {
   const store = await readPlatformStore();
@@ -36,7 +16,7 @@ export async function GET(request: Request) {
     return authorization.response;
   }
 
-  return jsonOk({ passports: store.publishedPassports.map(buildPrivatePassportDto) });
+  return jsonOk({ passports: store.publishedPassports.map(toSafePassportRecord) });
 }
 
 export async function POST(request: Request) {
@@ -85,7 +65,7 @@ export async function POST(request: Request) {
     });
   });
 
-  return jsonOk({ passports: store.publishedPassports.map(buildPrivatePassportDto) });
+  return jsonOk({ passports: store.publishedPassports.map(toSafePassportRecord) });
 }
 
 export async function PATCH(request: Request) {
@@ -135,5 +115,5 @@ export async function PATCH(request: Request) {
     return jsonError("Passport not found.", 404);
   }
 
-  return jsonOk({ passport: buildPrivatePassportDto(passport) });
+  return jsonOk({ passport: toSafePassportRecord(passport) });
 }

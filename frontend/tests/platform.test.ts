@@ -9,6 +9,8 @@ import {
   createDefaultPlatformStore,
   getDashboardPlatformData,
   getPlatformCommerceCases,
+  getPublicPassportView,
+  getSafePassportRecords,
   readPlatformStore,
   writePlatformStore,
 } from "../src/lib/platform/store";
@@ -218,6 +220,87 @@ test("getDashboardPlatformData serializes only dashboard queue fields", async ()
     ]);
     assert.equal(serialized.includes("workspace-secret"), false);
     assert.equal(serialized.includes("operator-secret"), false);
+  });
+});
+
+test("getSafePassportRecords returns backend passport DTOs without raw party", async () => {
+  await withTempStore(async (storePath) => {
+    const store = createDefaultPlatformStore();
+    const [buyerPassport] = buildPublishedPassports(
+      [reviewedCase],
+      "workspace-demo",
+      "2026-05-12T12:00:00.000Z",
+    ).filter((passport) => passport.role === "buyer");
+    store.publishedPassports.push({
+      ...buyerPassport,
+      publishedAt: "2026-05-12T12:30:00.000Z",
+    });
+    await writePlatformStore(store, storePath);
+
+    const records = await getSafePassportRecords(storePath);
+    const serialized = JSON.stringify(records);
+
+    assert.equal(records.length, 1);
+    assert.deepEqual(Object.keys(records[0] ?? {}).sort(), [
+      "averageScore",
+      "id",
+      "published",
+      "publishedAt",
+      "redactedSubject",
+      "riskFlags",
+      "role",
+      "slug",
+      "sourceReportCount",
+      "totalCases",
+      "totalReferencedValue",
+      "trustLevel",
+      "updatedAt",
+      "verifiedCases",
+      "workspaceId",
+    ]);
+    assert.equal(records[0]?.redactedSubject, "0x1111...1111");
+    assert.equal(records[0]?.published, true);
+    assert.equal(serialized.includes("0x1111111111111111111111111111111111111111"), false);
+  });
+});
+
+test("getSafePassportRecords falls back to an empty list when store is corrupt", async () => {
+  await withTempStore(async (storePath) => {
+    await writeFile(storePath, "{ invalid json", "utf8");
+
+    assert.deepEqual(await getSafePassportRecords(storePath), []);
+  });
+});
+
+test("getPublicPassportView hides unpublished, missing, and corrupt store passports", async () => {
+  await withTempStore(async (storePath) => {
+    const store = createDefaultPlatformStore();
+    const [buyerPassport] = buildPublishedPassports(
+      [reviewedCase],
+      "workspace-demo",
+      "2026-05-12T12:00:00.000Z",
+    ).filter((passport) => passport.role === "buyer");
+    store.publishedPassports.push(buyerPassport);
+    await writePlatformStore(store, storePath);
+
+    assert.equal(await getPublicPassportView(buyerPassport.slug, storePath), null);
+    assert.equal(await getPublicPassportView("missing", storePath), null);
+
+    store.publishedPassports[0] = {
+      ...buyerPassport,
+      publishedAt: "2026-05-12T12:30:00.000Z",
+    };
+    await writePlatformStore(store, storePath);
+
+    const publicView = await getPublicPassportView(buyerPassport.slug, storePath);
+
+    assert.ok(publicView);
+    assert.equal(publicView.party, "0x1111...1111");
+    assert.equal(publicView.totalReferencedValue, "$5k-$10k");
+    assert.equal(JSON.stringify(publicView).includes("0x1111111111111111111111111111111111111111"), false);
+
+    await writeFile(storePath, "{ invalid json", "utf8");
+    assert.equal(await getPublicPassportView(buyerPassport.slug, storePath), null);
   });
 });
 

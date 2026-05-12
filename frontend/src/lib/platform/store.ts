@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
+import { findPublicPassport, redactSubject } from "./passports";
 import type {
   DashboardQueueItem,
   PlatformAuditEvent,
@@ -8,6 +9,8 @@ import type {
   PlatformEntityType,
   PlatformStore,
   PlatformSummary,
+  PublicPassportView,
+  PublishedPassport,
 } from "./types";
 import type { CommerceCase } from "@/lib/lexnet-types";
 
@@ -164,6 +167,8 @@ export type DashboardPlatformData = {
   backendStoreStatus: "available" | "unavailable";
 };
 
+export type SafePassportRecord = ReturnType<typeof toSafePassportRecord>;
+
 export function mergePlatformCommerceCases(
   seedCases: CommerceCase[],
   storeCases: CommerceCase[],
@@ -230,6 +235,49 @@ export async function getPlatformCommerceCases(
       right.createdAt.localeCompare(left.createdAt),
     );
   }
+}
+
+export async function getSafePassportRecords(
+  storePath = DEFAULT_PLATFORM_STORE_PATH,
+): Promise<SafePassportRecord[]> {
+  try {
+    const store = await readPlatformStore(storePath);
+    return store.publishedPassports.map(toSafePassportRecord);
+  } catch {
+    return [];
+  }
+}
+
+export async function getPublicPassportView(
+  slug: string,
+  storePath = DEFAULT_PLATFORM_STORE_PATH,
+): Promise<PublicPassportView | null> {
+  try {
+    const store = await readPlatformStore(storePath);
+    return findPublicPassport(store.publishedPassports, slug);
+  } catch {
+    return null;
+  }
+}
+
+export function toSafePassportRecord(passport: PublishedPassport) {
+  return {
+    id: passport.id,
+    workspaceId: passport.workspaceId,
+    slug: passport.slug,
+    redactedSubject: redactSubject(passport.party),
+    role: passport.role,
+    trustLevel: passport.trustLevel,
+    averageScore: passport.averageScore,
+    totalCases: passport.totalCases,
+    verifiedCases: passport.verifiedCases,
+    totalReferencedValue: passport.totalReferencedValue,
+    sourceReportCount: passport.caseIds.length,
+    riskFlags: [...passport.riskFlags],
+    published: Boolean(passport.publishedAt),
+    publishedAt: passport.publishedAt,
+    updatedAt: passport.updatedAt,
+  };
 }
 
 function isPlatformStore(value: unknown): value is PlatformStore {
