@@ -37,6 +37,10 @@ import {
 } from "../src/lib/platform/api";
 import { authorizeDemoPrivateApi, isDemoOperatorRequest } from "../src/lib/platform/auth";
 import {
+  buildProductionAuthSignature,
+  resolveProductionAuthContext,
+} from "../src/lib/platform/production-auth";
+import {
   buildAuthReadiness,
   buildEvidencePolicyStatus,
   buildGenLayerReadinessStatus,
@@ -1188,6 +1192,98 @@ test("isDemoOperatorRequest accepts operator-demo header", () => {
   assert.equal(isDemoOperatorRequest(request), true);
 });
 
+test("resolveProductionAuthContext accepts valid trusted-header HMAC", () => {
+  const timestamp = "1770000000";
+  const request = new Request("https://lexnet.example/api/passports", {
+    method: "POST",
+    headers: {
+      "x-lexnet-production-operator-id": "operator-demo",
+      "x-lexnet-production-auth-timestamp": timestamp,
+      "x-lexnet-production-auth-signature": buildProductionAuthSignature({
+        method: "POST",
+        pathname: "/api/passports",
+        operatorId: "operator-demo",
+        timestamp,
+        secret: "production-secret",
+      }),
+    },
+  });
+
+  const context = resolveProductionAuthContext(
+    request,
+    {
+      LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+      LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
+      LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS: "300",
+    },
+    1770000000,
+  );
+
+  assert.equal(context.authorized, true);
+  if (context.authorized) {
+    assert.equal(context.operatorId, "operator-demo");
+    assert.equal(context.mode, "trusted-header");
+  }
+});
+
+test("resolveProductionAuthContext rejects invalid signature without leaking secret", () => {
+  const request = new Request("https://lexnet.example/api/passports", {
+    method: "POST",
+    headers: {
+      "x-lexnet-production-operator-id": "operator-demo",
+      "x-lexnet-production-auth-timestamp": "1770000000",
+      "x-lexnet-production-auth-signature": "bad-signature",
+    },
+  });
+
+  const context = resolveProductionAuthContext(
+    request,
+    {
+      LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+      LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
+    },
+    1770000000,
+  );
+
+  assert.equal(context.authorized, false);
+  if (!context.authorized) {
+    assert.equal(context.status, 401);
+    assert.equal(context.reason.includes("production-secret"), false);
+  }
+});
+
+test("resolveProductionAuthContext rejects stale timestamps", () => {
+  const timestamp = "1769999000";
+  const request = new Request("https://lexnet.example/api/passports", {
+    method: "POST",
+    headers: {
+      "x-lexnet-production-operator-id": "operator-demo",
+      "x-lexnet-production-auth-timestamp": timestamp,
+      "x-lexnet-production-auth-signature": buildProductionAuthSignature({
+        method: "POST",
+        pathname: "/api/passports",
+        operatorId: "operator-demo",
+        timestamp,
+        secret: "production-secret",
+      }),
+    },
+  });
+
+  const context = resolveProductionAuthContext(
+    request,
+    {
+      LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+      LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
+      LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS: "300",
+    },
+    1770000000,
+  );
+
+  assert.equal(context.authorized, false);
+  if (!context.authorized) {
+    assert.match(context.reason, /timestamp/i);
+  }
+});
 test("authorizeDemoPrivateApi rejects demo header when private demo API flag is missing", () => {
   const request = new Request("https://lexnet.local/api/operators", {
     headers: { "x-lexnet-operator-id": "operator-demo" },
