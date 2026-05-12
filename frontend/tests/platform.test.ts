@@ -37,6 +37,14 @@ import {
 } from "../src/lib/platform/api";
 import { authorizeDemoPrivateApi, isDemoOperatorRequest } from "../src/lib/platform/auth";
 import {
+  buildAuthReadiness,
+  buildEvidencePolicyStatus,
+  buildPersistenceReadiness,
+  buildPlatformReadinessStatus,
+  getLexNetRuntimeMode,
+  type PlatformReadinessEnv,
+} from "../src/lib/platform/readiness";
+import {
   backupPlatformStore,
   restorePlatformStore,
 } from "../src/lib/platform/backup";
@@ -112,6 +120,94 @@ test("createDefaultPlatformStore includes demo workspace, operator, queue, and a
   assert.equal(Array.isArray(store.queue), true);
   assert.equal(Array.isArray(store.auditEvents), true);
   assert.deepEqual(store.genLayerExecutions, []);
+});
+
+test("getLexNetRuntimeMode defaults to local demo", () => {
+  assert.equal(getLexNetRuntimeMode({}), "local-demo");
+  assert.equal(getLexNetRuntimeMode({ LEXNET_RUNTIME_MODE: "pilot" }), "pilot");
+  assert.equal(getLexNetRuntimeMode({ LEXNET_RUNTIME_MODE: "production" }), "production");
+  assert.equal(getLexNetRuntimeMode({ LEXNET_RUNTIME_MODE: "unexpected" }), "local-demo");
+});
+
+test("buildAuthReadiness blocks production mutating routes without provider", () => {
+  const readiness = buildAuthReadiness({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_ENABLE_DEMO_PRIVATE_API: "true",
+  });
+
+  assert.equal(readiness.mode, "production");
+  assert.equal(readiness.demoPrivateApiEnabled, true);
+  assert.equal(readiness.productionAuthConfigured, false);
+  assert.equal(readiness.mutatingRoutesAllowed, false);
+  assert.match(readiness.blockingReasons.join("\n"), /Production authentication is not configured/);
+});
+
+test("buildAuthReadiness allows pilot demo-private mode but reports production auth blocker", () => {
+  const readiness = buildAuthReadiness({
+    LEXNET_RUNTIME_MODE: "pilot",
+    LEXNET_ENABLE_DEMO_PRIVATE_API: "true",
+  });
+
+  assert.equal(readiness.mode, "pilot");
+  assert.equal(readiness.mutatingRoutesAllowed, true);
+  assert.match(readiness.blockingReasons.join("\n"), /Production authentication is not configured/);
+});
+
+test("buildPersistenceReadiness requires managed persistence in production", () => {
+  const missing = buildPersistenceReadiness({ LEXNET_RUNTIME_MODE: "production" });
+  assert.equal(missing.mode, "managed-missing");
+  assert.equal(missing.managedPersistenceConfigured, false);
+  assert.match(missing.blockingReasons.join("\n"), /Managed persistence is not configured/);
+
+  const configured = buildPersistenceReadiness({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_MANAGED_PERSISTENCE_PROVIDER: "managed-db",
+  });
+  assert.equal(configured.mode, "managed-configured");
+  assert.equal(configured.managedPersistenceConfigured, true);
+  assert.deepEqual(configured.blockingReasons, []);
+});
+
+test("buildPersistenceReadiness allows pilot filesystem persistence with warning", () => {
+  const readiness = buildPersistenceReadiness({ LEXNET_RUNTIME_MODE: "pilot" });
+
+  assert.equal(readiness.mode, "filesystem-local");
+  assert.equal(readiness.filesystemPersistenceAllowed, true);
+  assert.match(readiness.blockingReasons.join("\n"), /Local filesystem persistence is pilot infrastructure/);
+});
+
+test("buildEvidencePolicyStatus requires retention policy in production", () => {
+  const readiness = buildEvidencePolicyStatus({ LEXNET_RUNTIME_MODE: "production" });
+
+  assert.equal(readiness.allowPublicHttpsOnly, true);
+  assert.equal(readiness.rawEvidenceStorage, "disabled");
+  assert.equal(readiness.blockedPrivateNetworkHosts, true);
+  assert.equal(readiness.retentionPolicyConfigured, false);
+  assert.match(readiness.blockingReasons.join("\n"), /Evidence retention policy is not configured/);
+});
+
+test("buildPlatformReadinessStatus omits raw secret values and connection strings", () => {
+  const env: PlatformReadinessEnv = {
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_ENABLE_DEMO_PRIVATE_API: "true",
+    LEXNET_DEMO_PRIVATE_API_TOKEN: "secret-token-value",
+    LEXNET_PRODUCTION_AUTH_PROVIDER: "oauth-provider",
+    LEXNET_MANAGED_DATABASE_URL: "postgres://user:password@example.com/db",
+    LEXNET_EVIDENCE_RETENTION_POLICY: "90-days",
+    NEXT_PUBLIC_GENLAYER_RPC_URL: "https://studio.genlayer.com/api",
+    NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: "0x1111111111111111111111111111111111111111",
+    NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: "walletconnect-secret",
+  };
+
+  const status = buildPlatformReadinessStatus(env);
+  const serialized = JSON.stringify(status);
+
+  assert.equal(status.runtimeMode, "production");
+  assert.equal(status.auth.productionAuthProvider, "oauth-provider");
+  assert.equal(status.persistence.managedPersistenceConfigured, true);
+  assert.equal(serialized.includes("secret-token-value"), false);
+  assert.equal(serialized.includes("password@example.com"), false);
+  assert.equal(serialized.includes("walletconnect-secret"), false);
 });
 
 test("appendGenLayerExecution records submitted execution metadata", async () => {
