@@ -52,6 +52,21 @@ export function shouldFailPilotCheck(
   return forbiddenSecretKeys.length > 0 || (mode === "production" && productionBlockers.length > 0);
 }
 
+export function parseRawStoreForSecretScan(rawJson: string): {
+  rawStore: unknown | null;
+  warning: string;
+} {
+  try {
+    return { rawStore: JSON.parse(rawJson), warning: "" };
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    return {
+      rawStore: null,
+      warning: `Invalid platform store JSON; forbidden-secret scan skipped: ${detail}`,
+    };
+  }
+}
+
 export function isPathIgnoredByGitOutput(output: string): boolean {
   return output
     .split(/\r?\n/)
@@ -67,7 +82,13 @@ async function main() {
   let rawStore: unknown = null;
 
   if (storeExists) {
-    rawStore = JSON.parse(await readFile(DEFAULT_PLATFORM_STORE_PATH, "utf8"));
+    const parsedRawStore = parseRawStoreForSecretScan(
+      await readFile(DEFAULT_PLATFORM_STORE_PATH, "utf8"),
+    );
+    rawStore = parsedRawStore.rawStore;
+    if (parsedRawStore.warning) {
+      storeReadWarning = parsedRawStore.warning;
+    }
   }
 
   const store = storeExists
@@ -77,7 +98,7 @@ async function main() {
     })
     : createDefaultPlatformStore();
   const summary = buildPilotSummary(store, env);
-  const forbiddenSecretKeys = storeExists
+  const forbiddenSecretKeys = storeExists && rawStore !== null
     ? findForbiddenStoreSecretKeys(rawStore)
     : [];
   const gitIgnoreOutput = getGitIgnoreOutput(DEFAULT_PLATFORM_STORE_PATH);

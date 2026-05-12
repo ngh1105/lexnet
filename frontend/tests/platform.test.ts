@@ -64,6 +64,7 @@ import {
 import { chooseDemoDevPort } from "../scripts/dev-port";
 import {
   findForbiddenStoreSecretKeys,
+  parseRawStoreForSecretScan,
   isPathIgnoredByGitOutput,
   shouldFailPilotCheck,
 } from "../scripts/pilot-check";
@@ -625,6 +626,15 @@ test("findForbiddenStoreSecretKeys reports nested forbidden key paths", () => {
     "nested.walletSecret",
     "privateKey",
   ]);
+});
+
+test("parseRawStoreForSecretScan warns and skips scanning invalid store JSON", () => {
+  const parsed = parseRawStoreForSecretScan("{ invalid json");
+
+  assert.equal(parsed.rawStore, null);
+  assert.match(parsed.warning, /Invalid platform store JSON/);
+  assert.deepEqual(findForbiddenStoreSecretKeys(parsed.rawStore), []);
+  assert.equal(shouldFailPilotCheck("pilot", [], findForbiddenStoreSecretKeys(parsed.rawStore)), false);
 });
 
 test("shouldFailPilotCheck fails for secrets and production blockers only", () => {
