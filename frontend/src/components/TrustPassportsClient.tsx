@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import { getMergedCommerceCases } from "@/lib/lexnet-client-store";
+import { buildSubjectKey } from "@/lib/platform/passports";
 import {
   buildPassportScoreBreakdown,
   buildTrustPassports,
@@ -23,14 +24,6 @@ type PassportActionState = {
   status: "idle" | "loading" | "error" | "success";
   message: string;
 };
-
-function redactSubject(party: string): string {
-  if (party.length <= 10) {
-    return party;
-  }
-
-  return `${party.slice(0, 6)}...${party.slice(-4)}`;
-}
 
 const trustColors: Record<string, string> = {
   Established: "var(--green)",
@@ -64,12 +57,9 @@ export default function TrustPassportsClient({
   }, []);
 
   const passports = useMemo(() => buildTrustPassports(cases), [cases]);
-  const backendByRoleSubject = useMemo(() => {
+  const backendBySubjectKey = useMemo(() => {
     return new Map(
-      backendPassports.map((passport) => [
-        `${passport.role}:${passport.redactedSubject}`,
-        passport,
-      ]),
+      backendPassports.map((passport) => [passport.subjectKey, passport]),
     );
   }, [backendPassports]);
 
@@ -82,8 +72,8 @@ export default function TrustPassportsClient({
         (filter === "buyers" && passport.role === "buyer") ||
         (filter === "sellers" && passport.role === "seller");
 
-      const backendPassport = backendByRoleSubject.get(
-        `${passport.role}:${redactSubject(passport.party)}`,
+      const backendPassport = backendBySubjectKey.get(
+        buildSubjectKey(passport.role, passport.party),
       );
       const matchesSearch =
         !normalizedSearch ||
@@ -100,7 +90,7 @@ export default function TrustPassportsClient({
 
       return matchesFilter && matchesSearch;
     });
-  }, [backendByRoleSubject, filter, passports, search]);
+  }, [backendBySubjectKey, filter, passports, search]);
 
   async function refreshBackendPassports({ silent = false } = {}) {
     try {
@@ -147,9 +137,16 @@ export default function TrustPassportsClient({
         return;
       }
 
-      const payload = (await response.json()) as { passports?: SafePassportRecord[] };
-      setBackendPassports(Array.isArray(payload.passports) ? payload.passports : []);
-      setActionState({ status: "success", message: "Backend passport records generated." });
+      const payload = (await response.json()) as { passports?: SafePassportRecord[]; count?: number };
+      const passports = Array.isArray(payload.passports) ? payload.passports : [];
+      const count = typeof payload.count === "number" ? payload.count : passports.length;
+      setBackendPassports(passports);
+      setActionState({
+        status: count > 0 ? "success" : "error",
+        message: count > 0
+          ? "Backend passport records generated."
+          : "No backend cases available to generate passports.",
+      });
     } catch {
       setActionState({
         status: "error",
@@ -310,8 +307,8 @@ export default function TrustPassportsClient({
               </div>
             ) : (
               filteredPassports.map((passport) => {
-                const backendPassport = backendByRoleSubject.get(
-                  `${passport.role}:${redactSubject(passport.party)}`,
+                const backendPassport = backendBySubjectKey.get(
+                  buildSubjectKey(passport.role, passport.party),
                 );
                 return (
                   <PassportCard

@@ -74,12 +74,15 @@ function toPublishedPassport(
 function buildSlug(passport: TrustPassport): string {
   const role = passport.role;
   const partyPrefix = passport.party.slice(0, 6).toLowerCase();
-  const digest = createHash("sha256")
-    .update(`${role}:${passport.party}`)
-    .digest("hex")
-    .slice(0, 8);
+  const digest = buildSubjectKey(role, passport.party).slice(0, 8);
 
   return `${role}-${partyPrefix}-lexnet-${digest}`;
+}
+
+export function buildSubjectKey(role: TrustPassport["role"], party: string): string {
+  return createHash("sha256")
+    .update(`${role}:${party}`)
+    .digest("hex");
 }
 
 export function redactSubject(party: string): string {

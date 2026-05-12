@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import { findPublicPassport, redactSubject } from "./passports";
+import { buildSubjectKey, findPublicPassport, redactSubject } from "./passports";
 import type {
   DashboardQueueItem,
   PlatformAuditEvent,
@@ -242,10 +242,19 @@ export async function getSafePassportRecords(
 ): Promise<SafePassportRecord[]> {
   try {
     const store = await readPlatformStore(storePath);
-    return store.publishedPassports.map(toSafePassportRecord);
+    return toSafePassportRecords(store.publishedPassports).passports;
   } catch {
     return [];
   }
+}
+
+export function toSafePassportRecords(passports: PublishedPassport[]) {
+  const records = passports.map(toSafePassportRecord);
+
+  return {
+    passports: records,
+    count: records.length,
+  };
 }
 
 export async function getPublicPassportView(
@@ -263,8 +272,8 @@ export async function getPublicPassportView(
 export function toSafePassportRecord(passport: PublishedPassport) {
   return {
     id: passport.id,
-    workspaceId: passport.workspaceId,
     slug: passport.slug,
+    subjectKey: buildSubjectKey(passport.role, passport.party),
     redactedSubject: redactSubject(passport.party),
     role: passport.role,
     trustLevel: passport.trustLevel,

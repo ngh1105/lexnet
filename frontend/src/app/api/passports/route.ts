@@ -6,7 +6,7 @@ import {
   readJsonBody,
 } from "@/lib/platform/api";
 import { authorizeDemoPrivateApi, requireDemoOperator } from "@/lib/platform/auth";
-import { mutatePlatformStore, readPlatformStore, toSafePassportRecord } from "@/lib/platform/store";
+import { mutatePlatformStore, readPlatformStore, toSafePassportRecord, toSafePassportRecords } from "@/lib/platform/store";
 import type { PublishedPassport } from "@/lib/platform/types";
 
 export async function GET(request: Request) {
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     return authorization.response;
   }
 
-  return jsonOk({ passports: store.publishedPassports.map(toSafePassportRecord) });
+  return jsonOk(toSafePassportRecords(store.publishedPassports));
 }
 
 export async function POST(request: Request) {
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     });
   });
 
-  return jsonOk({ passports: store.publishedPassports.map(toSafePassportRecord) });
+  return jsonOk(toSafePassportRecords(store.publishedPassports));
 }
 
 export async function PATCH(request: Request) {

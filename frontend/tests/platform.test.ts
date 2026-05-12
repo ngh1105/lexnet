@@ -12,11 +12,13 @@ import {
   getPublicPassportView,
   getSafePassportRecords,
   readPlatformStore,
+  toSafePassportRecords,
   writePlatformStore,
 } from "../src/lib/platform/store";
 import {
   buildPublishedPassports,
   buildPublicPassportView,
+  buildSubjectKey,
   findPublicPassport,
 } from "../src/lib/platform/passports";
 import {
@@ -223,7 +225,7 @@ test("getDashboardPlatformData serializes only dashboard queue fields", async ()
   });
 });
 
-test("getSafePassportRecords returns backend passport DTOs without raw party", async () => {
+test("getSafePassportRecords returns backend passport DTOs with only safe identifiers", async () => {
   await withTempStore(async (storePath) => {
     const store = createDefaultPlatformStore();
     const [buyerPassport] = buildPublishedPassports(
@@ -251,17 +253,39 @@ test("getSafePassportRecords returns backend passport DTOs without raw party", a
       "role",
       "slug",
       "sourceReportCount",
+      "subjectKey",
       "totalCases",
       "totalReferencedValue",
       "trustLevel",
       "updatedAt",
       "verifiedCases",
-      "workspaceId",
     ]);
     assert.equal(records[0]?.redactedSubject, "0x1111...1111");
+    assert.equal(records[0]?.subjectKey, buildSubjectKey("buyer", "0x1111111111111111111111111111111111111111"));
     assert.equal(records[0]?.published, true);
+    assert.equal(serialized.includes("workspace-demo"), false);
     assert.equal(serialized.includes("0x1111111111111111111111111111111111111111"), false);
   });
+});
+
+test("buildSubjectKey distinguishes subjects with identical redaction shape", () => {
+  const first = buildSubjectKey("buyer", "0x1111111111111111111111111111111111111111");
+  const second = buildSubjectKey("buyer", "0x1111222222222222222222222222222222221111");
+
+  assert.notEqual(first, second);
+});
+
+test("toSafePassportRecords reports generated DTO count", () => {
+  const passports = buildPublishedPassports(
+    [reviewedCase],
+    "workspace-demo",
+    "2026-05-12T12:00:00.000Z",
+  );
+
+  const records = toSafePassportRecords(passports);
+
+  assert.equal(records.count, 2);
+  assert.equal(records.passports.length, 2);
 });
 
 test("getSafePassportRecords falls back to an empty list when store is corrupt", async () => {
