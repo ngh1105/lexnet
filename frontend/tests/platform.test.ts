@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -24,6 +24,8 @@ import {
 import {
   buildDemoPlatformStore,
   getDemoSeedPublicPassportSlugs,
+  resetDemoPlatformStore,
+  seedDemoPlatformStore,
 } from "../src/lib/platform/demo-seed";
 import {
   buildSecurityStatus,
@@ -331,6 +333,16 @@ test("buildDemoPlatformStore does not seed private keys or fake on-chain claims"
   assert.equal(serialized.includes("api token"), false);
   assert.equal(serialized.includes("on-chain settlement succeeded"), false);
   assert.equal(serialized.includes("funds moved"), false);
+});
+
+test("resetDemoPlatformStore removes the store without recreating it", async () => {
+  await withTempStore(async (storePath) => {
+    await seedDemoPlatformStore(storePath);
+
+    await resetDemoPlatformStore(storePath);
+
+    await assert.rejects(access(storePath));
+  });
 });
 
 test("buildSubjectKey distinguishes subjects with identical redaction shape", () => {

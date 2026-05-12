@@ -136,9 +136,8 @@ export async function seedDemoPlatformStore(
 
 export async function resetDemoPlatformStore(
   storePath = DEFAULT_PLATFORM_STORE_PATH,
-): Promise<PlatformStore> {
+): Promise<void> {
   await rm(storePath, { force: true });
-  return seedDemoPlatformStore(storePath);
 }
 
 export function getDemoSeedPublicPassportSlugs(
