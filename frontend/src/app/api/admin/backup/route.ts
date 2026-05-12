@@ -1,27 +1,35 @@
+import { randomUUID } from "node:crypto";
 import { jsonOk } from "@/lib/platform/api";
 import { authorizeDemoPrivateApi } from "@/lib/platform/auth";
 import { redactSubject } from "@/lib/platform/passports";
-import { buildPlatformSummary, mutatePlatformStore, readPlatformStore } from "@/lib/platform/store";
+import { buildPlatformSummary, mutatePlatformStore } from "@/lib/platform/store";
 
 export async function GET(request: Request) {
-  const currentStore = await readPlatformStore();
-  const authorization = authorizeDemoPrivateApi(request, process.env, currentStore);
-  if (!authorization.authorized) {
-    return authorization.response;
-  }
-
   const exportedAt = new Date().toISOString();
+  let actorId = "";
+  let unauthorizedResponse: Response | null = null;
   const store = await mutatePlatformStore((draft) => {
+    const authorization = authorizeDemoPrivateApi(request, process.env, draft);
+    if (!authorization.authorized) {
+      unauthorizedResponse = authorization.response;
+      return;
+    }
+
+    actorId = authorization.operator.id;
     draft.auditEvents.push({
-      id: `audit-${exportedAt.replace(/\D/g, "")}-backup-exported`,
+      id: `audit-${exportedAt.replace(/\D/g, "")}-backup-exported-${randomUUID().slice(0, 8)}`,
       type: "backup.exported",
-      actorId: authorization.operator.id,
+      actorId,
       entityType: "backup",
       entityId: "platform-store",
       detail: "Exported platform store backup",
       createdAt: exportedAt,
     });
   });
+
+  if (unauthorizedResponse) {
+    return unauthorizedResponse;
+  }
 
   return jsonOk({
     exportedAt,
