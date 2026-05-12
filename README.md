@@ -48,6 +48,23 @@ npm --prefix frontend run build
 
 `npm run test:domain` runs `tests/*.test.ts`, so it includes platform tests as well as domain tests.
 
+## Demo Seed
+
+From the repository/worktree root:
+
+```bash
+npm --prefix frontend run demo:seed
+npm --prefix frontend run demo:reset
+```
+
+`demo:seed` writes deterministic full command-center demo data to `.lexnet-data/store.json`, including cases, evidence, local verification reports, queue items, operators, passports, and audit events.
+
+`demo:reset` removes only `.lexnet-data/store.json`.
+
+Seeded verification reports are local recommendations only. They do not claim funds moved or that an on-chain settlement succeeded.
+
+Do not commit `.lexnet-data/`.
+
 ## Environment Variables
 
 Public frontend configuration:

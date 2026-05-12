@@ -53,6 +53,8 @@ The current implementation is recommendation-only. It does not custody funds, ex
 - `frontend/src/app/globals.css` — application styling.
 - `frontend/src/providers/Web3Provider.tsx` — RainbowKit/Wagmi provider gate.
 - `frontend/package.json` — dependencies and scripts.
+- `frontend/scripts/demo-seed.ts` — writes deterministic full command-center demo data to `.lexnet-data/store.json`.
+- `frontend/scripts/demo-reset.ts` — removes only `.lexnet-data/store.json` for local demo reset.
 - `frontend/tests/lexnet-domain.test.ts` — active domain tests.
 - `frontend/tests/platform.test.ts` — active platform/backend tests.
 
@@ -92,6 +94,8 @@ Additional active frontend package scripts:
 
 ```bash
 npm --prefix frontend run start
+npm --prefix frontend run demo:seed
+npm --prefix frontend run demo:reset
 npm --prefix frontend run demo:genlayer-readiness
 npm --prefix frontend run verify:mvp
 npm --prefix frontend run verify:skeleton
