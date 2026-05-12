@@ -84,7 +84,7 @@ export function getRuntimeMode(): LexNetRuntimeMode {
 }
 
 export function getSeedCommerceCases(): CommerceCase[] {
-  return CASES;
+  return [...CASES];
 }
 
 export async function getAllCommerceCases(): Promise<CommerceCase[]> {

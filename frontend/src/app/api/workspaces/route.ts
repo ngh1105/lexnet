@@ -9,18 +9,23 @@ export async function GET(request: Request) {
     return authorization.response;
   }
 
+  const memberships = store.memberships.filter(
+    (membership) => membership.operatorId === authorization.operator.id,
+  );
+  const workspaceIds = new Set(memberships.map((membership) => membership.workspaceId));
+
   return jsonOk({
-    workspaces: store.workspaces.map((workspace) => ({
-      id: workspace.id,
-      name: workspace.name,
-      createdAt: workspace.createdAt,
-    })),
-    memberships: store.memberships
-      .filter((membership) => membership.operatorId === authorization.operator.id)
-      .map((membership) => ({
-        workspaceId: membership.workspaceId,
-        role: membership.role,
+    workspaces: store.workspaces
+      .filter((workspace) => workspaceIds.has(workspace.id))
+      .map((workspace) => ({
+        id: workspace.id,
+        name: workspace.name,
+        createdAt: workspace.createdAt,
       })),
+    memberships: memberships.map((membership) => ({
+      workspaceId: membership.workspaceId,
+      role: membership.role,
+    })),
     summary: buildPlatformSummary(store),
   });
 }

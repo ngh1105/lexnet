@@ -14,6 +14,11 @@ const trustColors: Record<string, string> = {
   "At Risk": "var(--red)",
 };
 
+function formatDate(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "N/A" : date.toISOString().slice(0, 10);
+}
+
 export default function PublicPassportClient({
   passport,
 }: {
@@ -38,9 +43,9 @@ export default function PublicPassportClient({
           <span
             className="status-chip"
             style={{
-              borderColor: `${color}33`,
+              borderColor: `color-mix(in srgb, ${color} 22%, transparent)`,
               color,
-              background: `${color}14`,
+              background: `color-mix(in srgb, ${color} 8%, transparent)`,
             }}
           >
             {passport.trustLevel}
@@ -63,7 +68,7 @@ export default function PublicPassportClient({
             label="Referenced Value"
             value={passport.totalReferencedValue}
           />
-          <PublicMetric label="Published" value={passport.publishedAt.slice(0, 10)} />
+          <PublicMetric label="Published" value={formatDate(passport.publishedAt)} />
         </section>
 
         <section className="panel" style={{ display: "grid", gap: 16 }}>
@@ -77,8 +82,8 @@ export default function PublicPassportClient({
           {passport.riskFlags.length > 0 ? (
             <div style={{ display: "grid", gap: 8 }}>
               <div className="section-label">Risk Flags</div>
-              {passport.riskFlags.map((flag) => (
-                <div key={flag} className="risk-chip">
+              {passport.riskFlags.map((flag, index) => (
+                <div key={`${flag}-${index}`} className="risk-chip">
                   <ShieldAlert size={14} strokeWidth={1.75} />
                   {flag}
                 </div>
@@ -92,7 +97,7 @@ export default function PublicPassportClient({
           )}
 
           <div style={{ color: "var(--muted)", fontSize: 12, fontWeight: 700 }}>
-            Last updated {passport.updatedAt.slice(0, 10)} · Passport slug {passport.slug}
+            Last updated {formatDate(passport.updatedAt)} · Passport slug {passport.slug}
           </div>
         </section>
       </div>
