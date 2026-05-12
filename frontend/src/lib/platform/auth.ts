@@ -3,7 +3,10 @@ import type { PlatformOperator, PlatformStore } from "./types";
 
 export const DEMO_OPERATOR_ID = "operator-demo";
 
-type DemoPrivateApiEnv = Pick<NodeJS.ProcessEnv, "LEXNET_ENABLE_DEMO_PRIVATE_API">;
+type DemoPrivateApiEnv = {
+  [key: string]: string | undefined;
+  LEXNET_ENABLE_DEMO_PRIVATE_API?: string;
+};
 
 export type DemoPrivateApiAuthorization =
   | { authorized: true; operator: PlatformOperator }
