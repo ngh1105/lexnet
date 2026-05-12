@@ -55,6 +55,7 @@ Public frontend configuration:
 ```bash
 NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS=
 NEXT_PUBLIC_GENLAYER_RPC_URL=https://studio.genlayer.com/api
+NEXT_PUBLIC_GENLAYER_NETWORK_LABEL=Studionet
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
 ```
 
