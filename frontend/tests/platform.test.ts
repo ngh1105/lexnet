@@ -8,6 +8,7 @@ import {
   appendAuditEvent,
   createDefaultPlatformStore,
   getDashboardPlatformData,
+  getPlatformCommerceCases,
   readPlatformStore,
   writePlatformStore,
 } from "../src/lib/platform/store";
@@ -132,6 +133,59 @@ test("getDashboardPlatformData returns seed cases and no backend data when store
     assert.equal(data.platformSummary, undefined);
     assert.deepEqual(data.queueItems, []);
     assert.equal(data.backendStoreStatus, "unavailable");
+  });
+});
+
+test("getPlatformCommerceCases returns seed cases when store JSON is invalid", async () => {
+  await withTempStore(async (storePath) => {
+    await writeFile(storePath, "{ invalid json", "utf8");
+    const seedCases = [reviewedCase];
+
+    const cases = await getPlatformCommerceCases(seedCases, storePath);
+
+    assert.deepEqual(cases, seedCases);
+  });
+});
+
+test("getPlatformCommerceCases returns seed cases when store schema is invalid", async () => {
+  await withTempStore(async (storePath) => {
+    await writeFile(
+      storePath,
+      JSON.stringify({ ...createDefaultPlatformStore(), cases: [{}] }),
+      "utf8",
+    );
+    const seedCases = [reviewedCase];
+
+    const cases = await getPlatformCommerceCases(seedCases, storePath);
+
+    assert.deepEqual(cases, seedCases);
+  });
+});
+
+test("getPlatformCommerceCases merges valid store cases over seed cases", async () => {
+  await withTempStore(async (storePath) => {
+    const store = createDefaultPlatformStore();
+    const storedCase: CommerceCase = {
+      ...reviewedCase,
+      title: "Stored case wins",
+      createdAt: "2026-05-12T12:00:00.000Z",
+    };
+    const newerStoreCase: CommerceCase = {
+      ...reviewedCase,
+      id: "lx-case-newer-store",
+      title: "Newer stored case",
+      createdAt: "2026-05-12T13:00:00.000Z",
+    };
+    store.cases.push(storedCase, newerStoreCase);
+    await writePlatformStore(store, storePath);
+
+    const cases = await getPlatformCommerceCases([reviewedCase], storePath);
+
+    assert.deepEqual(
+      cases.map((commerceCase) => commerceCase.id),
+      ["lx-case-newer-store", "lx-case-reviewed"],
+    );
+    assert.equal(cases[1]?.title, "Stored case wins");
   });
 });
 

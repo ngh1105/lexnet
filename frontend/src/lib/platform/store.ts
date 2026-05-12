@@ -220,9 +220,16 @@ export async function getDashboardPlatformData(
 
 export async function getPlatformCommerceCases(
   seedCases: CommerceCase[],
+  storePath = DEFAULT_PLATFORM_STORE_PATH,
 ): Promise<CommerceCase[]> {
-  const store = await readPlatformStore();
-  return mergePlatformCommerceCases(seedCases, store.cases);
+  try {
+    const store = await readPlatformStore(storePath);
+    return mergePlatformCommerceCases(seedCases, store.cases);
+  } catch {
+    return [...seedCases].sort((left, right) =>
+      right.createdAt.localeCompare(left.createdAt),
+    );
+  }
 }
 
 function isPlatformStore(value: unknown): value is PlatformStore {
