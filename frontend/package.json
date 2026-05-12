@@ -3,28 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3002",
     "build": "next build",
     "start": "next start",
-    "seed:demo": "node scripts/seed-demo.mjs",
-    "verify:demo-account": "node scripts/verify-demo-account.mjs",
-    "verify:testnet-account": "node scripts/verify-testnet-account.mjs",
-    "verify:testnet-write": "node scripts/verify-testnet-account.mjs --write",
-    "test:platform": "node --test src/lib/platform/*.test.mjs",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
-    "db:migrate-json": "node scripts/migrate-json-to-sqlite.mjs"
+    "test:domain": "tsx --test tests/*.test.ts",
+    "demo:genlayer-readiness": "node scripts/genlayer-demo-readiness.mjs",
+    "verify:mvp": "npm run test:domain && npm run build",
+    "verify:skeleton": "npm run verify:mvp"
   },
   "dependencies": {
-    "@phosphor-icons/react": "^2.1.10",
     "@rainbow-me/rainbowkit": "^2.2.10",
     "@tanstack/react-query": "^5.90.21",
-    "better-sqlite3": "^12.9.0",
-    "drizzle-orm": "^0.45.2",
-    "framer-motion": "^12.34.3",
     "genlayer-js": "file:../genlayer-js/genlayer-js-0.20.1.tgz",
-    "next": "16.1.6",
+    "lucide-react": "^1.14.0",
+    "next": "^16.2.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "viem": "^2.46.3",
@@ -32,12 +24,14 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "drizzle-kit": "^0.31.10",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
   }
 }
