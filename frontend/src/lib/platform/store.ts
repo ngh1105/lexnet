@@ -8,6 +8,7 @@ import type {
   PlatformStore,
   PlatformSummary,
 } from "./types";
+import type { CommerceCase } from "@/lib/lexnet-types";
 
 export const DEFAULT_PLATFORM_STORE_PATH = join(
   process.cwd(),
@@ -59,19 +60,36 @@ export function createDefaultPlatformStore(
 export async function readPlatformStore(
   storePath = DEFAULT_PLATFORM_STORE_PATH,
 ): Promise<PlatformStore> {
+  let raw: string;
+
   try {
-    const raw = await readFile(storePath, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (isPlatformStore(parsed)) {
-      return parsed;
+    raw = await readFile(storePath, "utf8");
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") {
+      const store = createDefaultPlatformStore();
+      await writePlatformStore(store, storePath);
+      return store;
     }
-  } catch {
-    // Missing, unreadable, or invalid stores are replaced with a default store.
+
+    throw new Error(`Unable to read platform store at ${storePath}`, {
+      cause: error,
+    });
   }
 
-  const store = createDefaultPlatformStore();
-  await writePlatformStore(store, storePath);
-  return store;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch (error) {
+    throw new Error(`Invalid platform store JSON at ${storePath}`, {
+      cause: error,
+    });
+  }
+
+  if (!isPlatformStore(parsed)) {
+    throw new Error(`Invalid platform store schema at ${storePath}`);
+  }
+
+  return parsed;
 }
 
 export async function writePlatformStore(
@@ -128,19 +146,188 @@ export function buildPlatformSummary(store: PlatformStore): PlatformSummary {
 }
 
 function isPlatformStore(value: unknown): value is PlatformStore {
-  if (!value || typeof value !== "object") {
+  if (!isRecord(value)) {
     return false;
   }
 
-  const store = value as Partial<Record<keyof PlatformStore, unknown>>;
   return (
-    store.version === 1 &&
-    Array.isArray(store.workspaces) &&
-    Array.isArray(store.operators) &&
-    Array.isArray(store.memberships) &&
-    Array.isArray(store.queue) &&
-    Array.isArray(store.cases) &&
-    Array.isArray(store.publishedPassports) &&
-    Array.isArray(store.auditEvents)
+    value.version === 1 &&
+    Array.isArray(value.workspaces) &&
+    value.workspaces.every(isPlatformWorkspace) &&
+    Array.isArray(value.operators) &&
+    value.operators.every(isPlatformOperator) &&
+    Array.isArray(value.memberships) &&
+    value.memberships.every(isPlatformMembership) &&
+    Array.isArray(value.queue) &&
+    value.queue.every(isPlatformQueueItem) &&
+    Array.isArray(value.cases) &&
+    value.cases.every(isCommerceCase) &&
+    Array.isArray(value.publishedPassports) &&
+    value.publishedPassports.every(isPublishedPassport) &&
+    Array.isArray(value.auditEvents) &&
+    value.auditEvents.every(isPlatformAuditEvent)
   );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function isNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isOptionalString(value: unknown): value is string | undefined {
+  return value === undefined || isString(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(isString);
+}
+
+function isPlatformWorkspace(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    isString(value.name) &&
+    isString(value.slug) &&
+    isString(value.createdAt) &&
+    isString(value.updatedAt)
+  );
+}
+
+function isPlatformOperator(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    isString(value.name) &&
+    isString(value.walletAddress) &&
+    isOptionalString(value.email) &&
+    isString(value.createdAt) &&
+    isString(value.updatedAt)
+  );
+}
+
+function isPlatformMembership(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    isString(value.workspaceId) &&
+    isString(value.operatorId) &&
+    ["owner", "admin", "operator", "viewer"].includes(String(value.role)) &&
+    isString(value.createdAt)
+  );
+}
+
+function isPlatformQueueItem(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    isString(value.workspaceId) &&
+    isString(value.caseId) &&
+    ["pending", "in_review", "completed", "blocked"].includes(String(value.status)) &&
+    ["low", "normal", "high"].includes(String(value.priority)) &&
+    isOptionalString(value.assignedOperatorId) &&
+    isString(value.createdAt) &&
+    isString(value.updatedAt)
+  );
+}
+
+function isCommerceCase(value: unknown): value is CommerceCase {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    isString(value.title) &&
+    isString(value.buyer) &&
+    isString(value.seller) &&
+    isString(value.agreementText) &&
+    isStringArray(value.acceptanceCriteria) &&
+    isNumber(value.amountReference) &&
+    [
+      "DRAFT",
+      "ACTIVE",
+      "EVIDENCE_SUBMITTED",
+      "UNDER_AI_REVIEW",
+      "VERIFIED",
+      "REVISION_REQUESTED",
+      "DISPUTED",
+      "SETTLEMENT_RECOMMENDED",
+    ].includes(String(value.status)) &&
+    Array.isArray(value.evidence) &&
+    value.evidence.every(isEvidenceItem) &&
+    (value.verificationReport === null || isVerificationReport(value.verificationReport)) &&
+    isString(value.createdAt)
+  );
+}
+
+function isEvidenceItem(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isString(value.url) &&
+    ["web", "repository", "document"].includes(String(value.resourceType)) &&
+    isString(value.checksum)
+  );
+}
+
+function isVerificationReport(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    ["APPROVE", "REVISE", "REJECT", "SPLIT_RECOMMENDED"].includes(String(value.verdict)) &&
+    isNumber(value.score) &&
+    isString(value.summary) &&
+    isString(value.recommendation) &&
+    isNumber(value.sellerShareBps) &&
+    isString(value.reviewedAt) &&
+    (value.riskFlags === undefined || isStringArray(value.riskFlags)) &&
+    (value.source === undefined || ["local", "genlayer-contract"].includes(String(value.source)))
+  );
+}
+
+function isPublishedPassport(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    isString(value.slug) &&
+    isString(value.workspaceId) &&
+    isString(value.party) &&
+    ["buyer", "seller"].includes(String(value.role)) &&
+    ["Established", "Reliable", "Developing", "At Risk"].includes(String(value.trustLevel)) &&
+    isNumber(value.totalCases) &&
+    isNumber(value.verifiedCases) &&
+    isNumber(value.averageScore) &&
+    isNumber(value.totalReferencedValue) &&
+    isStringArray(value.riskFlags) &&
+    isStringArray(value.caseIds) &&
+    isString(value.publishedAt) &&
+    isString(value.updatedAt)
+  );
+}
+
+function isPlatformAuditEvent(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    [
+      "case.created",
+      "evidence.submitted",
+      "verification.generated",
+      "passport.generated",
+      "passport.published",
+      "passport.unpublished",
+      "backup.exported",
+    ].includes(String(value.type)) &&
+    isString(value.actorId) &&
+    ["case", "evidence", "report", "passport", "workspace", "backup"].includes(String(value.entityType)) &&
+    isString(value.entityId) &&
+    isString(value.detail) &&
+    isString(value.createdAt)
+  );
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error;
 }

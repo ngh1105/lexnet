@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -36,6 +36,44 @@ test("readPlatformStore creates a persisted default store when missing", async (
     const raw = await readFile(storePath, "utf8");
     assert.equal(store.version, 1);
     assert.equal(JSON.parse(raw).version, 1);
+  });
+});
+
+test("readPlatformStore rejects invalid JSON without overwriting it", async () => {
+  await withTempStore(async (storePath) => {
+    await writeFile(storePath, "{ invalid json", "utf8");
+
+    await assert.rejects(
+      readPlatformStore(storePath),
+      /Invalid platform store JSON/,
+    );
+
+    assert.equal(await readFile(storePath, "utf8"), "{ invalid json");
+  });
+});
+
+test("readPlatformStore rejects malformed store schema without overwriting it", async () => {
+  await withTempStore(async (storePath) => {
+    const malformed = JSON.stringify({
+      ...createDefaultPlatformStore(),
+      memberships: [
+        {
+          id: "membership-bad",
+          workspaceId: "workspace-demo",
+          operatorId: "operator-demo",
+          role: "superuser",
+          createdAt: "2026-05-12T00:00:00.000Z",
+        },
+      ],
+    });
+    await writeFile(storePath, malformed, "utf8");
+
+    await assert.rejects(
+      readPlatformStore(storePath),
+      /Invalid platform store schema/,
+    );
+
+    assert.equal(await readFile(storePath, "utf8"), malformed);
   });
 });
 
