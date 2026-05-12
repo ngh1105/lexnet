@@ -8,6 +8,8 @@
     "start": "next start",
     "test:domain": "tsx --test tests/*.test.ts",
     "test:platform": "tsx --test tests/platform.test.ts",
+    "demo:seed": "tsx scripts/demo-seed.ts",
+    "demo:reset": "tsx scripts/demo-reset.ts",
     "demo:genlayer-readiness": "node scripts/genlayer-demo-readiness.mjs",
     "verify:mvp": "npm run test:domain && npm run test:platform && npm run build",
     "verify:skeleton": "npm run verify:mvp"

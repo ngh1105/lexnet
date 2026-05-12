@@ -33,6 +33,7 @@ import {
 import { authorizeDemoPrivateApi, isDemoOperatorRequest } from "../src/lib/platform/auth";
 import { createCommerceCase } from "../src/lib/lexnet-domain";
 import type { CommerceCase } from "../src/lib/lexnet-types";
+import packageJson from "../package.json" with { type: "json" };
 
 async function withTempStore(run: (storePath: string) => Promise<void>) {
   const dir = await mkdtemp(join(tmpdir(), "lexnet-platform-"));
@@ -42,6 +43,11 @@ async function withTempStore(run: (storePath: string) => Promise<void>) {
     await rm(dir, { recursive: true, force: true });
   }
 }
+
+test("package scripts expose demo seed and reset commands", () => {
+  assert.equal(packageJson.scripts["demo:seed"], "tsx scripts/demo-seed.ts");
+  assert.equal(packageJson.scripts["demo:reset"], "tsx scripts/demo-reset.ts");
+});
 
 test("createDefaultPlatformStore includes demo workspace, operator, queue, and audit arrays", () => {
   const store = createDefaultPlatformStore();
