@@ -39,6 +39,7 @@ import { authorizeDemoPrivateApi, isDemoOperatorRequest } from "../src/lib/platf
 import {
   buildAuthReadiness,
   buildEvidencePolicyStatus,
+  buildGenLayerReadinessStatus,
   buildPersistenceReadiness,
   buildPlatformReadinessStatus,
   getLexNetRuntimeMode,
@@ -203,11 +204,35 @@ test("buildPlatformReadinessStatus omits raw secret values and connection string
   const serialized = JSON.stringify(status);
 
   assert.equal(status.runtimeMode, "production");
-  assert.equal(status.auth.productionAuthProvider, "oauth-provider");
+  assert.equal(status.auth.productionAuthConfigured, true);
+  assert.equal(Object.prototype.hasOwnProperty.call(status.auth, "productionAuthProvider"), false);
   assert.equal(status.persistence.managedPersistenceConfigured, true);
   assert.equal(serialized.includes("secret-token-value"), false);
+  assert.equal(serialized.includes("oauth-provider"), false);
   assert.equal(serialized.includes("password@example.com"), false);
   assert.equal(serialized.includes("walletconnect-secret"), false);
+});
+
+test("buildGenLayerReadinessStatus requires explicit public RPC and contract configuration", () => {
+  const missingRpc = buildGenLayerReadinessStatus({
+    NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: "0x1111111111111111111111111111111111111111",
+  });
+
+  assert.equal(missingRpc.rpcUrlConfigured, false);
+  assert.equal(missingRpc.contractAddressConfigured, true);
+  assert.equal(missingRpc.stateVerificationCapable, false);
+  assert.equal(missingRpc.networkLabel, "Studionet");
+
+  const configured = buildGenLayerReadinessStatus({
+    NEXT_PUBLIC_GENLAYER_RPC_URL: "https://studio.genlayer.com/api",
+    NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: "0x1111111111111111111111111111111111111111",
+    NEXT_PUBLIC_GENLAYER_NETWORK_LABEL: "Studionet",
+  });
+
+  assert.equal(configured.rpcUrlConfigured, true);
+  assert.equal(configured.contractAddressConfigured, true);
+  assert.equal(configured.stateVerificationCapable, true);
+  assert.equal(configured.networkLabel, "Studionet");
 });
 
 test("appendGenLayerExecution records submitted execution metadata", async () => {
@@ -838,6 +863,7 @@ test("buildSecurityStatus reports configured and missing environment settings", 
   assert.equal(security.persistenceMode, "filesystem-local");
   assert.deepEqual(security.blockingReasons, [
     "Contract address is not configured.",
+    "Wallet is not connected.",
     "Production authentication is not configured.",
   ]);
 });

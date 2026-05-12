@@ -21,7 +21,6 @@ export interface AuthReadiness {
   mode: LexNetRuntimeMode;
   demoPrivateApiEnabled: boolean;
   demoPrivateApiTokenConfigured: boolean;
-  productionAuthProvider?: string;
   productionAuthConfigured: boolean;
   mutatingRoutesAllowed: boolean;
   blockingReasons: string[];
@@ -82,8 +81,7 @@ export function buildAuthReadiness(env: PlatformReadinessEnv): AuthReadiness {
   const mode = getLexNetRuntimeMode(env);
   const demoPrivateApiEnabled = env.LEXNET_ENABLE_DEMO_PRIVATE_API === "true";
   const demoPrivateApiTokenConfigured = Boolean(env.LEXNET_DEMO_PRIVATE_API_TOKEN);
-  const productionAuthProvider = env.LEXNET_PRODUCTION_AUTH_PROVIDER || undefined;
-  const productionAuthConfigured = Boolean(productionAuthProvider);
+  const productionAuthConfigured = Boolean(env.LEXNET_PRODUCTION_AUTH_PROVIDER);
   const blockingReasons: string[] = [];
 
   if (demoPrivateApiEnabled && !demoPrivateApiTokenConfigured) {
@@ -102,7 +100,6 @@ export function buildAuthReadiness(env: PlatformReadinessEnv): AuthReadiness {
     mode,
     demoPrivateApiEnabled,
     demoPrivateApiTokenConfigured,
-    productionAuthProvider,
     productionAuthConfigured,
     mutatingRoutesAllowed: mode !== "production" || productionAuthConfigured,
     blockingReasons,
@@ -157,13 +154,23 @@ export function buildEvidencePolicyStatus(env: PlatformReadinessEnv): EvidencePo
 }
 
 export function buildGenLayerReadinessStatus(env: PlatformReadinessEnv): GenLayerReadinessStatus {
-  const readiness = getLexNetContractReadiness({ env, walletConnected: true });
+  const rpcUrlConfigured = Boolean(env.NEXT_PUBLIC_GENLAYER_RPC_URL);
+  const contractAddressConfigured = Boolean(env.NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS);
+  const walletConnectProjectIdConfigured = Boolean(env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID);
+  const stateVerificationCapable = rpcUrlConfigured && contractAddressConfigured;
+  const readiness = getLexNetContractReadiness({
+    env: {
+      ...env,
+      NEXT_PUBLIC_GENLAYER_RPC_URL: rpcUrlConfigured ? env.NEXT_PUBLIC_GENLAYER_RPC_URL : "",
+    },
+    walletConnected: stateVerificationCapable,
+  });
 
   return {
-    rpcUrlConfigured: Boolean(env.NEXT_PUBLIC_GENLAYER_RPC_URL),
-    contractAddressConfigured: Boolean(env.NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS),
-    walletConnectProjectIdConfigured: Boolean(env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID),
-    stateVerificationCapable: readiness.isReady,
+    rpcUrlConfigured,
+    contractAddressConfigured,
+    walletConnectProjectIdConfigured,
+    stateVerificationCapable,
     networkLabel: readiness.networkLabel,
     blockingReasons: readiness.blockingReasons,
   };
