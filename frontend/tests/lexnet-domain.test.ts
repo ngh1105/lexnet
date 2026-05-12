@@ -4,8 +4,13 @@ import assert from "node:assert/strict";
 import {
   appendEvidenceToCase,
   applyVerificationReport,
+  buildCaseTimeline,
+  buildCommandCenterMetrics,
   buildCommerceCaseStats,
   buildEvidencePack,
+  buildEvidenceQualitySummary,
+  buildHighPriorityReviews,
+  buildPassportScoreBreakdown,
   buildTrustPassports,
   buildVerificationSummary,
   createCommerceCase,
@@ -21,6 +26,54 @@ import {
   getLexNetContractReadiness,
 } from "../src/lib/lexnet-contract";
 import type { CommerceCase, VerificationReport } from "../src/lib/lexnet-types";
+
+const reviewedReport: VerificationReport = {
+  verdict: "APPROVE",
+  score: 88,
+  summary: "Delivery satisfies acceptance criteria.",
+  recommendation: "Release the settlement to the seller.",
+  sellerShareBps: 10000,
+  reviewedAt: "2026-05-12T09:00:00.000Z",
+  riskFlags: [],
+  source: "local",
+};
+
+const seedCases: CommerceCase[] = [
+  {
+    ...createCommerceCase(
+      {
+        title: "Reviewed delivery",
+        buyer: "buyerA",
+        seller: "sellerA",
+        agreementText: "Agreement text long enough for this reviewed command center case",
+        acceptanceCriteria: ["done"],
+        amountReference: 2500,
+      },
+      { id: "case-reviewed", createdAt: "2026-05-11T08:00:00.000Z" },
+    ),
+    status: "VERIFIED",
+    evidence: buildEvidencePack([
+      "https://github.com/acme/repo",
+      "https://docs.google.com/document/d/abc",
+    ]).items,
+    verificationReport: reviewedReport,
+  },
+  {
+    ...createCommerceCase(
+      {
+        title: "Pending evidence review",
+        buyer: "buyerB",
+        seller: "sellerB",
+        agreementText: "Agreement text long enough for this pending command center case",
+        acceptanceCriteria: ["done"],
+        amountReference: 4200,
+      },
+      { id: "case-pending", createdAt: "2026-05-12T08:00:00.000Z" },
+    ),
+    status: "EVIDENCE_SUBMITTED",
+    evidence: buildEvidencePack(["https://example.com/evidence"]).items,
+  },
+];
 
 test("normalizeEvidenceUrls trims, filters protocol, and deduplicates", () => {
   const result = normalizeEvidenceUrls([
@@ -445,6 +498,57 @@ test("buildTrustPassports aggregates by buyer and seller with trust levels", () 
   assert.equal(buyerA.lastActivityAt, "2026-05-12T10:00:00.000Z");
 
   assert.equal(passports.length, 3);
+});
+
+test("buildCommandCenterMetrics summarizes demo operating metrics", () => {
+  const metrics = buildCommandCenterMetrics(seedCases);
+
+  assert.equal(metrics.protectedValue, 6700);
+  assert.equal(metrics.aiReviewedCases, 1);
+  assert.equal(metrics.passportsIssued, 4);
+  assert.equal(metrics.evidenceItems, 3);
+});
+
+test("buildHighPriorityReviews returns review cards with reasons", () => {
+  const reviews = buildHighPriorityReviews(seedCases);
+
+  assert.equal(reviews.length, 2);
+  assert.equal(Boolean(reviews[0]?.caseId), true);
+  assert.equal(Boolean(reviews[0]?.priorityReason), true);
+});
+
+test("buildCaseTimeline tracks evidence, verification, settlement, and passport steps", () => {
+  const timeline = buildCaseTimeline(seedCases[0]);
+
+  assert.deepEqual(
+    timeline.map((item) => item.label),
+    [
+      "Case opened",
+      "Evidence submitted",
+      "AI verification",
+      "Settlement decision",
+      "Trust passport update",
+    ],
+  );
+});
+
+test("buildEvidenceQualitySummary labels evidence mix", () => {
+  const summary = buildEvidenceQualitySummary(seedCases[0]);
+
+  assert.equal(summary.totalItems, seedCases[0]?.evidence.length);
+  assert.equal(summary.qualityLabel, "Strong provenance mix");
+});
+
+test("buildPassportScoreBreakdown derives bounded score parts", () => {
+  const passport = buildTrustPassports(seedCases)[0];
+  assert.ok(passport);
+
+  const breakdown = buildPassportScoreBreakdown(passport);
+
+  assert.equal(breakdown.verificationRate >= 0 && breakdown.verificationRate <= 100, true);
+  assert.equal(breakdown.scoreStrength >= 0 && breakdown.scoreStrength <= 100, true);
+  assert.equal(breakdown.valueWeight >= 0 && breakdown.valueWeight <= 100, true);
+  assert.equal(breakdown.riskPenalty >= 0 && breakdown.riskPenalty <= 100, true);
 });
 
 test("inferEvidenceResourceType classifies repository and document URLs", () => {

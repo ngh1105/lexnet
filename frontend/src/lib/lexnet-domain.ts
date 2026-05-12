@@ -1,11 +1,16 @@
 import type {
+  CaseTimelineItem,
   CommerceCase,
   CommerceCaseStats,
+  CommandCenterMetrics,
   CreateCommerceCaseInput,
   CreateCommerceCaseOptions,
   EvidenceItem,
   EvidencePack,
+  EvidenceQualitySummary,
   EvidenceResourceType,
+  HighPriorityReview,
+  PassportScoreBreakdown,
   TrustPassport,
   TrustPassportLevel,
   TrustPassportRole,
@@ -228,6 +233,101 @@ export function buildTrustPassports(cases: CommerceCase[]): TrustPassport[] {
     });
 }
 
+export function buildCommandCenterMetrics(cases: CommerceCase[]): CommandCenterMetrics {
+  const passports = buildTrustPassports(cases);
+
+  return {
+    protectedValue: cases.reduce((sum, commerceCase) => sum + commerceCase.amountReference, 0),
+    aiReviewedCases: cases.filter((commerceCase) => commerceCase.verificationReport).length,
+    settlementReadyCases: cases.filter((commerceCase) => SETTLEMENT_READY_STATUSES.has(commerceCase.status)).length,
+    passportsIssued: passports.length,
+    evidenceItems: cases.reduce((sum, commerceCase) => sum + commerceCase.evidence.length, 0),
+  };
+}
+
+export function buildHighPriorityReviews(cases: CommerceCase[]): HighPriorityReview[] {
+  return [...cases]
+    .sort((left, right) => getPriorityScore(right) - getPriorityScore(left))
+    .slice(0, 4)
+    .map((commerceCase) => {
+      const summary = buildVerificationSummary(commerceCase);
+
+      return {
+        caseId: commerceCase.id,
+        title: commerceCase.title,
+        status: commerceCase.status,
+        amountReference: commerceCase.amountReference,
+        evidenceCount: commerceCase.evidence.length,
+        scoreLabel: summary.scoreLabel,
+        nextAction: summary.nextAction,
+        priorityReason: getPriorityReason(commerceCase),
+      };
+    });
+}
+
+export function buildCaseTimeline(commerceCase: CommerceCase): CaseTimelineItem[] {
+  const hasEvidence = commerceCase.evidence.length > 0;
+  const hasReport = Boolean(commerceCase.verificationReport);
+  const isSettlementReady = SETTLEMENT_READY_STATUSES.has(commerceCase.status);
+
+  return [
+    {
+      label: "Case opened",
+      detail: commerceCase.createdAt.slice(0, 10),
+      status: "complete",
+    },
+    {
+      label: "Evidence submitted",
+      detail: hasEvidence ? `${commerceCase.evidence.length} evidence item(s)` : "Waiting for seller evidence",
+      status: hasEvidence ? "complete" : "active",
+    },
+    {
+      label: "AI verification",
+      detail: hasReport ? `${commerceCase.verificationReport?.score}/100 confidence score` : "Run local verification or GenLayer preview",
+      status: hasReport ? "complete" : hasEvidence ? "active" : "blocked",
+    },
+    {
+      label: "Settlement decision",
+      detail: isSettlementReady ? getNextAction(commerceCase) : "Not ready for settlement",
+      status: isSettlementReady ? "active" : "blocked",
+    },
+    {
+      label: "Trust passport update",
+      detail: hasReport ? "Included in buyer and seller trust history" : "Pending verified report",
+      status: hasReport ? "complete" : "blocked",
+    },
+  ];
+}
+
+export function buildEvidenceQualitySummary(commerceCase: CommerceCase): EvidenceQualitySummary {
+  const repositoryItems = commerceCase.evidence.filter((item) => item.resourceType === "repository").length;
+  const documentItems = commerceCase.evidence.filter((item) => item.resourceType === "document").length;
+  const webItems = commerceCase.evidence.filter((item) => item.resourceType === "web").length;
+  const totalItems = commerceCase.evidence.length;
+
+  return {
+    totalItems,
+    repositoryItems,
+    documentItems,
+    webItems,
+    qualityLabel: getEvidenceQualityLabel(totalItems, repositoryItems, documentItems),
+  };
+}
+
+export function buildPassportScoreBreakdown(passport: TrustPassport): PassportScoreBreakdown {
+  const verificationRate = passport.totalCases > 0 ? Math.round((passport.verifiedCases / passport.totalCases) * 100) : 0;
+  const scoreStrength = passport.averageScore;
+  const valueWeight = Math.min(Math.round(passport.totalReferencedValue / 1000), 100);
+  const riskPenalty = Math.min(passport.riskFlags.length * 20, 100);
+
+  return {
+    verificationRate,
+    scoreStrength,
+    valueWeight,
+    riskPenalty,
+  };
+}
+
 export function inferEvidenceResourceType(url: string): EvidenceResourceType {
   const lowerUrl = url.toLowerCase();
   if (lowerUrl.includes("github.com") || lowerUrl.includes("gitlab.com")) {
@@ -272,6 +372,42 @@ export function getNextAction(commerceCase: CommerceCase): string {
     case "SETTLEMENT_RECOMMENDED":
       return "Review settlement recommendation";
   }
+}
+
+function getPriorityScore(commerceCase: CommerceCase): number {
+  const report = commerceCase.verificationReport;
+  const riskWeight = report?.riskFlags?.length ? 100 : 0;
+  const settlementWeight = SETTLEMENT_READY_STATUSES.has(commerceCase.status) ? 80 : 0;
+  const valueWeight = Math.min(Math.round(commerceCase.amountReference / 100), 60);
+  const evidenceWeight = commerceCase.evidence.length > 0 ? 25 : 0;
+
+  return riskWeight + settlementWeight + valueWeight + evidenceWeight;
+}
+
+function getPriorityReason(commerceCase: CommerceCase): string {
+  if (commerceCase.verificationReport?.riskFlags?.length) {
+    return "Risk flags need operator review";
+  }
+  if (commerceCase.status === "SETTLEMENT_RECOMMENDED") {
+    return "Settlement recommendation is ready";
+  }
+  if (commerceCase.evidence.length === 0) {
+    return "Evidence has not been submitted";
+  }
+  return "High-value case ready for review";
+}
+
+function getEvidenceQualityLabel(totalItems: number, repositoryItems: number, documentItems: number): string {
+  if (totalItems === 0) {
+    return "No evidence submitted";
+  }
+  if (repositoryItems > 0 && documentItems > 0) {
+    return "Strong provenance mix";
+  }
+  if (totalItems >= 2) {
+    return "Reviewable evidence set";
+  }
+  return "Thin evidence set";
 }
 
 function addPassportCase(

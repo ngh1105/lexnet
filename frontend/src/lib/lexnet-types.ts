@@ -99,3 +99,43 @@ export interface TrustPassport {
   riskFlags: string[];
   lastActivityAt: string;
 }
+
+export interface CommandCenterMetrics {
+  protectedValue: number;
+  aiReviewedCases: number;
+  settlementReadyCases: number;
+  passportsIssued: number;
+  evidenceItems: number;
+}
+
+export interface HighPriorityReview {
+  caseId: string;
+  title: string;
+  status: CommerceCaseStatus;
+  amountReference: number;
+  evidenceCount: number;
+  scoreLabel: string;
+  nextAction: string;
+  priorityReason: string;
+}
+
+export interface CaseTimelineItem {
+  label: string;
+  detail: string;
+  status: "complete" | "active" | "blocked";
+}
+
+export interface EvidenceQualitySummary {
+  totalItems: number;
+  repositoryItems: number;
+  documentItems: number;
+  webItems: number;
+  qualityLabel: string;
+}
+
+export interface PassportScoreBreakdown {
+  verificationRate: number;
+  scoreStrength: number;
+  valueWeight: number;
+  riskPenalty: number;
+}
