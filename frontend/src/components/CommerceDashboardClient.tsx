@@ -3,15 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  Activity,
+  ArrowRight,
   ArrowUpRight,
   BadgeCheck,
   CircleCheck,
-  CircleDollarSign,
   FileSearch,
+  IdCard,
   Inbox,
   Scale,
   Search,
+  ShieldCheck,
   TriangleAlert,
+  Workflow,
 } from "lucide-react";
 import {
   WalletAwareDashboardReadiness,
@@ -22,7 +26,9 @@ import WalletConnectStatus from "@/components/WalletConnectStatus";
 import StatusChip from "@/components/ui/StatusChip";
 import { getMergedCommerceCases } from "@/lib/lexnet-client-store";
 import {
+  buildCommandCenterMetrics,
   buildCommerceCaseStats,
+  buildHighPriorityReviews,
   buildVerificationSummary,
 } from "@/lib/lexnet-domain";
 import { type LexNetContractEnvironment } from "@/lib/lexnet-contract";
@@ -56,6 +62,8 @@ export default function CommerceDashboardClient({
   }, [seedCases]);
 
   const stats = useMemo(() => buildCommerceCaseStats(cases), [cases]);
+  const commandMetrics = useMemo(() => buildCommandCenterMetrics(cases), [cases]);
+  const highPriorityReviews = useMemo(() => buildHighPriorityReviews(cases), [cases]);
   const filteredCases = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
@@ -137,25 +145,45 @@ export default function CommerceDashboardClient({
 
           <section className="metric-grid" style={{ marginBottom: 16 }}>
             <MetricCard
-              icon={<Inbox size={18} strokeWidth={1.75} />}
-              label="Commerce Cases"
-              value={stats.totalCases.toLocaleString()}
+              icon={<ShieldCheck size={18} strokeWidth={1.75} />}
+              label="Protected Value"
+              value={`$${commandMetrics.protectedValue.toLocaleString()}`}
             />
             <MetricCard
-              icon={<FileSearch size={18} strokeWidth={1.75} />}
-              label="Active Reviews"
-              value={stats.activeCases.toLocaleString()}
+              icon={<Activity size={18} strokeWidth={1.75} />}
+              label="AI Reviewed"
+              value={commandMetrics.aiReviewedCases.toLocaleString()}
             />
             <MetricCard
               icon={<BadgeCheck size={18} strokeWidth={1.75} />}
               label="Settlement Ready"
-              value={stats.settlementReady.toLocaleString()}
+              value={commandMetrics.settlementReadyCases.toLocaleString()}
             />
             <MetricCard
-              icon={<CircleDollarSign size={18} strokeWidth={1.75} />}
-              label="Referenced Value"
-              value={`$${stats.totalReferencedValue.toLocaleString()}`}
+              icon={<IdCard size={18} strokeWidth={1.75} />}
+              label="Trust Passports"
+              value={commandMetrics.passportsIssued.toLocaleString()}
             />
+          </section>
+
+          <section className="panel command-strip" style={{ marginBottom: 16 }}>
+            <div>
+              <div className="section-label">
+                <Workflow size={14} strokeWidth={1.75} />
+                AI Commerce Trust Pipeline
+              </div>
+              <h2 style={{ marginTop: 8, color: "var(--ink)", fontSize: 20, fontWeight: 900 }}>
+                From agreement to portable trust in one review loop
+              </h2>
+            </div>
+            <div className="pipeline-steps">
+              {["Intake", "Evidence", "AI Review", "Settlement", "Passport"].map((step, index) => (
+                <div key={step} className="pipeline-step">
+                  <span>{index + 1}</span>
+                  {step}
+                </div>
+              ))}
+            </div>
           </section>
 
           <section className="dashboard-grid">
@@ -239,6 +267,22 @@ export default function CommerceDashboardClient({
             </div>
 
             <aside style={{ display: "grid", gap: 16 }}>
+              <div className="panel" style={{ display: "grid", gap: 12 }}>
+                <div className="section-label">
+                  <Activity size={14} strokeWidth={1.75} />
+                  High Priority Reviews
+                </div>
+                {highPriorityReviews.map((review) => (
+                  <Link key={review.caseId} href={`/cases/${review.caseId}`} className="priority-card">
+                    <span>
+                      <strong>{review.title}</strong>
+                      <small>{review.priorityReason}</small>
+                    </span>
+                    <ArrowRight size={14} strokeWidth={1.75} />
+                  </Link>
+                ))}
+              </div>
+
               {process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ? (
                 <WalletAwareDashboardReadiness contractEnvironment={contractEnvironment} />
               ) : (
