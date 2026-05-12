@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { isWalletConnectConfigured } from "@/providers/Web3Provider";
+import WalletConnectStatus from "@/components/WalletConnectStatus";
 import {
   FilePlus2,
   IdCard,
@@ -128,28 +127,7 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {isWalletConnectConfigured ? (
-          <ConnectButton
-            chainStatus="icon"
-            accountStatus="address"
-            showBalance={false}
-          />
-        ) : (
-          <div
-            style={{
-              padding: "10px 11px",
-              borderRadius: 8,
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              color: "rgba(250,250,250,0.62)",
-              fontSize: 11,
-              lineHeight: 1.45,
-              fontWeight: 700,
-            }}
-          >
-            Set NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID to enable wallet connect.
-          </div>
-        )}
+        <WalletConnectStatus />
       </div>
     </aside>
   );

@@ -64,9 +64,29 @@ export default function ContractReadinessPanel({
         </span>
       )}
 
-      <button type="button" className="btn-secondary" disabled title="Direct GenLayer writes are enabled in Phase 3.">
+      <div
+        style={{
+          display: "grid",
+          gap: 8,
+          padding: 12,
+          borderRadius: 8,
+          border: "1px solid var(--border)",
+          background: "var(--surface-subtle)",
+        }}
+      >
+        <div className="section-label">
+          <WalletCards size={14} strokeWidth={1.75} />
+          Operation Flow
+        </div>
+        <p className="muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.55 }}>
+          1. Connect wallet with a WalletConnect project ID. 2. Confirm the contract,
+          RPC, and wallet checks. 3. Copy or trigger the generated GenLayer payload.
+        </p>
+      </div>
+
+      <button type="button" className="btn-secondary" disabled title="Direct GenLayer writes are enabled after all readiness checks pass.">
         <WalletCards size={15} strokeWidth={1.75} />
-        Phase 3: Trigger GenLayer Write
+        Trigger GenLayer Write
       </button>
     </section>
   );

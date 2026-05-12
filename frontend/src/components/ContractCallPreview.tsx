@@ -40,22 +40,32 @@ export default function ContractCallPreview({
         <PreviewRow label="Network" value={preview.networkLabel} />
       </div>
 
-      <pre
+      <div
         style={{
-          margin: 0,
-          maxHeight: 180,
-          overflow: "auto",
+          display: "grid",
+          gap: 6,
+          padding: 10,
           borderRadius: 8,
           border: "1px solid var(--border)",
           background: "var(--surface-subtle)",
-          padding: 12,
-          color: "var(--ink-soft)",
-          fontSize: 11,
-          lineHeight: 1.5,
         }}
       >
-        {payloadText}
-      </pre>
+        <span style={{ color: "var(--muted)", fontSize: 11, fontWeight: 800 }}>
+          Data sent to GenLayer
+        </span>
+        <pre
+          style={{
+            margin: 0,
+            maxHeight: 180,
+            overflow: "auto",
+            color: "var(--ink-soft)",
+            fontSize: 11,
+            lineHeight: 1.5,
+          }}
+        >
+          {payloadText}
+        </pre>
+      </div>
 
       <button type="button" className="btn-secondary" onClick={handleCopy} style={{ width: "fit-content" }}>
         <Copy size={15} strokeWidth={1.75} />
