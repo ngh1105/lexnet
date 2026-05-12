@@ -82,7 +82,7 @@ export interface PublicPassportView {
   totalCases: number;
   verifiedCases: number;
   averageScore: number;
-  totalReferencedValue: number;
+  totalReferencedValue: string;
   riskFlags: string[];
   publishedAt: string;
   updatedAt: string;
