@@ -56,7 +56,14 @@ export function resetRateLimitForTests(): void {
   rateLimits.clear();
 }
 
-export function buildSecurityStatus(env: NodeJS.ProcessEnv): SecurityStatus {
+interface SecurityStatusEnv {
+  [key: string]: string | undefined;
+  NEXT_PUBLIC_GENLAYER_RPC_URL?: string;
+  NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS?: string;
+  NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID?: string;
+}
+
+export function buildSecurityStatus(env: SecurityStatusEnv): SecurityStatus {
   const genLayerRpcUrlConfigured = Boolean(env.NEXT_PUBLIC_GENLAYER_RPC_URL);
   const contractAddressConfigured = Boolean(env.NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS);
   const walletConnectProjectIdConfigured = Boolean(
