@@ -10,6 +10,9 @@
     "test:platform": "tsx --test tests/platform.test.ts",
     "demo:seed": "tsx scripts/demo-seed.ts",
     "demo:reset": "tsx scripts/demo-reset.ts",
+    "demo:dev": "tsx scripts/demo-dev.ts",
+    "demo:backup": "tsx scripts/demo-backup.ts",
+    "demo:restore": "tsx scripts/demo-restore.ts",
     "demo:genlayer-readiness": "node scripts/genlayer-demo-readiness.mjs",
     "verify:mvp": "npm run test:domain && npm run test:platform && npm run build",
     "verify:skeleton": "npm run verify:mvp"

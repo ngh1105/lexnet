@@ -19,7 +19,8 @@ The current implementation is recommendation-only. It does not custody funds, ex
 - `frontend/src/lib/lexnet-types.ts` — commerce case, evidence, report, and trust passport type definitions.
 - `frontend/src/lib/lexnet-domain.ts` — pure domain functions for cases, evidence, stats, timeline, and passport scoring.
 - `frontend/src/lib/lexnet-verification.ts` — verification adapter interface and deterministic scoring.
-- `frontend/src/lib/lexnet-contract.ts` — GenLayer readiness/config facade and guarded contract payload previews.
+- `frontend/src/lib/lexnet-contract.ts` — GenLayer readiness/config facade, guarded contract payload previews, and verify-case execution planning.
+- `frontend/src/lib/genlayer-client.ts` — narrow adapter around `genlayer-js`; app code should use this boundary instead of SDK internals.
 - `frontend/src/lib/lexnet-service.ts` — seed cases, runtime mode, and backend-aware case reads.
 - `frontend/src/lib/lexnet-client-store.ts` — browser localStorage fallback/cache for demo-created cases.
 
@@ -55,6 +56,10 @@ The current implementation is recommendation-only. It does not custody funds, ex
 - `frontend/package.json` — dependencies and scripts.
 - `frontend/scripts/demo-seed.ts` — writes deterministic full command-center demo data to `.lexnet-data/store.json`.
 - `frontend/scripts/demo-reset.ts` — removes only `.lexnet-data/store.json` for local demo reset.
+- `frontend/scripts/demo-dev.ts` — starts the demo dev server on the first available demo port.
+- `frontend/scripts/dev-port.ts` — selects demo dev ports, preferring `3002` then `3003`.
+- `frontend/scripts/demo-backup.ts` — writes a local `.lexnet-data/store.json` backup.
+- `frontend/scripts/demo-restore.ts` — restores `.lexnet-data/store.json` from a selected local backup.
 - `frontend/tests/lexnet-domain.test.ts` — active domain tests.
 - `frontend/tests/platform.test.ts` — active platform/backend tests.
 
@@ -76,6 +81,7 @@ The current implementation is recommendation-only. It does not custody funds, ex
 - `/api/passports` — demo-private passport generation and publish/unpublish actions.
 - `/api/passports/public/[slug]` — public privacy-safe passport JSON.
 - `/api/admin/backup` — demo-private backup/export summary.
+- `/api/genlayer/verify-case` — demo-private guarded SDK write endpoint for `verify_case`.
 - `/api/security/status` — platform/security readiness status.
 
 ## Commands
@@ -96,6 +102,9 @@ Additional active frontend package scripts:
 npm --prefix frontend run start
 npm --prefix frontend run demo:seed
 npm --prefix frontend run demo:reset
+npm --prefix frontend run demo:dev
+npm --prefix frontend run demo:backup
+npm --prefix frontend run demo:restore -- <backup-path>
 npm --prefix frontend run demo:genlayer-readiness
 npm --prefix frontend run verify:mvp
 npm --prefix frontend run verify:skeleton
@@ -126,9 +135,11 @@ Demo-private backend API configuration:
 
 ```bash
 LEXNET_ENABLE_DEMO_PRIVATE_API=true
+LEXNET_DEMO_PRIVATE_API_TOKEN=
+LEXNET_PRODUCTION_AUTH_PROVIDER=
 ```
 
-Demo-private API calls also require header `x-lexnet-operator-id: operator-demo`.
+Demo-private API calls also require header `x-lexnet-operator-id: operator-demo`. If `LEXNET_DEMO_PRIVATE_API_TOKEN` is set, include `Authorization: Bearer <token>` as well.
 
 ## Case State Machine
 
@@ -146,6 +157,6 @@ DRAFT → ACTIVE → EVIDENCE_SUBMITTED → UNDER_AI_REVIEW → VERIFIED
 ## Deprecated / Do Not Read
 
 - `docs/archive/` — old specs and roadmaps.
-- `genlayer-js/` — vendored SDK, reference only.
+- `genlayer-js/` — vendored SDK package source; do not edit directly. Use `frontend/src/lib/genlayer-client.ts` for app integration.
 - `.agent/`, `.shared/` — tooling, not active product code.
 - `docs/archive/test_escrow_lifecycle.py` — archived old escrow contract test.

@@ -4,7 +4,11 @@ export interface SecurityStatus {
   genLayerRpcUrlConfigured: boolean;
   contractAddressConfigured: boolean;
   walletConnectProjectIdConfigured: boolean;
+  demoPrivateApiEnabled: boolean;
+  demoPrivateApiTokenConfigured: boolean;
+  productionAuthConfigured: boolean;
   storeMode: "filesystem";
+  persistenceMode: "filesystem-local";
   blockingReasons: string[];
 }
 
@@ -61,6 +65,9 @@ interface SecurityStatusEnv {
   NEXT_PUBLIC_GENLAYER_RPC_URL?: string;
   NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS?: string;
   NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID?: string;
+  LEXNET_ENABLE_DEMO_PRIVATE_API?: string;
+  LEXNET_DEMO_PRIVATE_API_TOKEN?: string;
+  LEXNET_PRODUCTION_AUTH_PROVIDER?: string;
 }
 
 export function buildSecurityStatus(env: SecurityStatusEnv): SecurityStatus {
@@ -69,6 +76,9 @@ export function buildSecurityStatus(env: SecurityStatusEnv): SecurityStatus {
   const walletConnectProjectIdConfigured = Boolean(
     env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
   );
+  const demoPrivateApiEnabled = env.LEXNET_ENABLE_DEMO_PRIVATE_API === "true";
+  const demoPrivateApiTokenConfigured = Boolean(env.LEXNET_DEMO_PRIVATE_API_TOKEN);
+  const productionAuthConfigured = Boolean(env.LEXNET_PRODUCTION_AUTH_PROVIDER);
   const blockingReasons: string[] = [];
 
   if (!genLayerRpcUrlConfigured) {
@@ -80,12 +90,22 @@ export function buildSecurityStatus(env: SecurityStatusEnv): SecurityStatus {
   if (!walletConnectProjectIdConfigured) {
     blockingReasons.push("WalletConnect project ID is not configured.");
   }
+  if (demoPrivateApiEnabled && !demoPrivateApiTokenConfigured) {
+    blockingReasons.push("Demo-private API token is not configured.");
+  }
+  if (!productionAuthConfigured) {
+    blockingReasons.push("Production authentication is not configured.");
+  }
 
   return {
     genLayerRpcUrlConfigured,
     contractAddressConfigured,
     walletConnectProjectIdConfigured,
+    demoPrivateApiEnabled,
+    demoPrivateApiTokenConfigured,
+    productionAuthConfigured,
     storeMode: "filesystem",
+    persistenceMode: "filesystem-local",
     blockingReasons,
   };
 }

@@ -6,6 +6,7 @@ export const DEMO_OPERATOR_ID = "operator-demo";
 type DemoPrivateApiEnv = {
   [key: string]: string | undefined;
   LEXNET_ENABLE_DEMO_PRIVATE_API?: string;
+  LEXNET_DEMO_PRIVATE_API_TOKEN?: string;
 };
 
 export type DemoPrivateApiAuthorization =
@@ -20,6 +21,15 @@ export function isDemoOperatorRequest(request: Request): boolean {
   return request.headers.get("x-lexnet-operator-id") === DEMO_OPERATOR_ID;
 }
 
+function hasValidDemoToken(request: Request, expectedToken: string | undefined): boolean {
+  if (!expectedToken) {
+    return true;
+  }
+
+  const authorization = request.headers.get("authorization") ?? "";
+  return authorization === `Bearer ${expectedToken}`;
+}
+
 export function authorizeDemoPrivateApi(
   request: Request,
   env: DemoPrivateApiEnv,
@@ -30,6 +40,10 @@ export function authorizeDemoPrivateApi(
   }
 
   if (!isDemoOperatorRequest(request)) {
+    return { authorized: false, response: jsonError("Unauthorized.", 401) };
+  }
+
+  if (!hasValidDemoToken(request, env.LEXNET_DEMO_PRIVATE_API_TOKEN)) {
     return { authorized: false, response: jsonError("Unauthorized.", 401) };
   }
 

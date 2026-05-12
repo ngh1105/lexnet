@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 
 import {
@@ -9,6 +9,7 @@ import {
   createDefaultPlatformStore,
   getDashboardPlatformData,
   getPlatformCommerceCases,
+  getPrimaryPlatformCommerceCases,
   getPublicPassportView,
   getSafePassportRecords,
   readPlatformStore,
@@ -33,6 +34,20 @@ import {
   resetRateLimitForTests,
 } from "../src/lib/platform/api";
 import { authorizeDemoPrivateApi, isDemoOperatorRequest } from "../src/lib/platform/auth";
+import {
+  backupPlatformStore,
+  restorePlatformStore,
+} from "../src/lib/platform/backup";
+import {
+  buildGenLayerVerifyCaseRequest,
+  createGenLayerClientAdapter,
+  type GenLayerSdkModule,
+} from "../src/lib/genlayer-client";
+import {
+  buildVerifyCaseExecutionPlan,
+  getLexNetContractReadiness,
+} from "../src/lib/lexnet-contract";
+import { chooseDemoDevPort } from "../scripts/dev-port";
 import { createCommerceCase } from "../src/lib/lexnet-domain";
 import type { CommerceCase } from "../src/lib/lexnet-types";
 import packageJson from "../package.json" with { type: "json" };
@@ -46,9 +61,40 @@ async function withTempStore(run: (storePath: string) => Promise<void>) {
   }
 }
 
-test("package scripts expose demo seed and reset commands", () => {
+test("package scripts expose demo seed, reset, and dev commands", () => {
   assert.equal(packageJson.scripts["demo:seed"], "tsx scripts/demo-seed.ts");
   assert.equal(packageJson.scripts["demo:reset"], "tsx scripts/demo-reset.ts");
+  assert.equal(packageJson.scripts["demo:dev"], "tsx scripts/demo-dev.ts");
+  assert.equal(packageJson.scripts["demo:backup"], "tsx scripts/demo-backup.ts");
+  assert.equal(packageJson.scripts["demo:restore"], "tsx scripts/demo-restore.ts");
+});
+
+test("chooseDemoDevPort prefers 3002 when it is available", async () => {
+  const selected = await chooseDemoDevPort({
+    preferredPorts: [3002, 3003],
+    isPortAvailable: async () => true,
+  });
+
+  assert.equal(selected, 3002);
+});
+
+test("chooseDemoDevPort falls back to 3003 when 3002 is unavailable", async () => {
+  const selected = await chooseDemoDevPort({
+    preferredPorts: [3002, 3003],
+    isPortAvailable: async (port) => port !== 3002,
+  });
+
+  assert.equal(selected, 3003);
+});
+
+test("chooseDemoDevPort fails when no preferred ports are available", async () => {
+  await assert.rejects(
+    chooseDemoDevPort({
+      preferredPorts: [3002, 3003],
+      isPortAvailable: async () => false,
+    }),
+    /No available demo dev port/,
+  );
 });
 
 test("createDefaultPlatformStore includes demo workspace, operator, queue, and audit arrays", () => {
@@ -205,6 +251,51 @@ test("getPlatformCommerceCases merges valid store cases over seed cases", async 
   });
 });
 
+test("getPrimaryPlatformCommerceCases returns store cases only when the backend store has cases", async () => {
+  await withTempStore(async (storePath) => {
+    const store = createDefaultPlatformStore();
+    store.cases.push({
+      ...reviewedCase,
+      id: "lx-case-store-primary",
+      title: "Store primary case",
+      createdAt: "2026-05-12T14:00:00.000Z",
+    });
+    await writePlatformStore(store, storePath);
+
+    const cases = await getPrimaryPlatformCommerceCases([reviewedCase], storePath);
+
+    assert.deepEqual(cases.map((commerceCase) => commerceCase.id), ["lx-case-store-primary"]);
+  });
+});
+
+test("getPrimaryPlatformCommerceCases falls back to seed cases when the backend store is empty", async () => {
+  await withTempStore(async (storePath) => {
+    await writePlatformStore(createDefaultPlatformStore(), storePath);
+
+    const cases = await getPrimaryPlatformCommerceCases([reviewedCase], storePath);
+
+    assert.deepEqual(cases.map((commerceCase) => commerceCase.id), ["lx-case-reviewed"]);
+  });
+});
+
+test("getDashboardPlatformData uses backend store cases as primary demo cases", async () => {
+  await withTempStore(async (storePath) => {
+    const store = createDefaultPlatformStore();
+    store.cases.push({
+      ...reviewedCase,
+      id: "lx-case-dashboard-primary",
+      title: "Dashboard primary case",
+      createdAt: "2026-05-12T15:00:00.000Z",
+    });
+    await writePlatformStore(store, storePath);
+
+    const data = await getDashboardPlatformData([reviewedCase], storePath);
+
+    assert.deepEqual(data.cases.map((commerceCase) => commerceCase.id), ["lx-case-dashboard-primary"]);
+    assert.equal(data.platformSummary?.caseCount, 1);
+  });
+});
+
 test("getDashboardPlatformData serializes only dashboard queue fields", async () => {
   await withTempStore(async (storePath) => {
     const store = createDefaultPlatformStore();
@@ -342,6 +433,67 @@ test("resetDemoPlatformStore removes the store without recreating it", async () 
     await resetDemoPlatformStore(storePath);
 
     await assert.rejects(access(storePath));
+  });
+});
+
+test("backupPlatformStore writes a deterministic backup file and returns its path", async () => {
+  await withTempStore(async (storePath) => {
+    const backupPath = join(dirname(storePath), "backups", "store-backup.json");
+    await seedDemoPlatformStore(storePath);
+
+    const result = await backupPlatformStore({ storePath, backupPath });
+    const backupRaw = await readFile(result.backupPath, "utf8");
+    const backupStore = JSON.parse(backupRaw) as { cases: unknown[]; publishedPassports: unknown[] };
+
+    assert.equal(result.backupPath, backupPath);
+    assert.equal(backupStore.cases.length, 6);
+    assert.equal(backupStore.publishedPassports.length, 2);
+  });
+});
+
+test("restorePlatformStore restores a valid backup", async () => {
+  await withTempStore(async (storePath) => {
+    const backupPath = join(dirname(storePath), "backups", "store-backup.json");
+    const original = await seedDemoPlatformStore(storePath);
+    await backupPlatformStore({ storePath, backupPath });
+    await writePlatformStore(createDefaultPlatformStore(), storePath);
+
+    const restored = await restorePlatformStore({ storePath, backupPath });
+
+    assert.equal(restored.cases.length, original.cases.length);
+    assert.equal((await readPlatformStore(storePath)).cases.length, original.cases.length);
+  });
+});
+
+test("restorePlatformStore rejects invalid backup JSON without overwriting current store", async () => {
+  await withTempStore(async (storePath) => {
+    const backupPath = join(dirname(storePath), "backups", "invalid.json");
+    await mkdir(dirname(backupPath), { recursive: true });
+    await seedDemoPlatformStore(storePath);
+    await writeFile(backupPath, "{ invalid json", "utf8");
+
+    await assert.rejects(
+      restorePlatformStore({ storePath, backupPath }),
+      /Invalid backup JSON/,
+    );
+
+    assert.equal((await readPlatformStore(storePath)).cases.length, 6);
+  });
+});
+
+test("restorePlatformStore rejects malformed backup schema without overwriting current store", async () => {
+  await withTempStore(async (storePath) => {
+    const backupPath = join(dirname(storePath), "backups", "malformed.json");
+    await mkdir(dirname(backupPath), { recursive: true });
+    await seedDemoPlatformStore(storePath);
+    await writeFile(backupPath, JSON.stringify({ version: 1, cases: [{}] }), "utf8");
+
+    await assert.rejects(
+      restorePlatformStore({ storePath, backupPath }),
+      /Invalid platform store schema/,
+    );
+
+    assert.equal((await readPlatformStore(storePath)).cases.length, 6);
   });
 });
 
@@ -521,9 +673,109 @@ test("buildSecurityStatus reports configured and missing environment settings", 
   assert.equal(security.contractAddressConfigured, false);
   assert.equal(security.walletConnectProjectIdConfigured, true);
   assert.equal(security.storeMode, "filesystem");
+  assert.equal(security.persistenceMode, "filesystem-local");
   assert.deepEqual(security.blockingReasons, [
     "Contract address is not configured.",
+    "Production authentication is not configured.",
   ]);
+});
+
+test("buildSecurityStatus reports demo API and persistence readiness", () => {
+  const status = buildSecurityStatus({
+    NEXT_PUBLIC_GENLAYER_RPC_URL: "https://studio.genlayer.com/api",
+    NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: "0x123",
+    NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: "wallet-project",
+    LEXNET_ENABLE_DEMO_PRIVATE_API: "true",
+    LEXNET_DEMO_PRIVATE_API_TOKEN: "demo-token",
+  });
+
+  assert.equal(status.demoPrivateApiEnabled, true);
+  assert.equal(status.demoPrivateApiTokenConfigured, true);
+  assert.equal(status.productionAuthConfigured, false);
+  assert.equal(status.persistenceMode, "filesystem-local");
+  assert.equal(status.blockingReasons.includes("Production authentication is not configured."), true);
+});
+
+test("buildSecurityStatus reports missing demo API token as a warning reason when demo API is enabled", () => {
+  const status = buildSecurityStatus({
+    NEXT_PUBLIC_GENLAYER_RPC_URL: "https://studio.genlayer.com/api",
+    LEXNET_ENABLE_DEMO_PRIVATE_API: "true",
+  });
+
+  assert.equal(status.demoPrivateApiEnabled, true);
+  assert.equal(status.demoPrivateApiTokenConfigured, false);
+  assert.equal(status.blockingReasons.includes("Demo-private API token is not configured."), true);
+});
+
+test("buildGenLayerVerifyCaseRequest maps LexNet verify_case payload for genlayer-js", () => {
+  const request = buildGenLayerVerifyCaseRequest({
+    contractAddress: "0xcontract",
+    method: "verify_case",
+    payload: { case_id: "lx-case-demo-settlement" },
+  });
+
+  assert.equal(request.contractAddress, "0xcontract");
+  assert.equal(request.method, "verify_case");
+  assert.deepEqual(request.args, ["lx-case-demo-settlement"]);
+});
+
+test("createGenLayerClientAdapter submits through injected genlayer-js client and returns SDK result", async () => {
+  const calls: unknown[] = [];
+  const sdk: GenLayerSdkModule = {
+    createClient: ({ endpoint }) => ({
+      writeContract: async (request) => {
+        calls.push({ endpoint, request });
+        return { transactionHash: "0xrealreceipt", status: "submitted" };
+      },
+    }),
+  };
+
+  const adapter = createGenLayerClientAdapter({ sdk, rpcUrl: "https://studio.genlayer.com/api" });
+  const result = await adapter.verifyCase({
+    contractAddress: "0xcontract",
+    caseId: "lx-case-demo-settlement",
+  });
+
+  assert.equal(result.transactionHash, "0xrealreceipt");
+  assert.equal(result.status, "submitted");
+  assert.equal(calls.length, 1);
+});
+
+test("buildVerifyCaseExecutionPlan blocks SDK execution until readiness passes", () => {
+  const readiness = getLexNetContractReadiness({
+    env: {
+      NEXT_PUBLIC_GENLAYER_RPC_URL: "https://studio.genlayer.com/api",
+      NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: "0xcontract",
+    },
+    walletConnected: false,
+  });
+
+  const plan = buildVerifyCaseExecutionPlan(
+    { ...reviewedCase, id: "lx-case-demo-settlement" },
+    readiness,
+  );
+
+  assert.equal(plan.enabled, false);
+  assert.equal(plan.blockingReasons.includes("Wallet is not connected."), true);
+});
+
+test("buildVerifyCaseExecutionPlan enables SDK execution only with full readiness", () => {
+  const readiness = getLexNetContractReadiness({
+    env: {
+      NEXT_PUBLIC_GENLAYER_RPC_URL: "https://studio.genlayer.com/api",
+      NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: "0xcontract",
+    },
+    walletConnected: true,
+  });
+
+  const plan = buildVerifyCaseExecutionPlan(
+    { ...reviewedCase, id: "lx-case-demo-settlement" },
+    readiness,
+  );
+
+  assert.equal(plan.enabled, true);
+  assert.equal(plan.request.contractAddress, "0xcontract");
+  assert.deepEqual(plan.request.args, ["lx-case-demo-settlement"]);
 });
 
 test("checkRateLimit blocks the third call within a time window", () => {
@@ -604,4 +856,65 @@ test("authorizeDemoPrivateApi accepts demo header when private demo API flag is 
   if (result.authorized) {
     assert.equal(result.operator.id, "operator-demo");
   }
+});
+
+test("authorizeDemoPrivateApi rejects missing bearer token when demo API token is configured", async () => {
+  const request = new Request("https://lexnet.local/api/operators", {
+    headers: { "x-lexnet-operator-id": "operator-demo" },
+  });
+
+  const result = authorizeDemoPrivateApi(
+    request,
+    {
+      LEXNET_ENABLE_DEMO_PRIVATE_API: "true",
+      LEXNET_DEMO_PRIVATE_API_TOKEN: "demo-token",
+    },
+    createDefaultPlatformStore(),
+  );
+
+  assert.equal(result.authorized, false);
+  if (!result.authorized) {
+    assert.equal(result.response.status, 401);
+    assert.deepEqual(await result.response.json(), { error: "Unauthorized." });
+  }
+});
+
+test("authorizeDemoPrivateApi accepts matching bearer token when demo API token is configured", () => {
+  const request = new Request("https://lexnet.local/api/operators", {
+    headers: {
+      "x-lexnet-operator-id": "operator-demo",
+      authorization: "Bearer demo-token",
+    },
+  });
+
+  const result = authorizeDemoPrivateApi(
+    request,
+    {
+      LEXNET_ENABLE_DEMO_PRIVATE_API: "true",
+      LEXNET_DEMO_PRIVATE_API_TOKEN: "demo-token",
+    },
+    createDefaultPlatformStore(),
+  );
+
+  assert.equal(result.authorized, true);
+});
+
+test("authorizeDemoPrivateApi rejects mismatched bearer token when demo API token is configured", () => {
+  const request = new Request("https://lexnet.local/api/operators", {
+    headers: {
+      "x-lexnet-operator-id": "operator-demo",
+      authorization: "Bearer wrong-token",
+    },
+  });
+
+  const result = authorizeDemoPrivateApi(
+    request,
+    {
+      LEXNET_ENABLE_DEMO_PRIVATE_API: "true",
+      LEXNET_DEMO_PRIVATE_API_TOKEN: "demo-token",
+    },
+    createDefaultPlatformStore(),
+  );
+
+  assert.equal(result.authorized, false);
 });

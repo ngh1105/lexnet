@@ -1,4 +1,8 @@
 import {
+  buildGenLayerVerifyCaseRequest,
+  type GenLayerContractRequest,
+} from "./genlayer-client";
+import {
   createContractVerificationAdapter,
   createLocalVerificationAdapter,
   type ContractVerificationAdapterOptions,
@@ -37,6 +41,12 @@ export interface LexNetContractCallPreview {
   enabled: boolean;
   blockingReasons: string[];
   payload: Record<string, unknown>;
+}
+
+export interface LexNetVerifyCaseExecutionPlan {
+  enabled: boolean;
+  blockingReasons: string[];
+  request: GenLayerContractRequest;
 }
 
 export interface LexNetVerificationAdapterOptions {
@@ -151,6 +161,22 @@ export function buildVerifyCaseCallPreview(
   return buildCallPreview("verify_case", readiness, {
     case_id: commerceCase.id,
   });
+}
+
+export function buildVerifyCaseExecutionPlan(
+  commerceCase: CommerceCase,
+  readiness: LexNetContractReadiness,
+): LexNetVerifyCaseExecutionPlan {
+  const contractAddress = readiness.contractAddress ?? "";
+  return {
+    enabled: readiness.isReady,
+    blockingReasons: [...readiness.blockingReasons],
+    request: buildGenLayerVerifyCaseRequest({
+      contractAddress,
+      method: "verify_case",
+      payload: { case_id: commerceCase.id },
+    }),
+  };
 }
 
 export function createLexNetVerificationAdapter(

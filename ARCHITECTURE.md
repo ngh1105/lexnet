@@ -62,7 +62,8 @@ The domain layer lives under `frontend/src/lib/lexnet-*.ts`.
 - `lexnet-types.ts` defines commerce case, evidence, report, and passport types.
 - `lexnet-domain.ts` contains pure functions for case creation, evidence packs, stats, timelines, and trust passport scoring.
 - `lexnet-verification.ts` defines verification adapters and deterministic scoring.
-- `lexnet-contract.ts` reads public env config and exposes guarded GenLayer payload previews.
+- `lexnet-contract.ts` reads public env config, exposes guarded GenLayer payload previews, and builds verify-case execution plans.
+- `genlayer-client.ts` isolates `genlayer-js` client usage behind a small adapter so application code does not depend on SDK internals directly.
 - `lexnet-service.ts` provides seed cases, runtime mode, and backend-aware case loading.
 - `lexnet-client-store.ts` preserves browser localStorage fallback/cache behavior for local demo cases.
 
@@ -74,7 +75,8 @@ The platform layer lives under `frontend/src/lib/platform/`.
 - `store.ts` manages `.lexnet-data/store.json`, safe initialization, validation, serialized mutations, dashboard DTOs, passport DTOs, and audit append behavior.
 - `passports.ts` generates private passport records, derives stable subject keys, builds privacy-safe public passport views, and hides unpublished passports.
 - `api.ts` centralizes JSON responses, request parsing, security status, and lightweight rate limiting.
-- `auth.ts` implements demo-private operator authorization using `LEXNET_ENABLE_DEMO_PRIVATE_API=true` and `x-lexnet-operator-id: operator-demo`.
+- `backup.ts` creates and restores local `.lexnet-data/store.json` snapshots.
+- `auth.ts` implements demo-private operator authorization using `LEXNET_ENABLE_DEMO_PRIVATE_API=true`, `x-lexnet-operator-id: operator-demo`, and optional bearer-token hardening.
 
 The filesystem store is the backend source of truth for platform mode. Browser localStorage is not the platform source of truth; it remains a local fallback/cache for demo-created browser state.
 
@@ -98,6 +100,7 @@ The filesystem store is the backend source of truth for platform mode. Browser l
 | `/api/passports` | Demo-private | Generate passport records and toggle publishing |
 | `/api/passports/public/[slug]` | Public | Privacy-safe public passport JSON |
 | `/api/admin/backup` | Demo-private | Backup/export summary with audit event |
+| `/api/genlayer/verify-case` | Demo-private | Guarded `genlayer-js` write endpoint for `verify_case` |
 | `/api/security/status` | Public status | Environment and platform readiness summary |
 
 ## Public Passport Privacy Boundary
@@ -118,7 +121,15 @@ Public views do not expose raw wallet addresses, raw party identifiers, evidence
 
 ## GenLayer Boundary
 
-The UI may show contract readiness, blocking reasons, and guarded payload previews. It must not claim live on-chain execution unless a real network integration proves it. The current MVP remains recommendation-only and safe for demos.
+The UI may show contract readiness, blocking reasons, and guarded payload previews. `genlayer-js` is used only through `frontend/src/lib/genlayer-client.ts`, which maps LexNet `verify_case` intent to the SDK's contract write shape.
+
+The guarded SDK endpoint can submit a real `verify_case` call only when demo-private authorization and contract readiness pass. It does not custody funds, does not store private keys, and does not claim settlement finality unless a later contract-state verification proves it.
+
+## Demo Hardening Boundary
+
+The demo hardening layer improves local pilot operation without claiming production readiness. `demo:dev` avoids port collisions, `demo:backup` and `demo:restore` manage local filesystem snapshots, and demo-private APIs may require an optional bearer token.
+
+These controls do not replace production authentication, managed database storage, monitored backups, evidence retention policy, or audited GenLayer transaction execution.
 
 ## Production Boundary
 

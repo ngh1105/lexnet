@@ -188,6 +188,16 @@ export function mergePlatformCommerceCases(
   );
 }
 
+export function selectPrimaryPlatformCommerceCases(
+  seedCases: CommerceCase[],
+  storeCases: CommerceCase[],
+): CommerceCase[] {
+  const sourceCases = storeCases.length > 0 ? storeCases : seedCases;
+  return [...sourceCases].sort((left, right) =>
+    right.createdAt.localeCompare(left.createdAt),
+  );
+}
+
 export function toDashboardQueueItems(
   queueItems: PlatformStore["queue"],
 ): DashboardQueueItem[] {
@@ -209,7 +219,7 @@ export async function getDashboardPlatformData(
     const store = await readPlatformStore(storePath);
 
     return {
-      cases: mergePlatformCommerceCases(seedCases, store.cases),
+      cases: selectPrimaryPlatformCommerceCases(seedCases, store.cases),
       platformSummary: buildPlatformSummary(store),
       queueItems: toDashboardQueueItems(store.queue),
       backendStoreStatus: "available",
@@ -220,6 +230,20 @@ export async function getDashboardPlatformData(
       queueItems: [],
       backendStoreStatus: "unavailable",
     };
+  }
+}
+
+export async function getPrimaryPlatformCommerceCases(
+  seedCases: CommerceCase[],
+  storePath = DEFAULT_PLATFORM_STORE_PATH,
+): Promise<CommerceCase[]> {
+  try {
+    const store = await readPlatformStore(storePath);
+    return selectPrimaryPlatformCommerceCases(seedCases, store.cases);
+  } catch {
+    return [...seedCases].sort((left, right) =>
+      right.createdAt.localeCompare(left.createdAt),
+    );
   }
 }
 

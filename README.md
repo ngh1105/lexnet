@@ -65,6 +65,26 @@ Seeded verification reports are local recommendations only. They do not claim fu
 
 Do not commit `.lexnet-data/`.
 
+## Recommended Demo Workflow
+
+From the repository/worktree root:
+
+```bash
+npm --prefix frontend run demo:seed
+npm --prefix frontend run demo:dev
+```
+
+Open the URL printed by `demo:dev`. It prefers `http://localhost:3002` and falls back to `http://localhost:3003` if another checkout is already using port `3002`.
+
+After the demo:
+
+```bash
+npm --prefix frontend run demo:backup
+npm --prefix frontend run demo:reset
+```
+
+Use `demo:backup` before resetting when you want to keep a local snapshot of `.lexnet-data/store.json`. Backups remain local under `.lexnet-data/` and must not be committed.
+
 ## Environment Variables
 
 Public frontend configuration:
@@ -80,6 +100,8 @@ Demo-private backend API configuration:
 
 ```bash
 LEXNET_ENABLE_DEMO_PRIVATE_API=true
+LEXNET_DEMO_PRIVATE_API_TOKEN=
+LEXNET_PRODUCTION_AUTH_PROVIDER=
 ```
 
 Demo-private API requests also require:
@@ -87,6 +109,8 @@ Demo-private API requests also require:
 ```http
 x-lexnet-operator-id: operator-demo
 ```
+
+If `LEXNET_DEMO_PRIVATE_API_TOKEN` is set, demo-private API requests must also include `Authorization: Bearer <token>`. Leave it blank for local-only demos.
 
 Do not commit `.env.local` or private keys.
 
@@ -108,9 +132,22 @@ Operators can generate backend passport records from persisted verified commerce
 
 The public passport page is privacy-safe. It exposes redacted subject data and aggregate trust metrics only. It does not expose raw parties, evidence URLs, case IDs, audit events, operator records, workspace membership data, or unpublished passports.
 
+## GenLayer SDK Boundary
+
+LexNet uses `genlayer-js` only behind the local `genlayer-client` adapter. The guarded `verify_case` path may submit a real SDK call when contract address, RPC URL, wallet/operator readiness, and demo-private authorization all pass.
+
+Local verification remains the fallback. The UI must not claim settlement completion, fund movement, or on-chain finality unless a real SDK result and later contract-state verification prove it.
+
 ## Production Boundary
 
-Before production use, LexNet still needs production authentication, managed persistence, deployment/backup operations, evidence policy, real GenLayer integration tests, and security review. Payment custody or settlement transfer paths are out of scope until explicitly designed and audited.
+Current hardening status:
+
+- Demo-private APIs can require both `x-lexnet-operator-id: operator-demo` and an optional `Authorization: Bearer <token>` header.
+- Filesystem persistence is local demo/pilot infrastructure, not a managed production database.
+- Backup/restore commands are local operational tools, not a managed disaster recovery system.
+- The guarded GenLayer SDK path can submit `verify_case` through `genlayer-js` only when readiness checks pass, and it does not claim settlement finality.
+
+Before production use, LexNet still needs production authentication, managed persistence, evidence retention policy, deployment observability, managed backups, audited GenLayer transaction execution/state verification, and security review. Payment custody or settlement transfer paths are out of scope until explicitly designed and audited.
 
 ## License
 
