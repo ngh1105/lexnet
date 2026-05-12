@@ -11,7 +11,7 @@ import {
   DEFAULT_PLATFORM_STORE_PATH,
   writePlatformStore,
 } from "./store";
-import type { PlatformAuditEvent, PlatformStore } from "./types";
+import type { PlatformAuditEvent, PlatformStore, PublishedPassport } from "./types";
 
 const WORKSPACE_ID = "workspace-demo-command-center";
 const DEMO_BUYER = "0x4F9A00000000000000000000000000000000B001";
@@ -20,7 +20,7 @@ const NOW = "2026-05-12T12:00:00.000Z";
 
 export function buildDemoPlatformStore(): PlatformStore {
   const cases = buildDemoCases();
-  const publishedPassports = buildPublishedPassports(cases, WORKSPACE_ID, NOW).map((passport) => {
+  const publishedPassports: PublishedPassport[] = buildPublishedPassports(cases, WORKSPACE_ID, NOW).map((passport) => {
     if (
       (passport.role === "buyer" && passport.party === DEMO_BUYER) ||
       (passport.role === "seller" && passport.party === DEMO_SELLER)

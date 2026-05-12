@@ -660,15 +660,10 @@ test("pilot prepare refuses production mode", () => {
 
 test("buildPilotSummary counts store records and GenLayer execution statuses", () => {
   const store = buildDemoPlatformStore();
-  store.publishedPassports = store.publishedPassports.map((passport, index) => {
-    if (index === 0) {
-      return { ...passport, status: "published" };
-    }
-    if (index === 1) {
-      return { ...passport, status: undefined };
-    }
-    return { ...passport, status: "draft" };
-  });
+  store.publishedPassports = store.publishedPassports.map((passport, index) => ({
+    ...passport,
+    status: index === 0 ? "published" : "draft",
+  }));
 
   store.genLayerExecutions.push(
     {
