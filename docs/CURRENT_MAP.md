@@ -32,6 +32,8 @@ The current implementation is recommendation-only. It does not custody funds, ex
 - `frontend/src/lib/platform/passports.ts` — private passport generation, stable subject keys, public redaction, value banding, and public lookup.
 - `frontend/src/lib/platform/api.ts` — shared JSON responses, request parsing, security status, and lightweight rate limiting.
 - `frontend/src/lib/platform/auth.ts` — demo-private operator authorization helpers. This is not production OAuth.
+- `frontend/src/lib/platform/readiness.ts` — runtime mode, auth, persistence, evidence policy, GenLayer readiness, and public-safe security status helpers.
+- `frontend/src/lib/platform/pilot-summary.ts` — pilot/package summary counts using platform store data and readiness helpers.
 
 ### Frontend Components
 
@@ -108,6 +110,8 @@ npm --prefix frontend run demo:dev
 npm --prefix frontend run demo:backup
 npm --prefix frontend run demo:restore -- <backup-path>
 npm --prefix frontend run demo:genlayer-readiness
+npm --prefix frontend run pilot:check
+npm --prefix frontend run pilot:prepare
 npm --prefix frontend run verify:mvp
 npm --prefix frontend run verify:skeleton
 ```
@@ -136,9 +140,13 @@ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
 Demo-private backend API configuration:
 
 ```bash
+LEXNET_RUNTIME_MODE=local-demo
 LEXNET_ENABLE_DEMO_PRIVATE_API=true
 LEXNET_DEMO_PRIVATE_API_TOKEN=
 LEXNET_PRODUCTION_AUTH_PROVIDER=
+LEXNET_MANAGED_DATABASE_URL=
+LEXNET_MANAGED_PERSISTENCE_PROVIDER=
+LEXNET_EVIDENCE_RETENTION_POLICY=
 ```
 
 Demo-private API calls also require header `x-lexnet-operator-id: operator-demo`. If `LEXNET_DEMO_PRIVATE_API_TOKEN` is set, include `Authorization: Bearer <token>` as well.

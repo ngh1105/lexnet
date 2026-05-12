@@ -133,6 +133,10 @@ These controls do not replace production authentication, managed database storag
 
 ## Production Boundary
 
+The production readiness boundary now reports runtime mode, auth readiness, persistence readiness, evidence policy readiness, GenLayer state verification capability, and production blockers through `/api/security/status` and `pilot:check`.
+
+`LEXNET_RUNTIME_MODE=production` blocks demo-private-only mutating routes unless `LEXNET_PRODUCTION_AUTH_PROVIDER` is configured. Production mode also requires managed persistence configuration and evidence retention policy before the readiness check is clear.
+
 Before using LexNet for production commerce workflows, add and review:
 
 - Durable database storage or managed persistence.

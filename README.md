@@ -85,6 +85,21 @@ npm --prefix frontend run demo:reset
 
 Use `demo:backup` before resetting when you want to keep a local snapshot of `.lexnet-data/store.json`. Backups remain local under `.lexnet-data/` and must not be committed.
 
+## Pilot Readiness Workflow
+
+For a controlled local pilot package:
+
+```bash
+npm --prefix frontend run pilot:prepare
+npm --prefix frontend run pilot:check
+```
+
+`pilot:prepare` resets and reseeds local `.lexnet-data/store.json` with deterministic pilot/demo records and refuses to run in `LEXNET_RUNTIME_MODE=production`.
+
+`pilot:check` reports runtime mode, auth readiness, persistence readiness, evidence policy readiness, GenLayer state verification readiness, local store counts, and forbidden secret-like keys. It fails only for production-mode blockers or forbidden secret-like keys.
+
+See `docs/PILOT_RUNBOOK.md` for the full operator runbook.
+
 ## Environment Variables
 
 Public frontend configuration:
