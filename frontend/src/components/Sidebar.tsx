@@ -2,193 +2,155 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-    Scales,
-    House,
-    Plus,
-    GithubLogo,
-    Lightning,
-} from "@phosphor-icons/react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { isWalletConnectConfigured } from "@/providers/Web3Provider";
+import {
+  FilePlus2,
+  IdCard,
+  Inbox,
+  Scale,
+  Zap,
+} from "lucide-react";
 
 const navItems = [
-    { href: "/", icon: House, label: "Dashboard" },
+  { href: "/", icon: Inbox, label: "Cases" },
+  { href: "/cases/new", icon: FilePlus2, label: "New Case" },
+  { href: "/passports", icon: IdCard, label: "Passports" },
 ];
 
 export default function Sidebar() {
-    const pathname = usePathname();
+  const pathname = usePathname();
 
-    return (
-        <aside
-            className="glass-card flex flex-col"
-            style={{
-                width: 240,
-                minHeight: "100vh",
-                borderRadius: 0,
-                borderTop: "none",
-                borderLeft: "none",
-                borderBottom: "none",
-                borderRight: "1px solid rgba(59,130,246,0.12)",
-                background: "rgba(6,13,26,0.7)",
-                flexShrink: 0,
-            }}
+  return (
+    <aside
+      className="sidebar-shell"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        color: "#fafafa",
+      }}
+    >
+      <div style={{ padding: "24px 18px 18px" }}>
+        <Link
+          href="/"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 11,
+            color: "inherit",
+            textDecoration: "none",
+          }}
         >
-            {/* Logo */}
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              display: "grid",
+              placeItems: "center",
+              background: "#f7f5f0",
+              color: "var(--charcoal)",
+            }}
+          >
+            <Scale size={19} strokeWidth={1.75} />
+          </div>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1 }}>
+              LexNet
+            </div>
             <div
-                style={{
-                    padding: "28px 24px 24px",
-                    borderBottom: "1px solid rgba(59,130,246,0.1)",
-                }}
+              style={{
+                marginTop: 4,
+                color: "rgba(250,250,250,0.55)",
+                fontSize: 11,
+                fontWeight: 600,
+              }}
             >
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div
-                        style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 10,
-                            background: "linear-gradient(135deg, #3B82F6, #10B981)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                            boxShadow: "0 4px 12px rgba(59,130,246,0.3)",
-                        }}
-                    >
-                        <Scales size={20} weight="duotone" color="#fff" />
-                    </div>
-                    <div>
-                        <div
-                            style={{
-                                fontWeight: 700,
-                                fontSize: 16,
-                                letterSpacing: "-0.3px",
-                                color: "#E2E8F0",
-                            }}
-                        >
-                            LexNet
-                        </div>
-                        <div style={{ fontSize: 10, color: "#475569", fontWeight: 500 }}>
-                            Escrow Protocol
-                        </div>
-                    </div>
-                </div>
+              Commerce Trust
             </div>
+          </div>
+        </Link>
+      </div>
 
-            {/* Nav */}
-            <nav style={{ flex: 1, padding: "16px 12px" }}>
-                {navItems.map(({ href, icon: Icon, label }) => {
-                    const isActive = pathname === href;
-                    return (
-                        <Link
-                            key={href}
-                            href={href}
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 10,
-                                padding: "10px 12px",
-                                borderRadius: 10,
-                                marginBottom: 4,
-                                textDecoration: "none",
-                                fontWeight: 500,
-                                fontSize: 14,
-                                transition: "background 0.15s, color 0.15s",
-                                background: isActive
-                                    ? "rgba(59,130,246,0.12)"
-                                    : "transparent",
-                                color: isActive ? "#60A5FA" : "#94A3B8",
-                                borderLeft: isActive ? "2px solid #3B82F6" : "2px solid transparent",
-                            }}
-                        >
-                            <Icon
-                                size={18}
-                                weight={isActive ? "fill" : "regular"}
-                                color={isActive ? "#60A5FA" : "#94A3B8"}
-                            />
-                            {label}
-                        </Link>
-                    );
-                })}
+      <nav style={{ flex: 1, padding: "10px 10px" }}>
+        {navItems.map(({ href, icon: Icon, label }) => {
+          const isActive =
+            pathname === href || (href !== "/" && pathname.startsWith(href));
 
-                {/* Create Escrow Button */}
-                <Link
-                    href="/create"
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        padding: "10px 12px",
-                        borderRadius: 10,
-                        marginTop: 8,
-                        textDecoration: "none",
-                        fontWeight: 600,
-                        fontSize: 14,
-                        background: "rgba(59,130,246,0.15)",
-                        color: "#60A5FA",
-                        border: "1px solid rgba(59,130,246,0.25)",
-                        transition: "background 0.15s, border-color 0.15s",
-                    }}
-                >
-                    <Plus size={18} weight="bold" />
-                    New Escrow
-                </Link>
-            </nav>
-
-            {/* Wallet Connect */}
-            <div style={{ padding: "0 16px 16px", display: "flex", justifyContent: "center" }}>
-                <ConnectButton
-                    showBalance={false}
-                    chainStatus="icon"
-                    accountStatus={{
-                        smallScreen: 'avatar',
-                        largeScreen: 'full',
-                    }}
-                />
-            </div>
-
-            {/* Footer */}
-            <div
-                style={{
-                    padding: "16px 20px",
-                    borderTop: "1px solid rgba(59,130,246,0.1)",
-                }}
+          return (
+            <Link
+              key={href}
+              href={href}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                minHeight: 40,
+                marginBottom: 4,
+                padding: "0 12px",
+                borderRadius: 8,
+                color: isActive ? "#ffffff" : "rgba(250,250,250,0.64)",
+                background: isActive ? "rgba(15,118,110,0.34)" : "transparent",
+                border: isActive
+                  ? "1px solid rgba(45,212,191,0.24)"
+                  : "1px solid transparent",
+                textDecoration: "none",
+                fontSize: 13,
+                fontWeight: 700,
+                transition: "background 0.16s ease, color 0.16s ease",
+              }}
             >
-                {/* GenLayer Badge */}
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "8px 12px",
-                        borderRadius: 8,
-                        background: "rgba(16,185,129,0.08)",
-                        border: "1px solid rgba(16,185,129,0.2)",
-                        marginBottom: 12,
-                    }}
-                >
-                    <Lightning size={14} weight="fill" color="#34D399" />
-                    <span style={{ fontSize: 11, color: "#34D399", fontWeight: 500 }}>
-                        Powered by GenLayer AI
-                    </span>
-                </div>
-                <a
-                    href="https://github.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        color: "#475569",
-                        fontSize: 12,
-                        textDecoration: "none",
-                        transition: "color 0.15s",
-                    }}
-                >
-                    <GithubLogo size={14} />
-                    View on GitHub
-                </a>
+              <Icon size={17} strokeWidth={1.75} />
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div style={{ padding: 14, display: "grid", gap: 12 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 9,
+            padding: "10px 11px",
+            borderRadius: 8,
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <Zap size={15} color="#5eead4" fill="#5eead4" strokeWidth={1.75} />
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 800 }}>Local MVP</div>
+            <div style={{ color: "rgba(250,250,250,0.54)", fontSize: 11 }}>
+              GenLayer Ready
             </div>
-        </aside>
-    );
+          </div>
+        </div>
+
+        {isWalletConnectConfigured ? (
+          <ConnectButton
+            chainStatus="icon"
+            accountStatus="address"
+            showBalance={false}
+          />
+        ) : (
+          <div
+            style={{
+              padding: "10px 11px",
+              borderRadius: 8,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: "rgba(250,250,250,0.62)",
+              fontSize: 11,
+              lineHeight: 1.45,
+              fontWeight: 700,
+            }}
+          >
+            Set NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID to enable wallet connect.
+          </div>
+        )}
+      </div>
+    </aside>
+  );
 }
