@@ -20,6 +20,7 @@ import {
   checkRateLimit,
   resetRateLimitForTests,
 } from "../src/lib/platform/api";
+import { isDemoOperatorRequest } from "../src/lib/platform/auth";
 import { createCommerceCase } from "../src/lib/lexnet-domain";
 import type { CommerceCase } from "../src/lib/lexnet-types";
 
@@ -240,21 +241,54 @@ test("buildSecurityStatus reports configured and missing environment settings", 
   ]);
 });
 
-test("checkRateLimit allows calls until the key limit is exhausted", () => {
+test("checkRateLimit blocks the third call within a time window", () => {
   resetRateLimitForTests();
 
-  assert.deepEqual(checkRateLimit("case-create", 2), {
+  assert.deepEqual(checkRateLimit("case-create", 2, 60_000, 1_000), {
     allowed: true,
     remaining: 1,
   });
-  assert.deepEqual(checkRateLimit("case-create", 2), {
+  assert.deepEqual(checkRateLimit("case-create", 2, 60_000, 2_000), {
     allowed: true,
     remaining: 0,
   });
-  assert.deepEqual(checkRateLimit("case-create", 2), {
+  assert.deepEqual(checkRateLimit("case-create", 2, 60_000, 3_000), {
     allowed: false,
     remaining: 0,
   });
 
   resetRateLimitForTests();
+});
+
+test("checkRateLimit allows calls after the time window expires", () => {
+  resetRateLimitForTests();
+
+  assert.deepEqual(checkRateLimit("case-create", 2, 60_000, 1_000), {
+    allowed: true,
+    remaining: 1,
+  });
+  assert.deepEqual(checkRateLimit("case-create", 2, 60_000, 2_000), {
+    allowed: true,
+    remaining: 0,
+  });
+  assert.deepEqual(checkRateLimit("case-create", 2, 60_000, 62_000), {
+    allowed: true,
+    remaining: 1,
+  });
+
+  resetRateLimitForTests();
+});
+
+test("isDemoOperatorRequest rejects missing demo operator header", () => {
+  const request = new Request("https://lexnet.local/api/operators");
+
+  assert.equal(isDemoOperatorRequest(request), false);
+});
+
+test("isDemoOperatorRequest accepts operator-demo header", () => {
+  const request = new Request("https://lexnet.local/api/operators", {
+    headers: { "x-lexnet-operator-id": "operator-demo" },
+  });
+
+  assert.equal(isDemoOperatorRequest(request), true);
 });

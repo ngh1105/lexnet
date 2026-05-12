@@ -100,14 +100,25 @@ export async function writePlatformStore(
   await writeFile(storePath, `${JSON.stringify(store, null, 2)}\n`, "utf8");
 }
 
+let mutationQueue: Promise<void> = Promise.resolve();
+
 export async function mutatePlatformStore(
   mutate: (store: PlatformStore) => void | Promise<void>,
   storePath = DEFAULT_PLATFORM_STORE_PATH,
 ): Promise<PlatformStore> {
-  const store = await readPlatformStore(storePath);
-  await mutate(store);
-  await writePlatformStore(store, storePath);
-  return store;
+  const run = async () => {
+    const store = await readPlatformStore(storePath);
+    await mutate(store);
+    await writePlatformStore(store, storePath);
+    return store;
+  };
+
+  const queued = mutationQueue.then(run, run);
+  mutationQueue = queued.then(
+    () => undefined,
+    () => undefined,
+  );
+  return queued;
 }
 
 export async function appendAuditEvent(

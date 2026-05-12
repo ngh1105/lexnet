@@ -5,17 +5,25 @@ import {
   jsonOk,
   readJsonBody,
 } from "@/lib/platform/api";
-import { getDemoOperator } from "@/lib/platform/auth";
+import { requireDemoOperator } from "@/lib/platform/auth";
 import { mutatePlatformStore, readPlatformStore } from "@/lib/platform/store";
 import type { PublishedPassport } from "@/lib/platform/types";
 
-export async function GET() {
+export async function GET(request: Request) {
   const store = await readPlatformStore();
+  if (!requireDemoOperator(request, store)) {
+    return jsonError("Unauthorized.", 401);
+  }
 
   return jsonOk({ passports: store.publishedPassports });
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  const currentStore = await readPlatformStore();
+  if (!requireDemoOperator(request, currentStore)) {
+    return jsonError("Unauthorized.", 401);
+  }
+
   const rateLimit = checkRateLimit("passports-generate");
   if (!rateLimit.allowed) {
     return jsonError("Rate limit exceeded.", 429);
@@ -43,7 +51,7 @@ export async function POST() {
         : passport;
     });
 
-    const operator = getDemoOperator(draft);
+    const operator = requireDemoOperator(request, draft);
     draft.auditEvents.push({
       id: `audit-${updatedAt.replace(/\D/g, "")}-passport-generated`,
       type: "passport.generated",
@@ -59,6 +67,11 @@ export async function POST() {
 }
 
 export async function PATCH(request: Request) {
+  const currentStore = await readPlatformStore();
+  if (!requireDemoOperator(request, currentStore)) {
+    return jsonError("Unauthorized.", 401);
+  }
+
   const body = await readJsonBody<{ slug?: string; published?: boolean }>(request);
   if (!body || typeof body.slug !== "string" || typeof body.published !== "boolean") {
     return jsonError("Passport slug and published boolean are required.");
@@ -83,7 +96,7 @@ export async function PATCH(request: Request) {
     target.updatedAt = updatedAt;
     passport = { ...target, riskFlags: [...target.riskFlags], caseIds: [...target.caseIds] };
 
-    const operator = getDemoOperator(draft);
+    const operator = requireDemoOperator(request, draft);
     draft.auditEvents.push({
       id: `audit-${updatedAt.replace(/\D/g, "")}-${body.published ? "passport-published" : "passport-unpublished"}`,
       type: body.published ? "passport.published" : "passport.unpublished",

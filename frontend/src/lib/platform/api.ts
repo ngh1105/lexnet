@@ -10,6 +10,7 @@ export interface SecurityStatus {
 
 interface RateLimitState {
   count: number;
+  windowStartedAt: number;
 }
 
 const rateLimits = new Map<string, RateLimitState>();
@@ -33,15 +34,20 @@ export async function readJsonBody<T>(request: Request): Promise<T | null> {
 export function checkRateLimit(
   key: string,
   limit = 20,
+  windowMs = 60_000,
+  now = Date.now(),
 ): { allowed: boolean; remaining: number } {
-  const current = rateLimits.get(key)?.count ?? 0;
+  const current = rateLimits.get(key);
+  const active = current && now - current.windowStartedAt < windowMs
+    ? current
+    : { count: 0, windowStartedAt: now };
 
-  if (current >= limit) {
+  if (active.count >= limit) {
     return { allowed: false, remaining: 0 };
   }
 
-  const next = current + 1;
-  rateLimits.set(key, { count: next });
+  const next = active.count + 1;
+  rateLimits.set(key, { count: next, windowStartedAt: active.windowStartedAt });
 
   return { allowed: true, remaining: Math.max(limit - next, 0) };
 }
