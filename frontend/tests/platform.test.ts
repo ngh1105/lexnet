@@ -62,6 +62,11 @@ import {
   getLexNetContractReadiness,
 } from "../src/lib/lexnet-contract";
 import { chooseDemoDevPort } from "../scripts/dev-port";
+import {
+  findForbiddenStoreSecretKeys,
+  isPathIgnoredByGitOutput,
+  shouldFailPilotCheck,
+} from "../scripts/pilot-check";
 import { createCommerceCase } from "../src/lib/lexnet-domain";
 import type { CommerceCase } from "../src/lib/lexnet-types";
 import type { GenLayerExecutionRecord } from "../src/lib/platform/types";
@@ -77,12 +82,13 @@ async function withTempStore(run: (storePath: string) => Promise<void>) {
   }
 }
 
-test("package scripts expose demo seed, reset, and dev commands", () => {
+test("package scripts expose demo seed, reset, dev, and pilot check commands", () => {
   assert.equal(packageJson.scripts["demo:seed"], "tsx scripts/demo-seed.ts");
   assert.equal(packageJson.scripts["demo:reset"], "tsx scripts/demo-reset.ts");
   assert.equal(packageJson.scripts["demo:dev"], "tsx scripts/demo-dev.ts");
   assert.equal(packageJson.scripts["demo:backup"], "tsx scripts/demo-backup.ts");
   assert.equal(packageJson.scripts["demo:restore"], "tsx scripts/demo-restore.ts");
+  assert.equal(packageJson.scripts["pilot:check"], "tsx scripts/pilot-check.ts");
 });
 
 test("chooseDemoDevPort prefers 3002 when it is available", async () => {
@@ -600,6 +606,38 @@ test("buildDemoPlatformStore publishes deterministic public passports", () => {
   for (const slug of publicSlugs) {
     assert.notEqual(findPublicPassport(store.publishedPassports, slug), null);
   }
+});
+
+test("findForbiddenStoreSecretKeys reports nested forbidden key paths", () => {
+  const findings = findForbiddenStoreSecretKeys({
+    publicValue: "safe",
+    privateKey: "secret",
+    nested: {
+      walletSecret: "secret",
+      deeper: [{ mnemonic: "words" }],
+    },
+    array: [{ seedPhrase: "words" }],
+  }).sort();
+
+  assert.deepEqual(findings, [
+    "array.0.seedPhrase",
+    "nested.deeper.0.mnemonic",
+    "nested.walletSecret",
+    "privateKey",
+  ]);
+});
+
+test("shouldFailPilotCheck fails for secrets and production blockers only", () => {
+  assert.equal(shouldFailPilotCheck("local-demo", [], []), false);
+  assert.equal(shouldFailPilotCheck("pilot", ["pilot warning"], []), false);
+  assert.equal(shouldFailPilotCheck("production", ["Managed persistence is not configured."], []), true);
+  assert.equal(shouldFailPilotCheck("pilot", [], ["privateKey"]), true);
+});
+
+test("isPathIgnoredByGitOutput recognizes ignored git check output", () => {
+  assert.equal(isPathIgnoredByGitOutput(".lexnet-data/store.json\n"), true);
+  assert.equal(isPathIgnoredByGitOutput(""), false);
+  assert.equal(isPathIgnoredByGitOutput("fatal: not a git repository\n"), false);
 });
 
 test("buildPilotSummary counts store records and GenLayer execution statuses", () => {
