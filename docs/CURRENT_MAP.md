@@ -63,6 +63,8 @@ The current implementation is recommendation-only. It does not custody funds, ex
 - `frontend/scripts/dev-port.ts` — selects demo dev ports, preferring `3002` then `3003`.
 - `frontend/scripts/demo-backup.ts` — writes a local `.lexnet-data/store.json` backup.
 - `frontend/scripts/demo-restore.ts` — restores `.lexnet-data/store.json` from a selected local backup.
+- `frontend/scripts/pilot-check.ts` — prints readiness, store counts, git-ignore status, and forbidden secret-like key scan.
+- `frontend/scripts/pilot-prepare.ts` — refuses production mode, resets/seeds deterministic pilot data, and prints pilot summary/readiness.
 - `frontend/tests/lexnet-domain.test.ts` — active domain tests.
 - `frontend/tests/platform.test.ts` — active platform/backend tests.
 
