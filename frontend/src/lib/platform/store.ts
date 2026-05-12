@@ -156,6 +156,25 @@ export function buildPlatformSummary(store: PlatformStore): PlatformSummary {
   };
 }
 
+export async function getPlatformCommerceCases(
+  seedCases: CommerceCase[],
+): Promise<CommerceCase[]> {
+  const store = await readPlatformStore();
+  const byId = new Map<string, CommerceCase>();
+
+  for (const commerceCase of seedCases) {
+    byId.set(commerceCase.id, commerceCase);
+  }
+
+  for (const commerceCase of store.cases) {
+    byId.set(commerceCase.id, commerceCase);
+  }
+
+  return Array.from(byId.values()).sort((left, right) =>
+    right.createdAt.localeCompare(left.createdAt),
+  );
+}
+
 function isPlatformStore(value: unknown): value is PlatformStore {
   if (!isRecord(value)) {
     return false;

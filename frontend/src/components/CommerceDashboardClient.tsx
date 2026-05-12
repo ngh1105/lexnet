@@ -34,6 +34,7 @@ import {
 import { type LexNetContractEnvironment } from "@/lib/lexnet-contract";
 import type { CommerceCase } from "@/lib/lexnet-types";
 import type { LexNetRuntimeMode } from "@/lib/lexnet-service";
+import type { PlatformQueueItem, PlatformSummary } from "@/lib/platform/types";
 
 type CaseFilter = "all" | "active" | "needs-review" | "verified";
 
@@ -48,10 +49,14 @@ export default function CommerceDashboardClient({
   seedCases,
   runtimeMode,
   contractEnvironment,
+  platformSummary,
+  queueItems = [],
 }: {
   seedCases: CommerceCase[];
   runtimeMode: LexNetRuntimeMode;
   contractEnvironment: LexNetContractEnvironment;
+  platformSummary?: PlatformSummary;
+  queueItems?: PlatformQueueItem[];
 }) {
   const [cases, setCases] = useState(seedCases);
   const [filter, setFilter] = useState<CaseFilter>("all");
@@ -283,6 +288,43 @@ export default function CommerceDashboardClient({
                 ))}
               </div>
 
+              {platformSummary ? (
+                <div className="panel" style={{ display: "grid", gap: 12 }}>
+                  <div className="section-label">
+                    <ShieldCheck size={14} strokeWidth={1.75} />
+                    Backend Store
+                  </div>
+                  <div className="inspector-list">
+                    <InspectorRow label="Persisted Cases" value={platformSummary.caseCount.toLocaleString()} />
+                    <InspectorRow label="Reports" value={countReports(cases).toLocaleString()} />
+                    <InspectorRow label="Passports" value={platformSummary.publishedPassportCount.toLocaleString()} />
+                    <InspectorRow label="Audit Events" value={platformSummary.auditEventCount.toLocaleString()} />
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="panel" style={{ display: "grid", gap: 12 }}>
+                <div className="section-label">
+                  <Inbox size={14} strokeWidth={1.75} />
+                  Operator Queue
+                </div>
+                {queueItems.length > 0 ? (
+                  queueItems.slice(0, 3).map((item) => (
+                    <Link key={item.id} href={`/cases/${item.caseId}`} className="priority-card">
+                      <span>
+                        <strong>{item.caseId}</strong>
+                        <small>{formatQueueStatus(item.status)} · {formatQueuePriority(item.priority)} priority</small>
+                      </span>
+                      <ArrowRight size={14} strokeWidth={1.75} />
+                    </Link>
+                  ))
+                ) : (
+                  <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                    No backend queue items yet.
+                  </p>
+                )}
+              </div>
+
               {process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ? (
                 <WalletAwareDashboardReadiness contractEnvironment={contractEnvironment} />
               ) : (
@@ -478,6 +520,18 @@ function InspectorRow({
       </span>
     </div>
   );
+}
+
+function countReports(cases: CommerceCase[]): number {
+  return cases.filter((commerceCase) => commerceCase.verificationReport).length;
+}
+
+function formatQueueStatus(status: PlatformQueueItem["status"]): string {
+  return status.replaceAll("_", " ");
+}
+
+function formatQueuePriority(priority: PlatformQueueItem["priority"]): string {
+  return priority[0].toUpperCase() + priority.slice(1);
 }
 
 function shortId(value: string): string {

@@ -2,6 +2,7 @@ import {
   buildEvidencePack,
 } from "./lexnet-domain";
 import { isLexNetContractReady } from "./lexnet-contract";
+import { getPlatformCommerceCases } from "./platform/store";
 import type { CommerceCase } from "./lexnet-types";
 
 export type LexNetRuntimeMode = "local" | "contract-configured";
@@ -83,11 +84,12 @@ export function getRuntimeMode(): LexNetRuntimeMode {
 }
 
 export async function getAllCommerceCases(): Promise<CommerceCase[]> {
-  return [...CASES];
+  return getPlatformCommerceCases(CASES);
 }
 
 export async function getCommerceCase(
   caseId: string
 ): Promise<CommerceCase | null> {
-  return CASES.find((commerceCase) => commerceCase.id === caseId) ?? null;
+  const commerceCases = await getAllCommerceCases();
+  return commerceCases.find((commerceCase) => commerceCase.id === caseId) ?? null;
 }
