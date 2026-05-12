@@ -1,0 +1,16 @@
+# Vendored SDK - not active source
+genlayer-js/
+
+# Archived docs - stale, out of date
+docs/archive/
+
+# Agent tooling - not project code
+.agent/
+.shared/
+
+# Dependencies
+frontend/node_modules/
+genlayer-js/node_modules/
+
+# Build artifacts
+frontend/.next/

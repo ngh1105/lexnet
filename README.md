@@ -1,110 +1,50 @@
 # LexNet
 
-**Autonomous AI-Driven Arbitration & Escrow Protocol** built on [GenLayer](https://genlayer.org) — the AI-native trust layer for smart contracts.
+LexNet is an AI-verified commerce trust platform for agreements, delivery evidence, AI verification, settlement recommendations, and portable trust history.
 
-LexNet replaces human arbitrators in freelance and digital-service agreements with a **trustless, on-chain AI arbiter** that evaluates deliverables against client requirements and releases escrow automatically.
+The current MVP is recommendation-only. It does not custody funds, execute payouts, or move real value.
 
----
+## Core loop
 
-## Features
+Create commerce case → Submit delivery evidence → Run AI verification → Produce settlement recommendation → Update trust passport.
 
-- **AI evaluation** — On-chain LLM reviews submitted work against the client's requirements document
-- **Web data access** — Contract fetches live URLs (deployed sites, repos) for AI review without oracles or API keys
-- **Subjective consensus** — GenLayer validators reach decentralized consensus on approval via the Equivalence Principle
-- **Full lifecycle** — Create → Fund → Submit work → AI evaluates → Funds released to freelancer or refunded to client
+## Active architecture
 
----
+- **Contract:** `contracts/lexnet_commerce_core.py` defines the commerce case, evidence, verification, recommendation, and trust-passport boundary for GenLayer.
+- **Frontend:** `frontend/src/app/` uses the Next.js App Router for the active product routes.
+- **Domain logic:** `frontend/src/lib/` contains the LexNet commerce, verification, storage, and passport logic.
+- **UI:** `frontend/src/components/` contains the case, evidence, verification, recommendation, and passport interface components.
+- **Local state:** The MVP uses browser `localStorage` with seed cases for local evaluation and demos.
+- **Verification adapter:** The active adapter is deterministic and local today, with the GenLayer boundary prepared for future network-backed verification.
 
-## Architecture
+## Routes
 
-| Component | Description |
-|-----------|-------------|
-| **`contracts/lexnet_escrow.py`** | GenLayer Intelligent Contract (Python/GenVM). Manages escrow state, fees, and AI evaluation flow. |
-| **`frontend/`** | Next.js 16 app with RainbowKit, wagmi, GenLayerJS. Dashboard to create escrows, fund, submit work, view status. |
-| **`genlayer-js/`** | GenLayer JavaScript SDK — wallet connection, contract reads/writes, chain config. |
+- `/` — commerce trust dashboard
+- `/cases/new` — create a commerce case
+- `/cases/[id]` — review a case, submit evidence, run verification, and view recommendations
+- `/passports` — view portable trust history
 
-**Escrow states:** `CREATED` → `FUNDED` → `WORK_SUBMITTED` → (AI evaluation) → `RESOLVED`
-
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for state machine, data schema, and AI consensus design.
-
----
-
-## Prerequisites
-
-- **Node.js** 18+ (for frontend)
-- **Python** 3.11+ (for contract tooling; contract runs in GenVM)
-- **GenLayer** — localnet/studionet for deployment and testing
-- **MetaMask** (or compatible wallet) with GenLayer network configured
-
----
-
-## Getting Started
-
-### 1. Clone & install
-
-```bash
-git clone https://github.com/ngh1105/lexnet.git
-cd lexnet
-```
-
-### 2. Frontend
+## Commands
 
 ```bash
 cd frontend
 npm install
 npm run dev
+npm run test:domain
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Connect wallet to your GenLayer RPC (e.g. localnet).
+## Environment variables
 
-### 3. Contract (GenLayer)
-
-Deploy the Intelligent Contract to your GenLayer network using the GenLayer CLI or SDK. Constructor argument: `fee_basis_points` (e.g. `250` = 2.5% protocol fee).
-
-See [GenLayer docs](https://docs.genlayer.org) for deployment and chain configuration.
-
-### 4. Configure frontend
-
-Point the app to your deployed contract address and GenLayer RPC in `frontend/src/lib/genlayer.ts` (or env) as needed.
-
----
-
-## Project Structure
-
-```
-lexnet/
-├── contracts/
-│   └── lexnet_escrow.py    # GenLayer Intelligent Contract
-├── frontend/               # Next.js + RainbowKit + GenLayerJS
-│   ├── src/
-│   │   ├── app/            # Pages (dashboard, create, escrow detail)
-│   │   ├── components/     # UI (Sidebar, EscrowCard, CreateEscrowModal, …)
-│   │   ├── lib/            # GenLayer client & contract calls
-│   │   └── providers/      # Web3Provider
-│   └── package.json
-├── genlayer-js/            # GenLayer JavaScript SDK (dependency)
-├── ARCHITECTURE.md         # Escrow lifecycle, schema, AI consensus
-├── test-api.js             # API/test utilities
-└── README.md
+```bash
+NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS=
+NEXT_PUBLIC_GENLAYER_RPC_URL=https://studio.genlayer.com/api
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
 ```
 
----
+## Production boundary
 
-## Tech Stack
-
-- **Contract:** Python (GenLayer/GenVM), `gl.nondet` for AI & web access
-- **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS, Framer Motion, Phosphor Icons
-- **Web3:** RainbowKit, wagmi, viem, GenLayerJS
-
----
-
-## Design principle
-
-> **"The contract evaluates. The protocol arbitrates."**
-
-The contract is responsible for escrow lifecycle and producing a deterministic verdict (`is_approved`). The GenLayer protocol handles multi-validator consensus, challenge window, and slashing — no custom appeal/jury logic in the contract.
-
----
+Do not use LexNet to move real funds until payable escrow, settlement transfer paths, dispute appeals, evidence storage policy, lifecycle tests, and security review are complete.
 
 ## License
 
