@@ -68,6 +68,7 @@ import {
   isPathIgnoredByGitOutput,
   shouldFailPilotCheck,
 } from "../scripts/pilot-check";
+import { canRunPilotPrepare } from "../scripts/pilot-prepare";
 import { createCommerceCase } from "../src/lib/lexnet-domain";
 import type { CommerceCase } from "../src/lib/lexnet-types";
 import type { GenLayerExecutionRecord } from "../src/lib/platform/types";
@@ -83,13 +84,14 @@ async function withTempStore(run: (storePath: string) => Promise<void>) {
   }
 }
 
-test("package scripts expose demo seed, reset, dev, and pilot check commands", () => {
+test("package scripts expose demo seed, reset, dev, and pilot commands", () => {
   assert.equal(packageJson.scripts["demo:seed"], "tsx scripts/demo-seed.ts");
   assert.equal(packageJson.scripts["demo:reset"], "tsx scripts/demo-reset.ts");
   assert.equal(packageJson.scripts["demo:dev"], "tsx scripts/demo-dev.ts");
   assert.equal(packageJson.scripts["demo:backup"], "tsx scripts/demo-backup.ts");
   assert.equal(packageJson.scripts["demo:restore"], "tsx scripts/demo-restore.ts");
   assert.equal(packageJson.scripts["pilot:check"], "tsx scripts/pilot-check.ts");
+  assert.equal(packageJson.scripts["pilot:prepare"], "tsx scripts/pilot-prepare.ts");
 });
 
 test("chooseDemoDevPort prefers 3002 when it is available", async () => {
@@ -648,6 +650,12 @@ test("isPathIgnoredByGitOutput recognizes ignored git check output", () => {
   assert.equal(isPathIgnoredByGitOutput(".lexnet-data/store.json\n"), true);
   assert.equal(isPathIgnoredByGitOutput(""), false);
   assert.equal(isPathIgnoredByGitOutput("fatal: not a git repository\n"), false);
+});
+
+test("pilot prepare refuses production mode", () => {
+  assert.equal(canRunPilotPrepare({ LEXNET_RUNTIME_MODE: "local-demo" }), true);
+  assert.equal(canRunPilotPrepare({ LEXNET_RUNTIME_MODE: "pilot" }), true);
+  assert.equal(canRunPilotPrepare({ LEXNET_RUNTIME_MODE: "production" }), false);
 });
 
 test("buildPilotSummary counts store records and GenLayer execution statuses", () => {

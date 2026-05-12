@@ -15,6 +15,7 @@
     "demo:restore": "tsx scripts/demo-restore.ts",
     "demo:genlayer-readiness": "node scripts/genlayer-demo-readiness.mjs",
     "pilot:check": "tsx scripts/pilot-check.ts",
+    "pilot:prepare": "tsx scripts/pilot-prepare.ts",
     "verify:mvp": "npm run test:domain && npm run test:platform && npm run build",
     "verify:skeleton": "npm run verify:mvp"
   },
