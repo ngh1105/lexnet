@@ -73,13 +73,13 @@ function toPublishedPassport(
 
 function buildSlug(passport: TrustPassport): string {
   const role = passport.role;
-  const party = passport.party.toLowerCase();
+  const partyPrefix = passport.party.slice(0, 6).toLowerCase();
   const digest = createHash("sha256")
-    .update(`${role}:${party}`)
+    .update(`${role}:${passport.party}`)
     .digest("hex")
     .slice(0, 8);
 
-  return `${role}-${party.slice(0, 6)}-lexnet-${digest}`;
+  return `${role}-${partyPrefix}-lexnet-${digest}`;
 }
 
 function redactSubject(party: string): string {

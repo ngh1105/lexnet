@@ -164,6 +164,22 @@ test("buildPublishedPassports creates deterministic unpublished private records 
   assert.deepEqual(rebuilt, passports);
 });
 
+test("buildPublishedPassports preserves mixed-case party in deterministic slug digest", () => {
+  const mixedCase: CommerceCase = {
+    ...reviewedCase,
+    buyer: "0xAbCdEf1111111111111111111111111111111111",
+  };
+
+  const [buyerPassport] = buildPublishedPassports(
+    [mixedCase],
+    "workspace-demo",
+    "2026-05-12T12:00:00.000Z",
+  ).filter((passport) => passport.role === "buyer");
+
+  assert.ok(buyerPassport);
+  assert.equal(buyerPassport.slug, "buyer-0xabcd-lexnet-c4018583");
+});
+
 test("buildPublicPassportView redacts private subject and includes value band and publishedAt", () => {
   const [buyerPassport] = buildPublishedPassports(
     [reviewedCase],
