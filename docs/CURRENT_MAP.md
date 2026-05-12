@@ -78,7 +78,7 @@ The current implementation is recommendation-only. It does not custody funds, ex
 
 ## Commands
 
-Run from the repository/worktree root:
+Core commands, run from the repository/worktree root:
 
 ```bash
 npm --prefix frontend run dev
@@ -86,6 +86,15 @@ npm --prefix frontend run test:platform
 npm --prefix frontend run test:domain
 npm --prefix frontend exec tsc -- --noEmit
 npm --prefix frontend run build
+```
+
+Additional active frontend package scripts:
+
+```bash
+npm --prefix frontend run start
+npm --prefix frontend run demo:genlayer-readiness
+npm --prefix frontend run verify:mvp
+npm --prefix frontend run verify:skeleton
 ```
 
 The dev server runs on port `3002`.
@@ -105,6 +114,7 @@ Public frontend configuration:
 ```bash
 NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS=
 NEXT_PUBLIC_GENLAYER_RPC_URL=https://studio.genlayer.com/api
+NEXT_PUBLIC_GENLAYER_NETWORK_LABEL=GenLayer Studio
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
 ```
 
