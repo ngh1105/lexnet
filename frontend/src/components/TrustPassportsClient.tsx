@@ -11,7 +11,10 @@ import {
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import { getMergedCommerceCases } from "@/lib/lexnet-client-store";
-import { buildTrustPassports } from "@/lib/lexnet-domain";
+import {
+  buildPassportScoreBreakdown,
+  buildTrustPassports,
+} from "@/lib/lexnet-domain";
 import type { CommerceCase, TrustPassport } from "@/lib/lexnet-types";
 
 type PassportFilter = "all" | "buyers" | "sellers";
@@ -156,6 +159,7 @@ export default function TrustPassportsClient({
 
 function PassportCard({ passport }: { passport: TrustPassport }) {
   const color = trustColors[passport.trustLevel] ?? "var(--muted)";
+  const breakdown = buildPassportScoreBreakdown(passport);
 
   return (
     <article className="panel" style={{ display: "grid", gap: 16, minWidth: 0, overflow: "hidden" }}>
@@ -197,6 +201,28 @@ function PassportCard({ passport }: { passport: TrustPassport }) {
         <PassportMetric label="Last Activity" value={passport.lastActivityAt.slice(0, 10)} />
       </div>
 
+      <div style={{ display: "grid", gap: 8 }}>
+        <div className="section-label">Score Breakdown</div>
+        <BreakdownRow label="Verification Rate" value={breakdown.verificationRate} />
+        <BreakdownRow label="Score Strength" value={breakdown.scoreStrength} />
+        <BreakdownRow label="Value Weight" value={breakdown.valueWeight} />
+        <BreakdownRow label="Risk Penalty" value={breakdown.riskPenalty} inverted />
+      </div>
+
+      <div
+        style={{
+          padding: 12,
+          borderRadius: 8,
+          border: "1px solid rgba(37,99,235,0.18)",
+          background: "var(--blue-soft)",
+          color: "var(--blue)",
+          fontSize: 12,
+          fontWeight: 800,
+        }}
+      >
+        Public preview ready after backend publishing is enabled.
+      </div>
+
       {passport.riskFlags.length > 0 ? (
         <div style={{ display: "grid", gap: 8 }}>
           {passport.riskFlags.map((flag) => (
@@ -213,6 +239,31 @@ function PassportCard({ passport }: { passport: TrustPassport }) {
         </span>
       )}
     </article>
+  );
+}
+
+function BreakdownRow({
+  label,
+  value,
+  inverted,
+}: {
+  label: string;
+  value: number;
+  inverted?: boolean;
+}) {
+  const width = `${Math.max(0, Math.min(value, 100))}%`;
+  const barColor = inverted ? "var(--red)" : "var(--teal)";
+
+  return (
+    <div style={{ display: "grid", gap: 5 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, color: "var(--muted)", fontSize: 11, fontWeight: 800 }}>
+        <span>{label}</span>
+        <span>{value}/100</span>
+      </div>
+      <div style={{ height: 7, borderRadius: 999, background: "var(--surface-subtle)", border: "1px solid var(--border)", overflow: "hidden" }}>
+        <span style={{ display: "block", width, height: "100%", background: barColor }} />
+      </div>
+    </div>
   );
 }
 
