@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import {
   appendAuditEvent,
   createDefaultPlatformStore,
+  getDashboardPlatformData,
   readPlatformStore,
   writePlatformStore,
 } from "../src/lib/platform/store";
@@ -117,6 +118,52 @@ test("appendAuditEvent records operational metadata", async () => {
     assert.equal(event.id, "audit-20260512120000000-case-created");
     assert.equal(store.auditEvents.length, 1);
     assert.equal(store.auditEvents[0]?.type, "case.created");
+  });
+});
+
+test("getDashboardPlatformData returns seed cases and no backend data when store is corrupt", async () => {
+  await withTempStore(async (storePath) => {
+    await writeFile(storePath, "{ invalid json", "utf8");
+    const seedCases = [reviewedCase];
+
+    const data = await getDashboardPlatformData(seedCases, storePath);
+
+    assert.deepEqual(data.cases, seedCases);
+    assert.equal(data.platformSummary, undefined);
+    assert.deepEqual(data.queueItems, []);
+    assert.equal(data.backendStoreStatus, "unavailable");
+  });
+});
+
+test("getDashboardPlatformData serializes only dashboard queue fields", async () => {
+  await withTempStore(async (storePath) => {
+    const store = createDefaultPlatformStore();
+    store.queue.push({
+      id: "queue-private",
+      workspaceId: "workspace-secret",
+      caseId: "lx-case-reviewed",
+      status: "in_review",
+      priority: "high",
+      assignedOperatorId: "operator-secret",
+      createdAt: "2026-05-12T12:00:00.000Z",
+      updatedAt: "2026-05-12T12:30:00.000Z",
+    });
+    await writePlatformStore(store, storePath);
+
+    const data = await getDashboardPlatformData([reviewedCase], storePath);
+    const serialized = JSON.stringify(data.queueItems);
+
+    assert.equal(data.queueItems.length, 1);
+    assert.deepEqual(Object.keys(data.queueItems[0] ?? {}).sort(), [
+      "caseId",
+      "createdAt",
+      "id",
+      "priority",
+      "status",
+      "updatedAt",
+    ]);
+    assert.equal(serialized.includes("workspace-secret"), false);
+    assert.equal(serialized.includes("operator-secret"), false);
   });
 });
 

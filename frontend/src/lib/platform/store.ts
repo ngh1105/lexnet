@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import type {
+  DashboardQueueItem,
   PlatformAuditEvent,
   PlatformAuditType,
   PlatformEntityType,
@@ -156,23 +157,72 @@ export function buildPlatformSummary(store: PlatformStore): PlatformSummary {
   };
 }
 
-export async function getPlatformCommerceCases(
+export type DashboardPlatformData = {
+  cases: CommerceCase[];
+  platformSummary?: PlatformSummary;
+  queueItems: DashboardQueueItem[];
+  backendStoreStatus: "available" | "unavailable";
+};
+
+export function mergePlatformCommerceCases(
   seedCases: CommerceCase[],
-): Promise<CommerceCase[]> {
-  const store = await readPlatformStore();
+  storeCases: CommerceCase[],
+): CommerceCase[] {
   const byId = new Map<string, CommerceCase>();
 
   for (const commerceCase of seedCases) {
     byId.set(commerceCase.id, commerceCase);
   }
 
-  for (const commerceCase of store.cases) {
+  for (const commerceCase of storeCases) {
     byId.set(commerceCase.id, commerceCase);
   }
 
   return Array.from(byId.values()).sort((left, right) =>
     right.createdAt.localeCompare(left.createdAt),
   );
+}
+
+export function toDashboardQueueItems(
+  queueItems: PlatformStore["queue"],
+): DashboardQueueItem[] {
+  return queueItems.map((item) => ({
+    id: item.id,
+    caseId: item.caseId,
+    status: item.status,
+    priority: item.priority,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+  }));
+}
+
+export async function getDashboardPlatformData(
+  seedCases: CommerceCase[],
+  storePath = DEFAULT_PLATFORM_STORE_PATH,
+): Promise<DashboardPlatformData> {
+  try {
+    const store = await readPlatformStore(storePath);
+
+    return {
+      cases: mergePlatformCommerceCases(seedCases, store.cases),
+      platformSummary: buildPlatformSummary(store),
+      queueItems: toDashboardQueueItems(store.queue),
+      backendStoreStatus: "available",
+    };
+  } catch {
+    return {
+      cases: [...seedCases],
+      queueItems: [],
+      backendStoreStatus: "unavailable",
+    };
+  }
+}
+
+export async function getPlatformCommerceCases(
+  seedCases: CommerceCase[],
+): Promise<CommerceCase[]> {
+  const store = await readPlatformStore();
+  return mergePlatformCommerceCases(seedCases, store.cases);
 }
 
 function isPlatformStore(value: unknown): value is PlatformStore {

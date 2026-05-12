@@ -83,6 +83,10 @@ export function getRuntimeMode(): LexNetRuntimeMode {
   return isLexNetContractReady() ? "contract-configured" : "local";
 }
 
+export function getSeedCommerceCases(): CommerceCase[] {
+  return CASES;
+}
+
 export async function getAllCommerceCases(): Promise<CommerceCase[]> {
   return getPlatformCommerceCases(CASES);
 }

@@ -57,6 +57,11 @@ export interface PlatformQueueItem {
   updatedAt: string;
 }
 
+export type DashboardQueueItem = Pick<
+  PlatformQueueItem,
+  "id" | "caseId" | "status" | "priority" | "createdAt" | "updatedAt"
+>;
+
 export interface PublishedPassport {
   id: string;
   slug: string;

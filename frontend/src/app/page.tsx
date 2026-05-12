@@ -1,15 +1,14 @@
 import CommerceDashboardClient from "@/components/CommerceDashboardClient";
 import { readLexNetContractEnvironment } from "@/lib/lexnet-contract";
-import { getAllCommerceCases, getRuntimeMode } from "@/lib/lexnet-service";
-import { buildPlatformSummary, readPlatformStore } from "@/lib/platform/store";
+import { getSeedCommerceCases, getRuntimeMode } from "@/lib/lexnet-service";
+import { getDashboardPlatformData } from "@/lib/platform/store";
 
 export default async function DashboardPage() {
-  const cases = await getAllCommerceCases();
   const runtimeMode = getRuntimeMode();
   const contractEnvironment = readLexNetContractEnvironment();
-  const platformStore = await readPlatformStore();
-  const platformSummary = buildPlatformSummary(platformStore);
-  const queueItems = platformStore.queue;
+  const { cases, platformSummary, queueItems } = await getDashboardPlatformData(
+    getSeedCommerceCases(),
+  );
 
   return (
     <CommerceDashboardClient

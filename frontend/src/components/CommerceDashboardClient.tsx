@@ -34,7 +34,7 @@ import {
 import { type LexNetContractEnvironment } from "@/lib/lexnet-contract";
 import type { CommerceCase } from "@/lib/lexnet-types";
 import type { LexNetRuntimeMode } from "@/lib/lexnet-service";
-import type { PlatformQueueItem, PlatformSummary } from "@/lib/platform/types";
+import type { DashboardQueueItem, PlatformSummary } from "@/lib/platform/types";
 
 type CaseFilter = "all" | "active" | "needs-review" | "verified";
 
@@ -56,7 +56,7 @@ export default function CommerceDashboardClient({
   runtimeMode: LexNetRuntimeMode;
   contractEnvironment: LexNetContractEnvironment;
   platformSummary?: PlatformSummary;
-  queueItems?: PlatformQueueItem[];
+  queueItems?: DashboardQueueItem[];
 }) {
   const [cases, setCases] = useState(seedCases);
   const [filter, setFilter] = useState<CaseFilter>("all");
@@ -526,11 +526,11 @@ function countReports(cases: CommerceCase[]): number {
   return cases.filter((commerceCase) => commerceCase.verificationReport).length;
 }
 
-function formatQueueStatus(status: PlatformQueueItem["status"]): string {
+function formatQueueStatus(status: DashboardQueueItem["status"]): string {
   return status.replaceAll("_", " ");
 }
 
-function formatQueuePriority(priority: PlatformQueueItem["priority"]): string {
+function formatQueuePriority(priority: DashboardQueueItem["priority"]): string {
   return priority[0].toUpperCase() + priority.slice(1);
 }
 
