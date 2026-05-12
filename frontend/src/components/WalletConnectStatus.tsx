@@ -18,23 +18,24 @@ export default function WalletConnectStatus() {
   return (
     <div
       style={{
-        padding: "10px 11px",
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        minHeight: 38,
+        padding: "0 12px",
         borderRadius: 8,
-        background: "rgba(255,255,255,0.06)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        color: "rgba(250,250,250,0.72)",
-        fontSize: 11,
-        lineHeight: 1.45,
-        fontWeight: 700,
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        color: "var(--ink)",
+        fontSize: 12,
+        lineHeight: 1.25,
+        fontWeight: 800,
+        boxShadow: "var(--shadow-sm)",
       }}
+      title="Add NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID in .env.local to enable the live wallet button."
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#fafafa" }}>
-        <WalletCards size={15} strokeWidth={1.75} />
-        Wallet Connect
-      </div>
-      <div style={{ marginTop: 6 }}>
-        Add NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID in .env.local to enable the live wallet button.
-      </div>
+      <WalletCards size={15} strokeWidth={1.75} />
+      Wallet Setup Needed
     </div>
   );
 }

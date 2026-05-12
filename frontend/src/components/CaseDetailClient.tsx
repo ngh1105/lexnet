@@ -18,6 +18,7 @@ import {
   WalletUnavailableCaseReadiness,
 } from "@/components/WalletAwareReadiness";
 import Sidebar from "@/components/Sidebar";
+import WalletConnectStatus from "@/components/WalletConnectStatus";
 import Metric from "@/components/ui/Metric";
 import Panel from "@/components/ui/Panel";
 import {
@@ -151,6 +152,7 @@ export default function CaseDetailClient({
               <span className="status-chip info">
                 {commerceCase.status.replaceAll("_", " ")}
               </span>
+              <WalletConnectStatus />
               <button
                 type="button"
                 onClick={handleVerifyCase}

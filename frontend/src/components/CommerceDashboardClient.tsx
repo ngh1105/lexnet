@@ -18,6 +18,7 @@ import {
   WalletUnavailableDashboardReadiness,
 } from "@/components/WalletAwareReadiness";
 import Sidebar from "@/components/Sidebar";
+import WalletConnectStatus from "@/components/WalletConnectStatus";
 import StatusChip from "@/components/ui/StatusChip";
 import { getMergedCommerceCases } from "@/lib/lexnet-client-store";
 import {
@@ -126,6 +127,7 @@ export default function CommerceDashboardClient({
                 />
               </label>
               <span className="status-chip info">{runtimeLabel}</span>
+              <WalletConnectStatus />
               <Link href="/cases/new" className="btn-primary">
                 New Case
                 <ArrowUpRight size={15} strokeWidth={1.75} />

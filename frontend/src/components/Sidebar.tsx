@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import WalletConnectStatus from "@/components/WalletConnectStatus";
 import {
   FilePlus2,
   IdCard,
@@ -126,8 +125,6 @@ export default function Sidebar() {
             </div>
           </div>
         </div>
-
-        <WalletConnectStatus />
       </div>
     </aside>
   );
