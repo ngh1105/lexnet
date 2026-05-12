@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start",
     "test:domain": "tsx --test tests/*.test.ts",
+    "test:platform": "tsx --test tests/platform.test.ts",
     "demo:genlayer-readiness": "node scripts/genlayer-demo-readiness.mjs",
-    "verify:mvp": "npm run test:domain && npm run build",
+    "verify:mvp": "npm run test:domain && npm run test:platform && npm run build",
     "verify:skeleton": "npm run verify:mvp"
   },
   "dependencies": {
