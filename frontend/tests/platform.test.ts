@@ -45,6 +45,7 @@ import {
   getLexNetRuntimeMode,
   type PlatformReadinessEnv,
 } from "../src/lib/platform/readiness";
+import { buildPilotSummary } from "../src/lib/platform/pilot-summary";
 import {
   backupPlatformStore,
   restorePlatformStore,
@@ -599,6 +600,44 @@ test("buildDemoPlatformStore publishes deterministic public passports", () => {
   for (const slug of publicSlugs) {
     assert.notEqual(findPublicPassport(store.publishedPassports, slug), null);
   }
+});
+
+test("buildPilotSummary counts store records and GenLayer execution statuses", () => {
+  const store = buildDemoPlatformStore();
+  store.genLayerExecutions.push(
+    {
+      id: "submitted",
+      caseId: "lx-demo-001",
+      method: "verify_case",
+      status: "submitted",
+      contractAddress: "0x1111111111111111111111111111111111111111",
+      rpcUrl: "https://studio.genlayer.com/api",
+      networkLabel: "Studionet",
+      submittedAt: "2026-05-13T00:00:00.000Z",
+      blockingReasons: [],
+    },
+    {
+      id: "state-verified",
+      caseId: "lx-demo-002",
+      method: "verify_case",
+      status: "state_verified",
+      contractAddress: "0x1111111111111111111111111111111111111111",
+      rpcUrl: "https://studio.genlayer.com/api",
+      networkLabel: "Studionet",
+      submittedAt: "2026-05-13T00:00:00.000Z",
+      blockingReasons: [],
+    },
+  );
+
+  const summary = buildPilotSummary(store, { LEXNET_RUNTIME_MODE: "pilot" });
+
+  assert.equal(summary.runtimeMode, "pilot");
+  assert.equal(summary.caseCount, store.cases.length);
+  assert.equal(summary.queueCount, store.queue.length);
+  assert.equal(summary.publishedPassportCount, store.publishedPassports.length);
+  assert.equal(summary.genLayerExecutionCounts.submitted, 1);
+  assert.equal(summary.genLayerExecutionCounts.state_verified, 1);
+  assert.match(summary.blockingReasons.join("\n"), /Local filesystem persistence is pilot infrastructure/);
 });
 
 test("buildDemoPlatformStore does not seed private keys or fake on-chain claims", () => {
