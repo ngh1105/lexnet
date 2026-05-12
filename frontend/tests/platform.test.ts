@@ -15,6 +15,11 @@ import {
   buildPublicPassportView,
   findPublicPassport,
 } from "../src/lib/platform/passports";
+import {
+  buildSecurityStatus,
+  checkRateLimit,
+  resetRateLimitForTests,
+} from "../src/lib/platform/api";
 import { createCommerceCase } from "../src/lib/lexnet-domain";
 import type { CommerceCase } from "../src/lib/lexnet-types";
 
@@ -217,4 +222,39 @@ test("findPublicPassport returns null for unpublished passports and privacy-safe
   assert.equal(publicView.party, "0x1111...1111");
   assert.equal(Object.prototype.hasOwnProperty.call(publicView, "party"), true);
   assert.equal(JSON.stringify(publicView).includes("0x1111111111111111111111111111111111111111"), false);
+});
+
+test("buildSecurityStatus reports configured and missing environment settings", () => {
+  const security = buildSecurityStatus({
+    NEXT_PUBLIC_GENLAYER_RPC_URL: "https://rpc.testnet.genlayer.com",
+    NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: "",
+    NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: "walletconnect-test",
+  });
+
+  assert.equal(security.genLayerRpcUrlConfigured, true);
+  assert.equal(security.contractAddressConfigured, false);
+  assert.equal(security.walletConnectProjectIdConfigured, true);
+  assert.equal(security.storeMode, "filesystem");
+  assert.deepEqual(security.blockingReasons, [
+    "Contract address is not configured.",
+  ]);
+});
+
+test("checkRateLimit allows calls until the key limit is exhausted", () => {
+  resetRateLimitForTests();
+
+  assert.deepEqual(checkRateLimit("case-create", 2), {
+    allowed: true,
+    remaining: 1,
+  });
+  assert.deepEqual(checkRateLimit("case-create", 2), {
+    allowed: true,
+    remaining: 0,
+  });
+  assert.deepEqual(checkRateLimit("case-create", 2), {
+    allowed: false,
+    remaining: 0,
+  });
+
+  resetRateLimitForTests();
 });
