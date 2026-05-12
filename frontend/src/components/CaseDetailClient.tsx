@@ -6,7 +6,9 @@ import {
   ArrowLeft,
   CircleCheck,
   FileSearch,
+  GitBranch,
   Link2,
+  ListChecks,
   Scale,
   ScanSearch,
   ShieldCheck,
@@ -26,7 +28,11 @@ import {
   submitStoredEvidence,
   verifyStoredCommerceCase,
 } from "@/lib/lexnet-client-store";
-import { buildVerificationSummary } from "@/lib/lexnet-domain";
+import {
+  buildCaseTimeline,
+  buildEvidenceQualitySummary,
+  buildVerificationSummary,
+} from "@/lib/lexnet-domain";
 import { type LexNetContractEnvironment } from "@/lib/lexnet-contract";
 import type { CommerceCase } from "@/lib/lexnet-types";
 
@@ -132,6 +138,8 @@ export default function CaseDetailClient({
   const summary = buildVerificationSummary(commerceCase);
   const report = commerceCase.verificationReport;
   const riskFlags = report?.riskFlags ?? [];
+  const timeline = buildCaseTimeline(commerceCase);
+  const evidenceQuality = buildEvidenceQualitySummary(commerceCase);
 
   return (
     <div className="app-shell">
@@ -176,6 +184,20 @@ export default function CaseDetailClient({
                     value={`$${commerceCase.amountReference.toLocaleString()}`}
                   />
                   <Metric label="Created" value={commerceCase.createdAt.slice(0, 10)} />
+                </div>
+              </Panel>
+
+              <Panel title="Case Timeline" icon={<ListChecks size={15} strokeWidth={1.75} />}>
+                <div className="case-timeline">
+                  {timeline.map((item) => (
+                    <div key={item.label} className={`timeline-item ${item.status}`}>
+                      <span />
+                      <div>
+                        <strong>{item.label}</strong>
+                        <small>{item.detail}</small>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </Panel>
 
@@ -237,6 +259,15 @@ export default function CaseDetailClient({
                 )}
               </Panel>
 
+              <Panel title="Evidence Provenance" icon={<GitBranch size={15} strokeWidth={1.75} />}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+                  <Metric label="Quality" value={evidenceQuality.qualityLabel} />
+                  <Metric label="Total Items" value={evidenceQuality.totalItems.toString()} />
+                  <Metric label="Documents" value={evidenceQuality.documentItems.toString()} />
+                  <Metric label="Repositories" value={evidenceQuality.repositoryItems.toString()} />
+                </div>
+              </Panel>
+
               <Panel title="Submit Evidence" icon={<Link2 size={15} strokeWidth={1.75} />}>
                 <form onSubmit={handleSubmitEvidence} style={{ display: "grid", gap: 12 }}>
                   <textarea
@@ -274,6 +305,17 @@ export default function CaseDetailClient({
                   <div style={{ marginTop: 6, color: "var(--muted)", fontSize: 13 }}>
                     {summary.label}
                   </div>
+                </div>
+              </div>
+
+              <div className="panel" style={{ background: "var(--surface)", display: "grid", gap: 10 }}>
+                <div className="section-label">Verification Report</div>
+                <p className="muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.55 }}>
+                  {report?.summary ?? "No verification report has been generated yet."}
+                </p>
+                <div className="inspector-list">
+                  <Metric label="Source" value={report?.source ?? "pending"} />
+                  <Metric label="Reviewed" value={report?.reviewedAt.slice(0, 10) ?? "pending"} />
                 </div>
               </div>
 
