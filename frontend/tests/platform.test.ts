@@ -10,6 +10,13 @@ import {
   readPlatformStore,
   writePlatformStore,
 } from "../src/lib/platform/store";
+import {
+  buildPublishedPassports,
+  buildPublicPassportView,
+  findPublicPassport,
+} from "../src/lib/platform/passports";
+import { createCommerceCase } from "../src/lib/lexnet-domain";
+import type { CommerceCase } from "../src/lib/lexnet-types";
 
 async function withTempStore(run: (storePath: string) => Promise<void>) {
   const dir = await mkdtemp(join(tmpdir(), "lexnet-platform-"));
@@ -105,4 +112,93 @@ test("appendAuditEvent records operational metadata", async () => {
     assert.equal(store.auditEvents.length, 1);
     assert.equal(store.auditEvents[0]?.type, "case.created");
   });
+});
+
+const reviewedCase: CommerceCase = {
+  ...createCommerceCase(
+    {
+      title: "Reviewed platform case",
+      buyer: "0x1111111111111111111111111111111111111111",
+      seller: "0x2222222222222222222222222222222222222222",
+      agreementText: "Agreement text long enough for public passport redaction tests",
+      acceptanceCriteria: ["done"],
+      amountReference: 5200,
+    },
+    { id: "lx-case-reviewed", createdAt: "2026-05-12T10:00:00.000Z" },
+  ),
+  status: "VERIFIED",
+  verificationReport: {
+    verdict: "APPROVE",
+    score: 91,
+    summary: "Complete",
+    recommendation: "Release settlement recommendation",
+    sellerShareBps: 10000,
+    reviewedAt: "2026-05-12T11:00:00.000Z",
+    riskFlags: [],
+    source: "local",
+  },
+};
+
+test("buildPublishedPassports creates deterministic unpublished private records from reviewed cases", () => {
+  const passports = buildPublishedPassports(
+    [reviewedCase],
+    "workspace-demo",
+    "2026-05-12T12:00:00.000Z",
+  );
+  const buyerPassport = passports.find((passport) => passport.role === "buyer");
+
+  assert.equal(passports.length, 2);
+  assert.ok(buyerPassport);
+  assert.match(buyerPassport.slug, /^buyer-0x1111-lexnet-[a-f0-9]{8}$/);
+  assert.equal(buyerPassport.party, "0x1111111111111111111111111111111111111111");
+  assert.equal(buyerPassport.workspaceId, "workspace-demo");
+  assert.equal(buyerPassport.updatedAt, "2026-05-12T12:00:00.000Z");
+  assert.equal(buyerPassport.publishedAt, "");
+  assert.deepEqual(buyerPassport.caseIds, ["lx-case-reviewed"]);
+
+  const rebuilt = buildPublishedPassports(
+    [reviewedCase],
+    "workspace-demo",
+    "2026-05-12T12:00:00.000Z",
+  );
+  assert.deepEqual(rebuilt, passports);
+});
+
+test("buildPublicPassportView redacts private subject and includes value band and publishedAt", () => {
+  const [buyerPassport] = buildPublishedPassports(
+    [reviewedCase],
+    "workspace-demo",
+    "2026-05-12T12:00:00.000Z",
+  ).filter((passport) => passport.role === "buyer");
+  const publishedPassport = {
+    ...buyerPassport,
+    publishedAt: "2026-05-12T12:30:00.000Z",
+  };
+
+  const publicView = buildPublicPassportView(publishedPassport);
+
+  assert.equal(publicView.party, "0x1111...1111");
+  assert.equal(publicView.totalReferencedValue, "$5k-$10k");
+  assert.equal(publicView.publishedAt, "2026-05-12T12:30:00.000Z");
+  assert.equal(JSON.stringify(publicView).includes("0x1111111111111111111111111111111111111111"), false);
+});
+
+test("findPublicPassport returns null for unpublished passports and privacy-safe public views for published passports", () => {
+  const [buyerPassport] = buildPublishedPassports(
+    [reviewedCase],
+    "workspace-demo",
+    "2026-05-12T12:00:00.000Z",
+  ).filter((passport) => passport.role === "buyer");
+
+  assert.equal(findPublicPassport([buyerPassport], buyerPassport.slug), null);
+
+  const publicView = findPublicPassport(
+    [{ ...buyerPassport, publishedAt: "2026-05-12T12:30:00.000Z" }],
+    buyerPassport.slug,
+  );
+
+  assert.ok(publicView);
+  assert.equal(publicView.party, "0x1111...1111");
+  assert.equal(Object.prototype.hasOwnProperty.call(publicView, "party"), true);
+  assert.equal(JSON.stringify(publicView).includes("0x1111111111111111111111111111111111111111"), false);
 });
