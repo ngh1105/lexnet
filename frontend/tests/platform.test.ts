@@ -22,6 +22,10 @@ import {
   findPublicPassport,
 } from "../src/lib/platform/passports";
 import {
+  buildDemoPlatformStore,
+  getDemoSeedPublicPassportSlugs,
+} from "../src/lib/platform/demo-seed";
+import {
   buildSecurityStatus,
   checkRateLimit,
   resetRateLimitForTests,
@@ -266,6 +270,61 @@ test("getSafePassportRecords returns backend passport DTOs with only safe identi
     assert.equal(serialized.includes("workspace-demo"), false);
     assert.equal(serialized.includes("0x1111111111111111111111111111111111111111"), false);
   });
+});
+
+test("buildDemoPlatformStore creates a full command-center demo store", () => {
+  const store = buildDemoPlatformStore();
+
+  assert.equal(store.version, 1);
+  assert.equal(store.workspaces.length, 1);
+  assert.equal(store.workspaces[0]?.name, "LexNet Pilot Command Center");
+  assert.equal(store.operators.length >= 2, true);
+  assert.equal(store.operators.some((operator) => operator.id === "operator-demo"), true);
+  assert.equal(store.memberships.length >= 2, true);
+  assert.equal(store.cases.length >= 5, true);
+  assert.equal(store.cases.length <= 7, true);
+  assert.equal(store.queue.length >= 3, true);
+  assert.equal(store.publishedPassports.length >= 2, true);
+  assert.equal(store.auditEvents.length >= store.cases.length, true);
+
+  const statuses = new Set(store.cases.map((commerceCase) => commerceCase.status));
+  assert.equal(statuses.has("ACTIVE"), true);
+  assert.equal(statuses.has("EVIDENCE_SUBMITTED"), true);
+  assert.equal(statuses.has("UNDER_AI_REVIEW"), true);
+  assert.equal(statuses.has("VERIFIED"), true);
+  assert.equal(statuses.has("REVISION_REQUESTED"), true);
+  assert.equal(statuses.has("SETTLEMENT_RECOMMENDED"), true);
+
+  assert.equal(
+    store.cases.some((commerceCase) => commerceCase.verificationReport?.source === "local"),
+    true,
+  );
+  assert.equal(
+    store.cases.every((commerceCase) => commerceCase.verificationReport?.source !== "genlayer-contract"),
+    true,
+  );
+});
+
+test("buildDemoPlatformStore publishes deterministic public passports", () => {
+  const store = buildDemoPlatformStore();
+  const publicSlugs = getDemoSeedPublicPassportSlugs(store).sort();
+
+  assert.equal(publicSlugs.length >= 2, true);
+  for (const slug of publicSlugs) {
+    assert.notEqual(findPublicPassport(store.publishedPassports, slug), null);
+  }
+});
+
+test("buildDemoPlatformStore does not seed private keys or fake on-chain claims", () => {
+  const serialized = JSON.stringify(buildDemoPlatformStore()).toLowerCase();
+
+  assert.equal(serialized.includes("privatekey"), false);
+  assert.equal(serialized.includes("private_key"), false);
+  assert.equal(serialized.includes("mnemonic"), false);
+  assert.equal(serialized.includes("seed phrase"), false);
+  assert.equal(serialized.includes("api token"), false);
+  assert.equal(serialized.includes("on-chain settlement succeeded"), false);
+  assert.equal(serialized.includes("funds moved"), false);
 });
 
 test("buildSubjectKey distinguishes subjects with identical redaction shape", () => {
