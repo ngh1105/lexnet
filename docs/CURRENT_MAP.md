@@ -38,7 +38,23 @@ The current implementation is recommendation-only. It does not custody funds, ex
 - `frontend/src/components/NewCaseForm.tsx` — new commerce case intake.
 - `frontend/src/components/TrustPassportsClient.tsx` — trust passport list, backend publishing state, and publish/unpublish controls.
 - `frontend/src/components/PublicPassportClient.tsx` — privacy-safe public passport presentation.
+- `frontend/src/components/ContractCallPreview.tsx` — guarded GenLayer payload preview UI.
+- `frontend/src/components/ContractReadinessPanel.tsx` — contract/readiness status panel.
+- `frontend/src/components/WalletAwareReadiness.tsx` — wallet-aware readiness messaging.
+- `frontend/src/components/WalletConnectStatus.tsx` — topbar wallet connect/status control.
 - `frontend/src/components/Sidebar.tsx` — navigation shell.
+- `frontend/src/components/ui/Metric.tsx` — reusable metric card UI.
+- `frontend/src/components/ui/Panel.tsx` — reusable panel shell UI.
+- `frontend/src/components/ui/StatusChip.tsx` — reusable status chip UI.
+
+### Frontend Shell, Providers, and Tests
+
+- `frontend/src/app/layout.tsx` — root layout and Web3Provider wiring.
+- `frontend/src/app/globals.css` — application styling.
+- `frontend/src/providers/Web3Provider.tsx` — RainbowKit/Wagmi provider gate.
+- `frontend/package.json` — dependencies and scripts.
+- `frontend/tests/lexnet-domain.test.ts` — active domain tests.
+- `frontend/tests/platform.test.ts` — active platform/backend tests.
 
 ## Active Routes
 
