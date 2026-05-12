@@ -1,12 +1,15 @@
 import { jsonError } from "./api";
+import { buildAuthReadiness } from "./readiness";
 import type { PlatformOperator, PlatformStore } from "./types";
 
 export const DEMO_OPERATOR_ID = "operator-demo";
 
 type DemoPrivateApiEnv = {
   [key: string]: string | undefined;
+  LEXNET_RUNTIME_MODE?: string;
   LEXNET_ENABLE_DEMO_PRIVATE_API?: string;
   LEXNET_DEMO_PRIVATE_API_TOKEN?: string;
+  LEXNET_PRODUCTION_AUTH_PROVIDER?: string;
 };
 
 export type DemoPrivateApiAuthorization =
@@ -37,6 +40,14 @@ export function authorizeDemoPrivateApi(
 ): DemoPrivateApiAuthorization {
   if (env.LEXNET_ENABLE_DEMO_PRIVATE_API !== "true") {
     return { authorized: false, response: jsonError("Not found.", 404) };
+  }
+
+  const readiness = buildAuthReadiness(env);
+  if (!readiness.mutatingRoutesAllowed && request.method !== "GET" && request.method !== "HEAD") {
+    return {
+      authorized: false,
+      response: jsonError("Production authentication is not configured.", 403),
+    };
   }
 
   if (!isDemoOperatorRequest(request)) {

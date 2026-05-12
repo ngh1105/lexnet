@@ -1116,6 +1116,44 @@ test("authorizeDemoPrivateApi accepts demo header when private demo API flag is 
   }
 });
 
+test("authorizeDemoPrivateApi rejects production demo-private mutation without production auth", () => {
+  const request = new Request("http://localhost/api/passports", {
+    method: "POST",
+    headers: { "x-lexnet-operator-id": "operator-demo" },
+  });
+  const authorization = authorizeDemoPrivateApi(
+    request,
+    {
+      LEXNET_RUNTIME_MODE: "production",
+      LEXNET_ENABLE_DEMO_PRIVATE_API: "true",
+    },
+    createDefaultPlatformStore(),
+  );
+
+  assert.equal(authorization.authorized, false);
+  if (!authorization.authorized) {
+    assert.equal(authorization.response.status, 403);
+  }
+});
+
+test("authorizeDemoPrivateApi allows production POST when production auth provider is configured", () => {
+  const request = new Request("http://localhost/api/passports", {
+    method: "POST",
+    headers: { "x-lexnet-operator-id": "operator-demo" },
+  });
+  const authorization = authorizeDemoPrivateApi(
+    request,
+    {
+      LEXNET_RUNTIME_MODE: "production",
+      LEXNET_ENABLE_DEMO_PRIVATE_API: "true",
+      LEXNET_PRODUCTION_AUTH_PROVIDER: "oauth-provider",
+    },
+    createDefaultPlatformStore(),
+  );
+
+  assert.equal(authorization.authorized, true);
+});
+
 test("authorizeDemoPrivateApi rejects missing bearer token when demo API token is configured", async () => {
   const request = new Request("https://lexnet.local/api/operators", {
     headers: { "x-lexnet-operator-id": "operator-demo" },
