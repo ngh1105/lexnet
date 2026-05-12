@@ -1,27 +1,49 @@
-import { buildPublishedPassports } from "@/lib/platform/passports";
+import { buildPublishedPassports, redactSubject } from "@/lib/platform/passports";
 import {
   checkRateLimit,
   jsonError,
   jsonOk,
   readJsonBody,
 } from "@/lib/platform/api";
-import { requireDemoOperator } from "@/lib/platform/auth";
+import { authorizeDemoPrivateApi, requireDemoOperator } from "@/lib/platform/auth";
 import { mutatePlatformStore, readPlatformStore } from "@/lib/platform/store";
 import type { PublishedPassport } from "@/lib/platform/types";
 
+function buildPrivatePassportDto(passport: PublishedPassport) {
+  return {
+    id: passport.id,
+    workspaceId: passport.workspaceId,
+    slug: passport.slug,
+    redactedSubject: redactSubject(passport.party),
+    role: passport.role,
+    trustLevel: passport.trustLevel,
+    averageScore: passport.averageScore,
+    totalCases: passport.totalCases,
+    verifiedCases: passport.verifiedCases,
+    totalReferencedValue: passport.totalReferencedValue,
+    sourceReportCount: passport.caseIds.length,
+    riskFlags: [...passport.riskFlags],
+    published: Boolean(passport.publishedAt),
+    publishedAt: passport.publishedAt,
+    updatedAt: passport.updatedAt,
+  };
+}
+
 export async function GET(request: Request) {
   const store = await readPlatformStore();
-  if (!requireDemoOperator(request, store)) {
-    return jsonError("Unauthorized.", 401);
+  const authorization = authorizeDemoPrivateApi(request, process.env, store);
+  if (!authorization.authorized) {
+    return authorization.response;
   }
 
-  return jsonOk({ passports: store.publishedPassports });
+  return jsonOk({ passports: store.publishedPassports.map(buildPrivatePassportDto) });
 }
 
 export async function POST(request: Request) {
   const currentStore = await readPlatformStore();
-  if (!requireDemoOperator(request, currentStore)) {
-    return jsonError("Unauthorized.", 401);
+  const authorization = authorizeDemoPrivateApi(request, process.env, currentStore);
+  if (!authorization.authorized) {
+    return authorization.response;
   }
 
   const rateLimit = checkRateLimit("passports-generate");
@@ -63,13 +85,14 @@ export async function POST(request: Request) {
     });
   });
 
-  return jsonOk({ passports: store.publishedPassports });
+  return jsonOk({ passports: store.publishedPassports.map(buildPrivatePassportDto) });
 }
 
 export async function PATCH(request: Request) {
   const currentStore = await readPlatformStore();
-  if (!requireDemoOperator(request, currentStore)) {
-    return jsonError("Unauthorized.", 401);
+  const authorization = authorizeDemoPrivateApi(request, process.env, currentStore);
+  if (!authorization.authorized) {
+    return authorization.response;
   }
 
   const body = await readJsonBody<{ slug?: string; published?: boolean }>(request);
@@ -112,5 +135,5 @@ export async function PATCH(request: Request) {
     return jsonError("Passport not found.", 404);
   }
 
-  return jsonOk({ passport });
+  return jsonOk({ passport: buildPrivatePassportDto(passport) });
 }

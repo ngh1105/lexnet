@@ -1,16 +1,26 @@
-import { jsonError, jsonOk } from "@/lib/platform/api";
-import { requireDemoOperator } from "@/lib/platform/auth";
+import { jsonOk } from "@/lib/platform/api";
+import { authorizeDemoPrivateApi } from "@/lib/platform/auth";
 import { buildPlatformSummary, readPlatformStore } from "@/lib/platform/store";
 
 export async function GET(request: Request) {
   const store = await readPlatformStore();
-  if (!requireDemoOperator(request, store)) {
-    return jsonError("Unauthorized.", 401);
+  const authorization = authorizeDemoPrivateApi(request, process.env, store);
+  if (!authorization.authorized) {
+    return authorization.response;
   }
 
   return jsonOk({
-    workspaces: store.workspaces,
-    memberships: store.memberships,
+    workspaces: store.workspaces.map((workspace) => ({
+      id: workspace.id,
+      name: workspace.name,
+      createdAt: workspace.createdAt,
+    })),
+    memberships: store.memberships
+      .filter((membership) => membership.operatorId === authorization.operator.id)
+      .map((membership) => ({
+        workspaceId: membership.workspaceId,
+        role: membership.role,
+      })),
     summary: buildPlatformSummary(store),
   });
 }

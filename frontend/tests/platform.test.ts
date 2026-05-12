@@ -20,7 +20,7 @@ import {
   checkRateLimit,
   resetRateLimitForTests,
 } from "../src/lib/platform/api";
-import { isDemoOperatorRequest } from "../src/lib/platform/auth";
+import { authorizeDemoPrivateApi, isDemoOperatorRequest } from "../src/lib/platform/auth";
 import { createCommerceCase } from "../src/lib/lexnet-domain";
 import type { CommerceCase } from "../src/lib/lexnet-types";
 
@@ -291,4 +291,32 @@ test("isDemoOperatorRequest accepts operator-demo header", () => {
   });
 
   assert.equal(isDemoOperatorRequest(request), true);
+});
+
+test("authorizeDemoPrivateApi rejects demo header when private demo API flag is missing", () => {
+  const request = new Request("https://lexnet.local/api/operators", {
+    headers: { "x-lexnet-operator-id": "operator-demo" },
+  });
+
+  const result = authorizeDemoPrivateApi(request, {}, createDefaultPlatformStore());
+
+  assert.equal(result.authorized, false);
+  assert.equal(result.response.status, 404);
+});
+
+test("authorizeDemoPrivateApi accepts demo header when private demo API flag is enabled", () => {
+  const request = new Request("https://lexnet.local/api/operators", {
+    headers: { "x-lexnet-operator-id": "operator-demo" },
+  });
+
+  const result = authorizeDemoPrivateApi(
+    request,
+    { LEXNET_ENABLE_DEMO_PRIVATE_API: "true" },
+    createDefaultPlatformStore(),
+  );
+
+  assert.equal(result.authorized, true);
+  if (result.authorized) {
+    assert.equal(result.operator.id, "operator-demo");
+  }
 });

@@ -82,7 +82,7 @@ function buildSlug(passport: TrustPassport): string {
   return `${role}-${partyPrefix}-lexnet-${digest}`;
 }
 
-function redactSubject(party: string): string {
+export function redactSubject(party: string): string {
   if (party.length <= 10) {
     return party;
   }
