@@ -11,7 +11,7 @@ import {
 
 export async function POST(request: Request) {
   const store = await readPlatformStore();
-  const authorization = authorizePlatformMutation(request, process.env, store);
+  const authorization = await authorizePlatformMutation(request, process.env, store);
   if (!authorization.authorized) {
     return authorization.response;
   }

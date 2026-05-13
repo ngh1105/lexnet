@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const currentStore = await readPlatformStore();
-  const authorization = authorizePlatformMutation(request, process.env, currentStore);
+  const authorization = await authorizePlatformMutation(request, process.env, currentStore);
   if (!authorization.authorized) {
     return authorization.response;
   }
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const currentStore = await readPlatformStore();
-  const authorization = authorizePlatformMutation(request, process.env, currentStore);
+  const authorization = await authorizePlatformMutation(request, process.env, currentStore);
   if (!authorization.authorized) {
     return authorization.response;
   }

@@ -26,6 +26,7 @@ export type ProductionAuthFailureCode =
   | "missing_headers"
   | "invalid_timestamp"
   | "stale_timestamp"
+  | "body_too_large"
   | "replayed_nonce"
   | "invalid_signature";
 
@@ -34,6 +35,7 @@ export type ProductionAuthContext =
   | { authorized: false; status: number; code: ProductionAuthFailureCode; reason: string };
 
 const DEFAULT_CLOCK_SKEW_SECONDS = 60;
+const MAX_PRODUCTION_AUTH_BODY_BYTES = 256 * 1024;
 const EMPTY_BODY_SHA256_HEX = createHash("sha256").update("").digest("hex");
 const seenNonces = new Map<string, number>();
 
@@ -70,6 +72,29 @@ function signaturesMatch(expected: string, actual: string): boolean {
   return expectedBuffer.length === actualBuffer.length && timingSafeEqual(expectedBuffer, actualBuffer);
 }
 
+function rejectBodyTooLarge(): ProductionAuthContext {
+  return {
+    authorized: false,
+    status: 413,
+    code: "body_too_large",
+    reason: "Production authentication request body is too large.",
+  };
+}
+
+function parseContentLength(request: Request): number | null {
+  const contentLength = request.headers.get("content-length");
+  if (contentLength === null) {
+    return request.body === null ? 0 : null;
+  }
+
+  if (!/^\d+$/.test(contentLength)) {
+    return null;
+  }
+
+  const parsed = Number(contentLength);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
 function consumeNonce(nonce: string, nowSeconds: number, clockSkewSeconds: number): boolean {
   for (const [seenNonce, expiresAt] of seenNonces) {
     if (expiresAt <= nowSeconds) {
@@ -85,6 +110,38 @@ function consumeNonce(nonce: string, nowSeconds: number, clockSkewSeconds: numbe
   return true;
 }
 
+async function hashRequestBody(request: Request): Promise<{ ok: true; hash: string } | { ok: false }> {
+  const clonedRequest = request.clone();
+  if (clonedRequest.body === null) {
+    return { ok: true, hash: EMPTY_BODY_SHA256_HEX };
+  }
+
+  const reader = clonedRequest.body.getReader();
+  const hash = createHash("sha256");
+  let bytesRead = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      bytesRead += value.byteLength;
+      if (bytesRead > MAX_PRODUCTION_AUTH_BODY_BYTES) {
+        void reader.cancel().catch(() => undefined);
+        return { ok: false };
+      }
+
+      hash.update(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return { ok: true, hash: hash.digest("hex") };
+}
+
 export function resetProductionAuthNonceCacheForTests(): void {
   seenNonces.clear();
 }
@@ -93,11 +150,11 @@ export function isProductionAuthConfigured(env: ProductionAuthEnv): boolean {
   return env.LEXNET_PRODUCTION_AUTH_MODE === "trusted-header" && Boolean(env.LEXNET_PRODUCTION_AUTH_SECRET);
 }
 
-export function resolveProductionAuthContext(
+export async function resolveProductionAuthContext(
   request: Request,
   env: ProductionAuthEnv,
   nowSeconds = Math.floor(Date.now() / 1000),
-): ProductionAuthContext {
+): Promise<ProductionAuthContext> {
   if (env.LEXNET_PRODUCTION_AUTH_MODE !== "trusted-header") {
     return {
       authorized: false,
@@ -149,6 +206,25 @@ export function resolveProductionAuthContext(
       status: 401,
       code: "stale_timestamp",
       reason: "Production authentication timestamp is outside the allowed window.",
+    };
+  }
+
+  const contentLength = parseContentLength(request);
+  if (contentLength === null || contentLength > MAX_PRODUCTION_AUTH_BODY_BYTES) {
+    return rejectBodyTooLarge();
+  }
+
+  const bodyHash = await hashRequestBody(request);
+  if (!bodyHash.ok) {
+    return rejectBodyTooLarge();
+  }
+
+  if (bodySha256Hex !== bodyHash.hash) {
+    return {
+      authorized: false,
+      status: 401,
+      code: "invalid_signature",
+      reason: "Production authentication signature is invalid.",
     };
   }
 

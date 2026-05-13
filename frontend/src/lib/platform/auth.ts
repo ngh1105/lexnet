@@ -74,12 +74,12 @@ export function authorizeDemoPrivateApi(
   return { authorized: true, operator };
 }
 
-export function authorizePlatformMutation(
+export async function authorizePlatformMutation(
   request: Request,
   env: DemoPrivateApiEnv,
   store: PlatformStore,
   nowSeconds?: number,
-): PlatformMutationAuthorization {
+): Promise<PlatformMutationAuthorization> {
   if (getLexNetRuntimeMode(env) !== "production") {
     const authorization = authorizeDemoPrivateApi(request, env, store);
     return authorization.authorized
@@ -87,7 +87,7 @@ export function authorizePlatformMutation(
       : authorization;
   }
 
-  const context = resolveProductionAuthContext(request, env, nowSeconds);
+  const context = await resolveProductionAuthContext(request, env, nowSeconds);
   if (!context.authorized) {
     return { authorized: false, response: jsonError(context.reason, context.status) };
   }

@@ -7,8 +7,8 @@ import { buildPlatformSummary, mutatePlatformStore } from "@/lib/platform/store"
 export async function GET(request: Request) {
   const exportedAt = new Date().toISOString();
   let unauthorizedResponse: Response | null = null;
-  const store = await mutatePlatformStore((draft) => {
-    const authorization = authorizePlatformMutation(request, process.env, draft);
+  const store = await mutatePlatformStore(async (draft) => {
+    const authorization = await authorizePlatformMutation(request, process.env, draft);
     if (!authorization.authorized) {
       unauthorizedResponse = authorization.response;
       return;
