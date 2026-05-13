@@ -106,8 +106,8 @@ async function main() {
 
   console.log("LexNet pilot readiness check");
   console.log(`Runtime mode: ${readiness.runtimeMode}`);
-  console.log(`Auth status: production auth configured=${readiness.auth.productionAuthConfigured}; demo private API enabled=${readiness.auth.demoPrivateApiEnabled}; mutating routes allowed=${readiness.auth.mutatingRoutesAllowed}`);
-  console.log(`Persistence status: ${readiness.persistence.mode}; filesystem allowed=${readiness.persistence.filesystemPersistenceAllowed}; managed configured=${readiness.persistence.managedPersistenceConfigured}`);
+  console.log(`Auth status: production auth configured=${readiness.auth.productionAuthConfigured}; production auth enforced=${readiness.auth.productionAuthEnforced}; demo private API enabled=${readiness.auth.demoPrivateApiEnabled}; mutating routes allowed=${readiness.auth.mutatingRoutesAllowed}`);
+  console.log(`Persistence status: ${readiness.persistence.mode}; filesystem allowed=${readiness.persistence.filesystemPersistenceAllowed}; managed configured=${readiness.persistence.managedPersistenceConfigured}; managed enforced=${readiness.persistence.managedPersistenceEnforced}`);
   console.log(`Evidence policy status: public HTTPS only=${readiness.evidencePolicy.allowPublicHttpsOnly}; raw evidence storage=${readiness.evidencePolicy.rawEvidenceStorage}; retention configured=${readiness.evidencePolicy.retentionPolicyConfigured}`);
   console.log(`GenLayer readiness: rpc=${readiness.genLayer.rpcUrlConfigured}; contract=${readiness.genLayer.contractAddressConfigured}; walletConnect=${readiness.genLayer.walletConnectProjectIdConfigured}; state verification capable=${readiness.genLayer.stateVerificationCapable}; network=${readiness.genLayer.networkLabel}`);
   console.log(`.lexnet-data git ignore status: ${storeIgnored ? "ignored" : "not ignored"}`);

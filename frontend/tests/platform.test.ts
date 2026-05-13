@@ -175,6 +175,28 @@ test("buildAuthReadiness allows pilot demo-private mode but reports production a
   assert.match(readiness.blockingReasons.join("\n"), /Production authentication is not configured/);
 });
 
+test("buildAuthReadiness distinguishes configured from enforced production auth", () => {
+  const providerOnly = buildAuthReadiness({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_PRODUCTION_AUTH_PROVIDER: "oauth-provider",
+  });
+
+  assert.equal(providerOnly.productionAuthConfigured, true);
+  assert.equal(providerOnly.productionAuthEnforced, false);
+  assert.equal(providerOnly.mutatingRoutesAllowed, false);
+
+  const enforced = buildAuthReadiness({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_SECRET: "secret",
+  });
+
+  assert.equal(enforced.productionAuthConfigured, true);
+  assert.equal(enforced.productionAuthEnforced, true);
+  assert.equal(enforced.productionAuthMode, "trusted-header");
+  assert.equal(enforced.mutatingRoutesAllowed, true);
+});
+
 test("buildPersistenceReadiness requires managed persistence in production", () => {
   const missing = buildPersistenceReadiness({ LEXNET_RUNTIME_MODE: "production" });
   assert.equal(missing.mode, "managed-missing");
@@ -320,17 +342,11 @@ test("buildEvidencePolicyStatus requires retention policy in production", () => 
   assert.match(readiness.blockingReasons.join("\n"), /Evidence retention policy is not configured/);
 });
 
-test("buildPlatformReadinessStatus omits raw secret values and connection strings", () => {
+test("buildPlatformReadinessStatus includes enforcement blockers in production", () => {
   const env: PlatformReadinessEnv = {
     LEXNET_RUNTIME_MODE: "production",
-    LEXNET_ENABLE_DEMO_PRIVATE_API: "true",
-    LEXNET_DEMO_PRIVATE_API_TOKEN: "secret-token-value",
     LEXNET_PRODUCTION_AUTH_PROVIDER: "oauth-provider",
     LEXNET_MANAGED_DATABASE_URL: "postgres://user:password@example.com/db",
-    LEXNET_EVIDENCE_RETENTION_POLICY: "90-days",
-    NEXT_PUBLIC_GENLAYER_RPC_URL: "https://studio.genlayer.com/api",
-    NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: "0x1111111111111111111111111111111111111111",
-    NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: "walletconnect-secret",
   };
 
   const status = buildPlatformReadinessStatus(env);
@@ -338,12 +354,14 @@ test("buildPlatformReadinessStatus omits raw secret values and connection string
 
   assert.equal(status.runtimeMode, "production");
   assert.equal(status.auth.productionAuthConfigured, true);
-  assert.equal(Object.prototype.hasOwnProperty.call(status.auth, "productionAuthProvider"), false);
+  assert.equal(status.auth.productionAuthEnforced, false);
   assert.equal(status.persistence.managedPersistenceConfigured, true);
-  assert.equal(serialized.includes("secret-token-value"), false);
+  assert.equal(status.persistence.managedPersistenceEnforced, false);
+  assert.match(status.productionBlockers.join("\n"), /Production authentication enforcement is not configured/);
+  assert.match(status.productionBlockers.join("\n"), /Managed persistence adapter is not implemented/);
+  assert.equal(Object.prototype.hasOwnProperty.call(status.auth, "productionAuthProvider"), false);
   assert.equal(serialized.includes("oauth-provider"), false);
   assert.equal(serialized.includes("password@example.com"), false);
-  assert.equal(serialized.includes("walletconnect-secret"), false);
 });
 
 test("buildGenLayerReadinessStatus requires explicit public RPC and contract configuration", () => {
