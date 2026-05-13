@@ -32,6 +32,9 @@ The current implementation is recommendation-only. It does not custody funds, ex
 - `frontend/src/lib/platform/passports.ts` — private passport generation, stable subject keys, public redaction, value banding, and public lookup.
 - `frontend/src/lib/platform/api.ts` — shared JSON responses, request parsing, security status, and lightweight rate limiting.
 - `frontend/src/lib/platform/auth.ts` — demo-private operator authorization helpers. This is not production OAuth.
+- `frontend/src/lib/platform/production-auth.ts` — production trusted-header HMAC verification for gateway-signed operator context.
+- `frontend/src/lib/platform/persistence-adapter.ts` — persistence adapter status for filesystem versus future managed database backends.
+- `frontend/src/lib/platform/evidence-policy.ts` — evidence URL policy and retention configuration enforcement.
 - `frontend/src/lib/platform/readiness.ts` — runtime mode, auth, persistence, evidence policy, GenLayer readiness, and public-safe security status helpers.
 - `frontend/src/lib/platform/pilot-summary.ts` — pilot/package summary counts using platform store data and readiness helpers.
 
@@ -146,12 +149,15 @@ LEXNET_RUNTIME_MODE=local-demo
 LEXNET_ENABLE_DEMO_PRIVATE_API=true
 LEXNET_DEMO_PRIVATE_API_TOKEN=
 LEXNET_PRODUCTION_AUTH_PROVIDER=
+LEXNET_PRODUCTION_AUTH_MODE=off
+LEXNET_PRODUCTION_AUTH_SECRET=
+LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS=300
 LEXNET_MANAGED_DATABASE_URL=
 LEXNET_MANAGED_PERSISTENCE_PROVIDER=
 LEXNET_EVIDENCE_RETENTION_POLICY=
 ```
 
-Demo-private API calls also require header `x-lexnet-operator-id: operator-demo`. If `LEXNET_DEMO_PRIVATE_API_TOKEN` is set, include `Authorization: Bearer <token>` as well.
+Demo-private API calls also require header `x-lexnet-operator-id: operator-demo`. If `LEXNET_DEMO_PRIVATE_API_TOKEN` is set, include `Authorization: Bearer <token>` as well. Production trusted-header mode requires gateway-signed operator headers; do not place real secrets in docs or committed env files.
 
 ## Case State Machine
 
