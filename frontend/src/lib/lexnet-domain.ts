@@ -1,3 +1,5 @@
+import { evaluateEvidenceUrlPolicy } from "./platform/evidence-policy";
+
 import type {
   CaseTimelineItem,
   CommerceCase,
@@ -30,22 +32,7 @@ const SETTLEMENT_READY_STATUSES = new Set([
 ]);
 
 export function normalizeEvidenceUrls(urls: string[]): string[] {
-  const seen = new Set<string>();
-  const normalized: string[] = [];
-
-  for (const rawUrl of urls) {
-    const url = rawUrl.trim();
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      continue;
-    }
-    if (seen.has(url)) {
-      continue;
-    }
-    seen.add(url);
-    normalized.push(url);
-  }
-
-  return normalized;
+  return evaluateEvidenceUrlPolicy(urls).acceptedUrls;
 }
 
 export function buildEvidencePack(urls: string[]): EvidencePack {

@@ -87,6 +87,16 @@ test("normalizeEvidenceUrls trims, filters protocol, and deduplicates", () => {
   assert.deepEqual(result, ["https://example.com/a", "http://example.com/b"]);
 });
 
+test("buildEvidencePack includes only public evidence URLs", () => {
+  const pack = buildEvidencePack([
+    "https://example.com/public-proof",
+    "https://localhost/private-proof",
+    "https://192.168.1.10/private-proof",
+  ]);
+
+  assert.deepEqual(pack.items.map((item) => item.url), ["https://example.com/public-proof"]);
+});
+
 test("buildEvidencePack returns deterministic checksums and inferred resource types", () => {
   const pack = buildEvidencePack([
     "https://github.com/org/repo",

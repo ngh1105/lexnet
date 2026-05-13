@@ -55,6 +55,7 @@ import {
   type PlatformReadinessEnv,
 } from "../src/lib/platform/readiness";
 import { getPlatformStoreAdapterStatus } from "../src/lib/platform/persistence-adapter";
+import { evaluateEvidenceUrlPolicy } from "../src/lib/platform/evidence-policy";
 import { buildPilotSummary } from "../src/lib/platform/pilot-summary";
 import {
   backupPlatformStore,
@@ -214,6 +215,39 @@ test("getPlatformStoreAdapterStatus blocks production managed adapter until enfo
   assert.equal(status.managedPersistenceConfigured, true);
   assert.equal(status.managedPersistenceEnforced, false);
   assert.match(status.blockingReasons.join("\n"), /Managed persistence adapter is not implemented/);
+});
+
+test("evaluateEvidenceUrlPolicy accepts public HTTPS URLs in production", () => {
+  const result = evaluateEvidenceUrlPolicy(["https://example.com/proof.pdf"], {
+    LEXNET_RUNTIME_MODE: "production",
+  });
+
+  assert.deepEqual(result.acceptedUrls, ["https://example.com/proof.pdf"]);
+  assert.deepEqual(result.rejectedUrls, []);
+});
+
+test("evaluateEvidenceUrlPolicy rejects private and internal hosts in pilot", () => {
+  const result = evaluateEvidenceUrlPolicy(
+    [
+      "https://localhost/proof",
+      "https://192.168.1.10/proof",
+      "https://169.254.169.254/latest/meta-data",
+      "https://service.local/proof",
+    ],
+    { LEXNET_RUNTIME_MODE: "pilot" },
+  );
+
+  assert.deepEqual(result.acceptedUrls, []);
+  assert.equal(result.rejectedUrls.length, 4);
+});
+
+test("evaluateEvidenceUrlPolicy rejects non-HTTPS URLs in production", () => {
+  const result = evaluateEvidenceUrlPolicy(["http://example.com/proof"], {
+    LEXNET_RUNTIME_MODE: "production",
+  });
+
+  assert.deepEqual(result.acceptedUrls, []);
+  assert.match(result.rejectedUrls[0]?.reason ?? "", /HTTPS/);
 });
 
 test("buildPersistenceReadiness distinguishes configured from enforced managed persistence", () => {
