@@ -97,6 +97,15 @@ test("buildEvidencePack includes only public evidence URLs", () => {
   assert.deepEqual(pack.items.map((item) => item.url), ["https://example.com/public-proof"]);
 });
 
+test("buildEvidencePack requires HTTPS evidence in production", () => {
+  const pack = buildEvidencePack([
+    "http://example.com/plain-proof",
+    "https://example.com/secure-proof",
+  ], { LEXNET_RUNTIME_MODE: "production" });
+
+  assert.deepEqual(pack.items.map((item) => item.url), ["https://example.com/secure-proof"]);
+});
+
 test("buildEvidencePack returns deterministic checksums and inferred resource types", () => {
   const pack = buildEvidencePack([
     "https://github.com/org/repo",

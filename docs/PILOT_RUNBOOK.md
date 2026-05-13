@@ -52,7 +52,7 @@ Use `demo:backup` before destructive resets when you need a local snapshot. Back
 
 ## Trusted-Header Auth Boundary
 
-Future staging gateways can use trusted-header mode by deriving operator context at the edge and signing the operator id, timestamp, and nonce with HMAC. LexNet verifies the signature and clock skew before accepting production mutations. Keep the signing secret only in the gateway/app environment; do not commit it or include real values in runbooks.
+Future staging gateways can use trusted-header mode by deriving operator context at the edge and signing the request method, pathname, operator id, and timestamp with HMAC. LexNet verifies the signature and clock skew before accepting production mutations. Keep the signing secret only in the gateway/app environment; do not commit it or include real values in runbooks.
 
 Phase E hardens the production backbone for auth/readiness/policy checks. It is not a deploy, payment, custody, payout, or settlement-transfer milestone.
 
