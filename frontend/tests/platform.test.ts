@@ -54,6 +54,7 @@ import {
   getLexNetRuntimeMode,
   type PlatformReadinessEnv,
 } from "../src/lib/platform/readiness";
+import { getPlatformStoreAdapterStatus } from "../src/lib/platform/persistence-adapter";
 import { buildPilotSummary } from "../src/lib/platform/pilot-summary";
 import {
   backupPlatformStore,
@@ -185,7 +186,46 @@ test("buildPersistenceReadiness requires managed persistence in production", () 
   });
   assert.equal(configured.mode, "managed-configured");
   assert.equal(configured.managedPersistenceConfigured, true);
-  assert.deepEqual(configured.blockingReasons, []);
+  assert.match(configured.blockingReasons.join("\n"), /Managed persistence adapter is not implemented/);
+});
+
+test("getPlatformStoreAdapterStatus allows filesystem outside production", () => {
+  const status = getPlatformStoreAdapterStatus({ LEXNET_RUNTIME_MODE: "pilot" });
+
+  assert.equal(status.runtimeMode, "pilot");
+  assert.equal(status.mode, "filesystem-local");
+  assert.equal(status.canRead, true);
+  assert.equal(status.canMutate, true);
+  assert.equal(status.managedPersistenceConfigured, false);
+  assert.equal(status.managedPersistenceEnforced, false);
+  assert.match(status.blockingReasons.join("\n"), /Local filesystem persistence is pilot infrastructure, not production infrastructure/);
+});
+
+test("getPlatformStoreAdapterStatus blocks production managed adapter until enforced", () => {
+  const status = getPlatformStoreAdapterStatus({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_MANAGED_PERSISTENCE_PROVIDER: "postgres",
+  });
+
+  assert.equal(status.runtimeMode, "production");
+  assert.equal(status.mode, "managed-required");
+  assert.equal(status.canRead, false);
+  assert.equal(status.canMutate, false);
+  assert.equal(status.managedPersistenceConfigured, true);
+  assert.equal(status.managedPersistenceEnforced, false);
+  assert.match(status.blockingReasons.join("\n"), /Managed persistence adapter is not implemented/);
+});
+
+test("buildPersistenceReadiness distinguishes configured from enforced managed persistence", () => {
+  const readiness = buildPersistenceReadiness({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_MANAGED_DATABASE_URL: "postgres://user:password@example.com/db",
+  });
+
+  assert.equal(readiness.mode, "managed-configured");
+  assert.equal(readiness.managedPersistenceConfigured, true);
+  assert.equal(readiness.managedPersistenceEnforced, false);
+  assert.match(readiness.blockingReasons.join("\n"), /Managed persistence adapter is not implemented/);
 });
 
 test("buildPersistenceReadiness allows pilot filesystem persistence with warning", () => {

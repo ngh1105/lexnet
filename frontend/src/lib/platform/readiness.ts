@@ -1,4 +1,5 @@
 import { getLexNetContractReadiness } from "../lexnet-contract";
+import { getPlatformStoreAdapterStatus } from "./persistence-adapter";
 import { isProductionAuthConfigured, type ProductionAuthMode } from "./production-auth";
 
 export type LexNetRuntimeMode = "local-demo" | "pilot" | "production";
@@ -41,6 +42,7 @@ export interface PersistenceReadiness {
   mode: PlatformPersistenceMode;
   filesystemPersistenceAllowed: boolean;
   managedPersistenceConfigured: boolean;
+  managedPersistenceEnforced: boolean;
   managedPersistenceProviderConfigured: boolean;
   managedDatabaseUrlConfigured: boolean;
   blockingReasons: string[];
@@ -117,18 +119,10 @@ export function buildAuthReadiness(env: PlatformReadinessEnv): AuthReadiness {
 
 export function buildPersistenceReadiness(env: PlatformReadinessEnv): PersistenceReadiness {
   const mode = getLexNetRuntimeMode(env);
+  const adapterStatus = getPlatformStoreAdapterStatus(env);
   const managedDatabaseUrlConfigured = Boolean(env.LEXNET_MANAGED_DATABASE_URL);
   const managedPersistenceProviderConfigured = Boolean(env.LEXNET_MANAGED_PERSISTENCE_PROVIDER);
   const managedPersistenceConfigured = managedDatabaseUrlConfigured || managedPersistenceProviderConfigured;
-  const blockingReasons: string[] = [];
-
-  if (mode === "production" && !managedPersistenceConfigured) {
-    blockingReasons.push("Managed persistence is not configured.");
-  }
-
-  if (mode === "pilot") {
-    blockingReasons.push("Local filesystem persistence is pilot infrastructure, not production infrastructure.");
-  }
 
   return {
     mode: mode === "production"
@@ -136,11 +130,12 @@ export function buildPersistenceReadiness(env: PlatformReadinessEnv): Persistenc
         ? "managed-configured"
         : "managed-missing"
       : "filesystem-local",
-    filesystemPersistenceAllowed: mode !== "production",
+    filesystemPersistenceAllowed: adapterStatus.mode === "filesystem-local" && mode !== "production",
     managedPersistenceConfigured,
+    managedPersistenceEnforced: adapterStatus.managedPersistenceEnforced,
     managedPersistenceProviderConfigured,
     managedDatabaseUrlConfigured,
-    blockingReasons,
+    blockingReasons: adapterStatus.managedPersistenceEnforced ? [] : adapterStatus.blockingReasons,
   };
 }
 
