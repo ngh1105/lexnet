@@ -22,10 +22,10 @@ The dev server prefers `http://localhost:3002` and falls back to `http://localho
 LEXNET_RUNTIME_MODE=pilot
 LEXNET_ENABLE_DEMO_PRIVATE_API=true
 LEXNET_DEMO_PRIVATE_API_TOKEN=
-LEXNET_PRODUCTION_AUTH_PROVIDER=
-LEXNET_PRODUCTION_AUTH_MODE=off
+LEXNET_PRODUCTION_AUTH_PROVIDER= # descriptive only; does not authorize production mutations
+LEXNET_PRODUCTION_AUTH_MODE=off # use trusted-header for production/staging gateway enforcement
 LEXNET_PRODUCTION_AUTH_SECRET=
-LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS=300
+LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS=60
 LEXNET_MANAGED_DATABASE_URL=
 LEXNET_MANAGED_PERSISTENCE_PROVIDER=
 LEXNET_EVIDENCE_RETENTION_POLICY=
@@ -52,7 +52,7 @@ Use `demo:backup` before destructive resets when you need a local snapshot. Back
 
 ## Trusted-Header Auth Boundary
 
-Future staging gateways can use trusted-header mode by deriving operator context at the edge and signing the request method, pathname, operator id, and timestamp with HMAC. LexNet verifies the signature and clock skew before accepting production mutations. Keep the signing secret only in the gateway/app environment; do not commit it or include real values in runbooks.
+Future staging gateways can use trusted-header mode by deriving operator context at the edge and signing the request method, pathname, raw query string, operator id, timestamp, nonce, and request body SHA-256 with HMAC. LexNet verifies the signature, rejects replayed nonces within the clock-skew window, and checks timestamp drift before accepting production mutations. Keep the signing secret only in the gateway/app environment; do not commit it or include real values in runbooks.
 
 Phase E hardens the production backbone for auth/readiness/policy checks. It is not a deploy, payment, custody, payout, or settlement-transfer milestone.
 

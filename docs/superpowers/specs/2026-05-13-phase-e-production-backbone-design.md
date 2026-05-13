@@ -35,7 +35,7 @@ Add a provider-neutral production auth boundary that can be backed by a future a
 ```bash
 LEXNET_PRODUCTION_AUTH_MODE=trusted-header
 LEXNET_PRODUCTION_AUTH_SECRET=
-LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS=300
+LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS=60
 ```
 
 `LEXNET_PRODUCTION_AUTH_PROVIDER` remains a descriptive readiness setting, but it is not sufficient to authorize a production mutation.
@@ -47,23 +47,25 @@ Production mutating requests in `LEXNET_RUNTIME_MODE=production` must include:
 ```http
 x-lexnet-production-operator-id: <operator id>
 x-lexnet-production-auth-timestamp: <unix seconds>
+x-lexnet-production-auth-nonce: <unique request nonce>
+x-lexnet-production-auth-body-sha256: <sha256 hex of request body, optional for empty body>
 x-lexnet-production-auth-signature: <hex hmac sha256>
 ```
 
 The HMAC payload is deterministic:
 
 ```text
-<METHOD>\n<pathname>\n<operator-id>\n<timestamp>
+<METHOD>\n<pathname>\n<query-string>\n<operator-id>\n<timestamp>\n<nonce>\n<body-sha256-hex>
 ```
 
-The signature is `HMAC-SHA256(payload, LEXNET_PRODUCTION_AUTH_SECRET)` encoded as lowercase hex.
+The signature is `HMAC-SHA256(payload, LEXNET_PRODUCTION_AUTH_SECRET)` encoded as lowercase hex. The server rejects reused nonces within the configured clock-skew window and defaults that window to 60 seconds.
 
 ### Rules
 
 - Local demo and pilot mode keep using demo-private auth.
 - Production mode rejects mutating routes unless production auth mode is configured and the HMAC verifies.
 - Production mode must not authorize mutations solely because `LEXNET_PRODUCTION_AUTH_PROVIDER` is set.
-- GET/HEAD demo-private reads can remain available where routes already allow them, but production mutations must use production auth.
+- Public GET/HEAD endpoints can remain unauthenticated only when they are explicitly public, such as `/api/security/status` and `/api/passports/public/[slug]`; demo-private workspace/operator/queue/passport reads remain demo-private pilot endpoints and are not production authorization.
 - Authorization failure must not reveal secrets, signatures, or expected payloads.
 
 ## Persistence Adapter Boundary
@@ -111,7 +113,7 @@ export interface EvidenceUrlPolicyResult {
 - Raw evidence bodies are never fetched or stored.
 - Production accepts public `https://` URLs only.
 - Private/internal hosts are rejected in all runtime modes by default.
-- Local demo and pilot can keep accepting `http://localhost` only if explicitly needed for local tests, but private LAN, loopback IPs, link-local, and metadata hosts must be rejected.
+- Local demo and pilot may accept public `http://` URLs for demos, but they still reject localhost, private LAN, loopback IPs, link-local, and metadata hosts.
 - Existing deterministic evidence checksum behavior must remain stable for accepted URLs.
 
 Private/internal host categories include:

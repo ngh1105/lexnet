@@ -135,7 +135,7 @@ export function buildPersistenceReadiness(env: PlatformReadinessEnv): Persistenc
     managedPersistenceEnforced: adapterStatus.managedPersistenceEnforced,
     managedPersistenceProviderConfigured,
     managedDatabaseUrlConfigured,
-    blockingReasons: adapterStatus.managedPersistenceEnforced ? [] : adapterStatus.blockingReasons,
+    blockingReasons: adapterStatus.blockingReasons,
   };
 }
 

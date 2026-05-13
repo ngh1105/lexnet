@@ -118,7 +118,7 @@ LEXNET_ENABLE_DEMO_PRIVATE_API=true
 LEXNET_DEMO_PRIVATE_API_TOKEN=
 LEXNET_PRODUCTION_AUTH_MODE=off
 LEXNET_PRODUCTION_AUTH_SECRET=
-LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS=300
+LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS=60
 ```
 
 Demo-private API requests also require:
@@ -128,6 +128,8 @@ x-lexnet-operator-id: operator-demo
 ```
 
 If `LEXNET_DEMO_PRIVATE_API_TOKEN` is set, demo-private API requests must also include `Authorization: Bearer <token>`. Leave it blank for local-only demos.
+
+`LEXNET_PRODUCTION_AUTH_MODE` is `off` outside production and `trusted-header` when an upstream gateway signs production mutations. In trusted-header mode, `LEXNET_PRODUCTION_AUTH_SECRET` must be a strong random secret, for example `openssl rand -hex 32`, and must never be empty in production. `LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS` controls the allowed timestamp drift for signed headers; the default is 60 seconds.
 
 Do not commit `.env.local` or private keys.
 

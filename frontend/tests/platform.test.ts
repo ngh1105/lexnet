@@ -43,6 +43,7 @@ import {
 import {
   buildProductionAuthPayload,
   buildProductionAuthSignature,
+  resetProductionAuthNonceCacheForTests,
   resolveProductionAuthContext,
 } from "../src/lib/platform/production-auth";
 import {
@@ -1334,35 +1335,46 @@ test("buildProductionAuthSignature uses deterministic payload canonicalization",
     buildProductionAuthPayload({
       method: "post",
       pathname: "/api/passports",
+      queryString: "publish=true",
       operatorId: "operator-demo",
       timestamp: "1770000000",
+      nonce: "nonce-123",
+      bodySha256Hex: "3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7",
     }),
-    "POST\n/api/passports\noperator-demo\n1770000000",
+    "POST\n/api/passports\npublish=true\noperator-demo\n1770000000\nnonce-123\n3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7",
   );
   assert.equal(
     buildProductionAuthSignature({
       method: "post",
       pathname: "/api/passports",
+      queryString: "publish=true",
       operatorId: "operator-demo",
       timestamp: "1770000000",
+      nonce: "nonce-123",
+      bodySha256Hex: "3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7",
       secret: "production-secret",
     }),
-    "1a4f8db5b3952a3bbaf68202718b737b4330dee32f00c5812b27b1daeed89b26",
+    "ac9f9c2eb871a0fffa0786463147bc0485200607c53465245dd9752732ca446e",
   );
 });
 
 test("resolveProductionAuthContext accepts valid trusted-header HMAC", () => {
+  resetProductionAuthNonceCacheForTests();
   const timestamp = "1770000000";
-  const request = new Request("https://lexnet.example/api/passports", {
+  const nonce = "nonce-valid-context";
+  const request = new Request("https://lexnet.example/api/passports?publish=true", {
     method: "POST",
     headers: {
       "x-lexnet-production-operator-id": "operator-demo",
       "x-lexnet-production-auth-timestamp": timestamp,
+      "x-lexnet-production-auth-nonce": nonce,
       "x-lexnet-production-auth-signature": buildProductionAuthSignature({
         method: "POST",
         pathname: "/api/passports",
+        queryString: "publish=true",
         operatorId: "operator-demo",
         timestamp,
+        nonce,
         secret: "production-secret",
       }),
     },
@@ -1385,12 +1397,90 @@ test("resolveProductionAuthContext accepts valid trusted-header HMAC", () => {
   }
 });
 
+test("resolveProductionAuthContext rejects replayed nonces", () => {
+  resetProductionAuthNonceCacheForTests();
+  const timestamp = "1770000000";
+  const nonce = "nonce-replay";
+  const headers = {
+    "x-lexnet-production-operator-id": "operator-demo",
+    "x-lexnet-production-auth-timestamp": timestamp,
+    "x-lexnet-production-auth-nonce": nonce,
+    "x-lexnet-production-auth-signature": buildProductionAuthSignature({
+      method: "POST",
+      pathname: "/api/passports",
+      operatorId: "operator-demo",
+      timestamp,
+      nonce,
+      secret: "production-secret",
+    }),
+  };
+  const env = {
+    LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
+  };
+
+  assert.equal(resolveProductionAuthContext(
+    new Request("https://lexnet.example/api/passports", { method: "POST", headers }),
+    env,
+    1770000000,
+  ).authorized, true);
+  const replayed = resolveProductionAuthContext(
+    new Request("https://lexnet.example/api/passports", { method: "POST", headers }),
+    env,
+    1770000001,
+  );
+
+  assert.equal(replayed.authorized, false);
+  if (!replayed.authorized) {
+    assert.equal(replayed.code, "replayed_nonce");
+  }
+});
+
+test("resolveProductionAuthContext rejects signatures when query changes", () => {
+  resetProductionAuthNonceCacheForTests();
+  const timestamp = "1770000000";
+  const nonce = "nonce-query-tamper";
+  const request = new Request("https://lexnet.example/api/passports?publish=false", {
+    method: "POST",
+    headers: {
+      "x-lexnet-production-operator-id": "operator-demo",
+      "x-lexnet-production-auth-timestamp": timestamp,
+      "x-lexnet-production-auth-nonce": nonce,
+      "x-lexnet-production-auth-signature": buildProductionAuthSignature({
+        method: "POST",
+        pathname: "/api/passports",
+        queryString: "publish=true",
+        operatorId: "operator-demo",
+        timestamp,
+        nonce,
+        secret: "production-secret",
+      }),
+    },
+  });
+
+  const context = resolveProductionAuthContext(
+    request,
+    {
+      LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+      LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
+    },
+    1770000000,
+  );
+
+  assert.equal(context.authorized, false);
+  if (!context.authorized) {
+    assert.equal(context.code, "invalid_signature");
+  }
+});
+
 test("resolveProductionAuthContext rejects invalid signature without leaking secret", () => {
+  resetProductionAuthNonceCacheForTests();
   const request = new Request("https://lexnet.example/api/passports", {
     method: "POST",
     headers: {
       "x-lexnet-production-operator-id": "operator-demo",
       "x-lexnet-production-auth-timestamp": "1770000000",
+      "x-lexnet-production-auth-nonce": "nonce-invalid-signature",
       "x-lexnet-production-auth-signature": "bad-signature",
     },
   });
@@ -1415,17 +1505,21 @@ test("resolveProductionAuthContext rejects invalid signature without leaking sec
 });
 
 test("resolveProductionAuthContext rejects stale timestamps", () => {
+  resetProductionAuthNonceCacheForTests();
   const timestamp = "1769999000";
+  const nonce = "nonce-stale-timestamp";
   const request = new Request("https://lexnet.example/api/passports", {
     method: "POST",
     headers: {
       "x-lexnet-production-operator-id": "operator-demo",
       "x-lexnet-production-auth-timestamp": timestamp,
+      "x-lexnet-production-auth-nonce": nonce,
       "x-lexnet-production-auth-signature": buildProductionAuthSignature({
         method: "POST",
         pathname: "/api/passports",
         operatorId: "operator-demo",
         timestamp,
+        nonce,
         secret: "production-secret",
       }),
     },
@@ -1539,17 +1633,21 @@ test("authorizePlatformMutation rejects production mutation when only provider n
 });
 
 test("authorizePlatformMutation accepts production mutation with valid production auth", () => {
+  resetProductionAuthNonceCacheForTests();
   const timestamp = "1770000000";
+  const nonce = "nonce-platform-mutation";
   const request = new Request("https://lexnet.example/api/passports", {
     method: "POST",
     headers: {
       "x-lexnet-production-operator-id": "operator-demo",
       "x-lexnet-production-auth-timestamp": timestamp,
+      "x-lexnet-production-auth-nonce": nonce,
       "x-lexnet-production-auth-signature": buildProductionAuthSignature({
         method: "POST",
         pathname: "/api/passports",
         operatorId: "operator-demo",
         timestamp,
+        nonce,
         secret: "production-secret",
       }),
     },

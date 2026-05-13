@@ -139,7 +139,7 @@ These controls do not replace production authentication, managed database storag
 
 The production readiness boundary now reports runtime mode, auth readiness, persistence readiness, evidence policy readiness, GenLayer state verification capability, and production blockers through `/api/security/status` and `pilot:check`.
 
-`LEXNET_RUNTIME_MODE=production` blocks mutating routes unless production auth is enforced. The current production-auth boundary expects a trusted upstream gateway to sign operator headers with HMAC; the app verifies timestamp, signature, and clock skew using `LEXNET_PRODUCTION_AUTH_MODE`, `LEXNET_PRODUCTION_AUTH_SECRET`, and `LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS`.
+`LEXNET_RUNTIME_MODE=production` blocks mutating routes unless production auth is enforced. The current production-auth boundary expects a trusted upstream gateway to sign method, path, query, operator, timestamp, nonce, and body hash headers with HMAC; the app verifies signature, timestamp drift, and nonce replay using `LEXNET_PRODUCTION_AUTH_MODE`, `LEXNET_PRODUCTION_AUTH_SECRET`, and `LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS`.
 
 Persistence status is adapter-aware but still local: filesystem storage remains demo/pilot infrastructure, and no real managed DB adapter is implemented yet. Production readiness also requires configured managed persistence.
 

@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 export type ProductionAuthMode = "trusted-header";
 
@@ -12,8 +12,11 @@ export interface ProductionAuthEnv {
 export interface ProductionAuthSignatureInput {
   method: string;
   pathname: string;
+  queryString?: string;
   operatorId: string;
   timestamp: string;
+  nonce: string;
+  bodySha256Hex?: string;
   secret: string;
 }
 
@@ -23,21 +26,27 @@ export type ProductionAuthFailureCode =
   | "missing_headers"
   | "invalid_timestamp"
   | "stale_timestamp"
+  | "replayed_nonce"
   | "invalid_signature";
 
 export type ProductionAuthContext =
   | { authorized: true; mode: ProductionAuthMode; operatorId: string }
   | { authorized: false; status: number; code: ProductionAuthFailureCode; reason: string };
 
-const DEFAULT_CLOCK_SKEW_SECONDS = 300;
+const DEFAULT_CLOCK_SKEW_SECONDS = 60;
+const EMPTY_BODY_SHA256_HEX = createHash("sha256").update("").digest("hex");
+const seenNonces = new Map<string, number>();
 
 export function buildProductionAuthPayload({
   method,
   pathname,
+  queryString = "",
   operatorId,
   timestamp,
+  nonce,
+  bodySha256Hex = EMPTY_BODY_SHA256_HEX,
 }: Omit<ProductionAuthSignatureInput, "secret">): string {
-  return [method.toUpperCase(), pathname, operatorId, timestamp].join("\n");
+  return [method.toUpperCase(), pathname, queryString, operatorId, timestamp, nonce, bodySha256Hex].join("\n");
 }
 
 export function buildProductionAuthSignature(input: ProductionAuthSignatureInput): string {
@@ -59,6 +68,25 @@ function signaturesMatch(expected: string, actual: string): boolean {
   const expectedBuffer = Buffer.from(expected, "hex");
   const actualBuffer = Buffer.from(actual, "hex");
   return expectedBuffer.length === actualBuffer.length && timingSafeEqual(expectedBuffer, actualBuffer);
+}
+
+function consumeNonce(nonce: string, nowSeconds: number, clockSkewSeconds: number): boolean {
+  for (const [seenNonce, expiresAt] of seenNonces) {
+    if (expiresAt <= nowSeconds) {
+      seenNonces.delete(seenNonce);
+    }
+  }
+
+  if (seenNonces.has(nonce)) {
+    return false;
+  }
+
+  seenNonces.set(nonce, nowSeconds + clockSkewSeconds);
+  return true;
+}
+
+export function resetProductionAuthNonceCacheForTests(): void {
+  seenNonces.clear();
 }
 
 export function isProductionAuthConfigured(env: ProductionAuthEnv): boolean {
@@ -91,9 +119,11 @@ export function resolveProductionAuthContext(
 
   const operatorId = request.headers.get("x-lexnet-production-operator-id") ?? "";
   const timestamp = request.headers.get("x-lexnet-production-auth-timestamp") ?? "";
+  const nonce = request.headers.get("x-lexnet-production-auth-nonce") ?? "";
+  const bodySha256Hex = request.headers.get("x-lexnet-production-auth-body-sha256") ?? EMPTY_BODY_SHA256_HEX;
   const signature = request.headers.get("x-lexnet-production-auth-signature") ?? "";
 
-  if (!operatorId || !timestamp || !signature) {
+  if (!operatorId || !timestamp || !nonce || !signature) {
     return {
       authorized: false,
       status: 401,
@@ -112,7 +142,8 @@ export function resolveProductionAuthContext(
     };
   }
 
-  if (Math.abs(nowSeconds - timestampSeconds) > parseClockSkew(env)) {
+  const clockSkewSeconds = parseClockSkew(env);
+  if (Math.abs(nowSeconds - timestampSeconds) > clockSkewSeconds) {
     return {
       authorized: false,
       status: 401,
@@ -121,12 +152,15 @@ export function resolveProductionAuthContext(
     };
   }
 
-  const { pathname } = new URL(request.url);
+  const { pathname, search } = new URL(request.url);
   const expected = buildProductionAuthSignature({
     method: request.method,
     pathname,
+    queryString: search.startsWith("?") ? search.slice(1) : search,
     operatorId,
     timestamp,
+    nonce,
+    bodySha256Hex,
     secret,
   });
 
@@ -136,6 +170,15 @@ export function resolveProductionAuthContext(
       status: 401,
       code: "invalid_signature",
       reason: "Production authentication signature is invalid.",
+    };
+  }
+
+  if (!consumeNonce(nonce, nowSeconds, clockSkewSeconds)) {
+    return {
+      authorized: false,
+      status: 401,
+      code: "replayed_nonce",
+      reason: "Production authentication nonce has already been used.",
     };
   }
 
