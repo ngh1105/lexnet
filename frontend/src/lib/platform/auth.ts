@@ -1,10 +1,14 @@
 import { jsonError } from "./api";
-import { buildAuthReadiness } from "./readiness";
+import { buildAuthReadiness, getLexNetRuntimeMode } from "./readiness";
+import {
+  resolveProductionAuthContext,
+  type ProductionAuthEnv,
+} from "./production-auth";
 import type { PlatformOperator, PlatformStore } from "./types";
 
 export const DEMO_OPERATOR_ID = "operator-demo";
 
-type DemoPrivateApiEnv = {
+type DemoPrivateApiEnv = ProductionAuthEnv & {
   [key: string]: string | undefined;
   LEXNET_RUNTIME_MODE?: string;
   LEXNET_ENABLE_DEMO_PRIVATE_API?: string;
@@ -14,6 +18,10 @@ type DemoPrivateApiEnv = {
 
 export type DemoPrivateApiAuthorization =
   | { authorized: true; operator: PlatformOperator }
+  | { authorized: false; response: Response };
+
+export type PlatformMutationAuthorization =
+  | { authorized: true; operator: PlatformOperator; authType: "demo-private" | "production" }
   | { authorized: false; response: Response };
 
 export function getDemoOperator(store: PlatformStore): PlatformOperator | undefined {
@@ -64,6 +72,32 @@ export function authorizeDemoPrivateApi(
   }
 
   return { authorized: true, operator };
+}
+
+export function authorizePlatformMutation(
+  request: Request,
+  env: DemoPrivateApiEnv,
+  store: PlatformStore,
+  nowSeconds?: number,
+): PlatformMutationAuthorization {
+  if (getLexNetRuntimeMode(env) !== "production") {
+    const authorization = authorizeDemoPrivateApi(request, env, store);
+    return authorization.authorized
+      ? { authorized: true, operator: authorization.operator, authType: "demo-private" }
+      : authorization;
+  }
+
+  const context = resolveProductionAuthContext(request, env, nowSeconds);
+  if (!context.authorized) {
+    return { authorized: false, response: jsonError(context.reason, context.status) };
+  }
+
+  const operator = store.operators.find((candidate) => candidate.id === context.operatorId);
+  if (!operator) {
+    return { authorized: false, response: jsonError("Unauthorized.", 401) };
+  }
+
+  return { authorized: true, operator, authType: "production" };
 }
 
 export function requireDemoOperator(

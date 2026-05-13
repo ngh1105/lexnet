@@ -35,7 +35,11 @@ import {
   checkRateLimit,
   resetRateLimitForTests,
 } from "../src/lib/platform/api";
-import { authorizeDemoPrivateApi, isDemoOperatorRequest } from "../src/lib/platform/auth";
+import {
+  authorizeDemoPrivateApi,
+  authorizePlatformMutation,
+  isDemoOperatorRequest,
+} from "../src/lib/platform/auth";
 import {
   buildProductionAuthPayload,
   buildProductionAuthSignature,
@@ -1377,6 +1381,63 @@ test("authorizeDemoPrivateApi rejects production POST when only production auth 
   assert.equal(authorization.authorized, false);
   if (!authorization.authorized) {
     assert.equal(authorization.response.status, 403);
+  }
+});
+
+test("authorizePlatformMutation rejects production mutation when only provider name is set", () => {
+  const request = new Request("https://lexnet.example/api/passports", {
+    method: "POST",
+    headers: { "x-lexnet-operator-id": "operator-demo" },
+  });
+
+  const authorization = authorizePlatformMutation(
+    request,
+    {
+      LEXNET_RUNTIME_MODE: "production",
+      LEXNET_ENABLE_DEMO_PRIVATE_API: "true",
+      LEXNET_PRODUCTION_AUTH_PROVIDER: "oauth-provider",
+    },
+    createDefaultPlatformStore(),
+  );
+
+  assert.equal(authorization.authorized, false);
+  if (!authorization.authorized) {
+    assert.equal(authorization.response.status, 403);
+  }
+});
+
+test("authorizePlatformMutation accepts production mutation with valid production auth", () => {
+  const timestamp = "1770000000";
+  const request = new Request("https://lexnet.example/api/passports", {
+    method: "POST",
+    headers: {
+      "x-lexnet-production-operator-id": "operator-demo",
+      "x-lexnet-production-auth-timestamp": timestamp,
+      "x-lexnet-production-auth-signature": buildProductionAuthSignature({
+        method: "POST",
+        pathname: "/api/passports",
+        operatorId: "operator-demo",
+        timestamp,
+        secret: "production-secret",
+      }),
+    },
+  });
+
+  const authorization = authorizePlatformMutation(
+    request,
+    {
+      LEXNET_RUNTIME_MODE: "production",
+      LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+      LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
+    },
+    createDefaultPlatformStore(),
+    1770000000,
+  );
+
+  assert.equal(authorization.authorized, true);
+  if (authorization.authorized) {
+    assert.equal(authorization.operator.id, "operator-demo");
+    assert.equal(authorization.authType, "production");
   }
 });
 

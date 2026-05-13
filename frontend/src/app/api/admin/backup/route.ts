@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { jsonOk } from "@/lib/platform/api";
-import { authorizeDemoPrivateApi } from "@/lib/platform/auth";
+import { authorizePlatformMutation } from "@/lib/platform/auth";
 import { redactSubject } from "@/lib/platform/passports";
 import { buildPlatformSummary, mutatePlatformStore } from "@/lib/platform/store";
 
@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   let actorId = "";
   let unauthorizedResponse: Response | null = null;
   const store = await mutatePlatformStore((draft) => {
-    const authorization = authorizeDemoPrivateApi(request, process.env, draft);
+    const authorization = authorizePlatformMutation(request, process.env, draft);
     if (!authorization.authorized) {
       unauthorizedResponse = authorization.response;
       return;

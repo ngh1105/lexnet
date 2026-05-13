@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { jsonError, jsonOk, readJsonBody } from "@/lib/platform/api";
-import { authorizeDemoPrivateApi } from "@/lib/platform/auth";
+import { authorizePlatformMutation } from "@/lib/platform/auth";
 import { appendGenLayerExecution, readPlatformStore } from "@/lib/platform/store";
 import { createGenLayerClientAdapter, loadGenLayerSdk } from "@/lib/genlayer-client";
 import {
@@ -11,7 +11,7 @@ import {
 
 export async function POST(request: Request) {
   const store = await readPlatformStore();
-  const authorization = authorizeDemoPrivateApi(request, process.env, store);
+  const authorization = authorizePlatformMutation(request, process.env, store);
   if (!authorization.authorized) {
     return authorization.response;
   }

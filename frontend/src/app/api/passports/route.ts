@@ -5,7 +5,7 @@ import {
   jsonOk,
   readJsonBody,
 } from "@/lib/platform/api";
-import { authorizeDemoPrivateApi, requireDemoOperator } from "@/lib/platform/auth";
+import { authorizeDemoPrivateApi, authorizePlatformMutation } from "@/lib/platform/auth";
 import { mutatePlatformStore, readPlatformStore, toSafePassportRecord, toSafePassportRecords } from "@/lib/platform/store";
 import type { PublishedPassport } from "@/lib/platform/types";
 
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const currentStore = await readPlatformStore();
-  const authorization = authorizeDemoPrivateApi(request, process.env, currentStore);
+  const authorization = authorizePlatformMutation(request, process.env, currentStore);
   if (!authorization.authorized) {
     return authorization.response;
   }
@@ -54,11 +54,10 @@ export async function POST(request: Request) {
         : passport;
     });
 
-    const operator = requireDemoOperator(request, draft);
     draft.auditEvents.push({
       id: `audit-${updatedAt.replace(/\D/g, "")}-passport-generated`,
       type: "passport.generated",
-      actorId: operator?.id ?? "system",
+      actorId: authorization.operator.id,
       entityType: "passport",
       entityId: "published-passports",
       detail: "Generated published passport records",
@@ -71,7 +70,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const currentStore = await readPlatformStore();
-  const authorization = authorizeDemoPrivateApi(request, process.env, currentStore);
+  const authorization = authorizePlatformMutation(request, process.env, currentStore);
   if (!authorization.authorized) {
     return authorization.response;
   }
@@ -101,11 +100,10 @@ export async function PATCH(request: Request) {
     target.updatedAt = updatedAt;
     passport = { ...target, riskFlags: [...target.riskFlags], caseIds: [...target.caseIds] };
 
-    const operator = requireDemoOperator(request, draft);
     draft.auditEvents.push({
       id: `audit-${updatedAt.replace(/\D/g, "")}-${body.published ? "passport-published" : "passport-unpublished"}`,
       type: body.published ? "passport.published" : "passport.unpublished",
-      actorId: operator?.id ?? "system",
+      actorId: authorization.operator.id,
       entityType: "passport",
       entityId: target.slug,
       detail: body.published ? "Published trust passport" : "Unpublished trust passport",
