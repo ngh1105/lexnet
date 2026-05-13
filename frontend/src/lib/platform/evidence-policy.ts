@@ -117,12 +117,11 @@ function getPrivateIpv6Reason(host: string): string | null {
     return null;
   }
 
-  if (
-    normalized === "::1" ||
-    normalized.startsWith("fc") ||
-    normalized.startsWith("fd") ||
-    normalized.startsWith("fe80")
-  ) {
+  const firstHextet = Number.parseInt(normalized.split(":", 1)[0] ?? "", 16);
+  const isUniqueLocal = Number.isInteger(firstHextet) && (firstHextet & 0xfe00) === 0xfc00;
+  const isLinkLocal = Number.isInteger(firstHextet) && (firstHextet & 0xffc0) === 0xfe80;
+
+  if (normalized === "::1" || isUniqueLocal || isLinkLocal) {
     return "Evidence URL host must not be private or internal.";
   }
 

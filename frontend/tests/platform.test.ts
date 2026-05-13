@@ -241,6 +241,24 @@ test("evaluateEvidenceUrlPolicy rejects private and internal hosts in pilot", ()
   assert.equal(result.rejectedUrls.length, 4);
 });
 
+test("evaluateEvidenceUrlPolicy rejects IPv6 private and link-local literals", () => {
+  const result = evaluateEvidenceUrlPolicy(
+    [
+      "https://[::1]/proof",
+      "https://[fc00::1]/proof",
+      "https://[fd00::1]/proof",
+      "https://[fe80::1]/proof",
+      "https://[fe90::1]/proof",
+      "https://[febf::1]/proof",
+      "https://[2001:db8::1]/proof",
+    ],
+    { LEXNET_RUNTIME_MODE: "production" },
+  );
+
+  assert.deepEqual(result.acceptedUrls, ["https://[2001:db8::1]/proof"]);
+  assert.equal(result.rejectedUrls.length, 6);
+});
+
 test("evaluateEvidenceUrlPolicy accepts public hosts that resemble IPv6 private prefixes", () => {
   const result = evaluateEvidenceUrlPolicy(
     [
