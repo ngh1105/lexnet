@@ -101,7 +101,7 @@ export function buildAuthReadiness(env: PlatformReadinessEnv): AuthReadiness {
     blockingReasons.push("Production authentication is not configured.");
   }
 
-  if (mode === "production" && !productionAuthEnforced) {
+  if (mode === "production" && productionAuthConfigured && !productionAuthEnforced) {
     blockingReasons.push("Production authentication enforcement is not configured.");
   }
 

@@ -1,4 +1,12 @@
-import { getLexNetRuntimeMode, type LexNetRuntimeMode, type PlatformReadinessEnv } from "./readiness";
+import type { LexNetRuntimeMode, PlatformReadinessEnv } from "./readiness";
+
+function getAdapterRuntimeMode(env: PlatformReadinessEnv): LexNetRuntimeMode {
+  if (env.LEXNET_RUNTIME_MODE === "pilot" || env.LEXNET_RUNTIME_MODE === "production") {
+    return env.LEXNET_RUNTIME_MODE;
+  }
+
+  return "local-demo";
+}
 
 export type PlatformStoreAdapterMode = "filesystem-local" | "managed-required";
 
@@ -13,7 +21,7 @@ export interface PlatformStoreAdapterStatus {
 }
 
 export function getPlatformStoreAdapterStatus(env: PlatformReadinessEnv): PlatformStoreAdapterStatus {
-  const runtimeMode = getLexNetRuntimeMode(env);
+  const runtimeMode = getAdapterRuntimeMode(env);
   const managedPersistenceConfigured = Boolean(
     env.LEXNET_MANAGED_DATABASE_URL || env.LEXNET_MANAGED_PERSISTENCE_PROVIDER,
   );
