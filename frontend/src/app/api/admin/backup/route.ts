@@ -2,20 +2,18 @@ import { randomUUID } from "node:crypto";
 import { jsonOk } from "@/lib/platform/api";
 import { authorizePlatformMutation } from "@/lib/platform/auth";
 import { redactSubject } from "@/lib/platform/passports";
-import { buildPlatformSummary, mutatePlatformStore } from "@/lib/platform/store";
+import { buildPlatformSummary, mutatePlatformStore, readPlatformStore } from "@/lib/platform/store";
 
 export async function GET(request: Request) {
   const exportedAt = new Date().toISOString();
-  let actorId = "";
-  let unauthorizedResponse: Response | null = null;
-  const store = await mutatePlatformStore((draft) => {
-    const authorization = authorizePlatformMutation(request, process.env, draft);
-    if (!authorization.authorized) {
-      unauthorizedResponse = authorization.response;
-      return;
-    }
+  const currentStore = await readPlatformStore();
+  const authorization = authorizePlatformMutation(request, process.env, currentStore);
+  if (!authorization.authorized) {
+    return authorization.response;
+  }
 
-    actorId = authorization.operator.id;
+  const actorId = authorization.operator.id;
+  const store = await mutatePlatformStore((draft) => {
     draft.auditEvents.push({
       id: `audit-${exportedAt.replace(/\D/g, "")}-backup-exported-${randomUUID().slice(0, 8)}`,
       type: "backup.exported",
@@ -26,10 +24,6 @@ export async function GET(request: Request) {
       createdAt: exportedAt,
     });
   });
-
-  if (unauthorizedResponse) {
-    return unauthorizedResponse;
-  }
 
   return jsonOk({
     exportedAt,
