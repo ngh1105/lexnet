@@ -37,6 +37,7 @@ import {
 } from "../src/lib/platform/api";
 import { authorizeDemoPrivateApi, isDemoOperatorRequest } from "../src/lib/platform/auth";
 import {
+  buildProductionAuthPayload,
   buildProductionAuthSignature,
   resolveProductionAuthContext,
 } from "../src/lib/platform/production-auth";
@@ -1192,6 +1193,28 @@ test("isDemoOperatorRequest accepts operator-demo header", () => {
   assert.equal(isDemoOperatorRequest(request), true);
 });
 
+test("buildProductionAuthSignature uses deterministic payload canonicalization", () => {
+  assert.equal(
+    buildProductionAuthPayload({
+      method: "post",
+      pathname: "/api/passports",
+      operatorId: "operator-demo",
+      timestamp: "1770000000",
+    }),
+    "POST\n/api/passports\noperator-demo\n1770000000",
+  );
+  assert.equal(
+    buildProductionAuthSignature({
+      method: "post",
+      pathname: "/api/passports",
+      operatorId: "operator-demo",
+      timestamp: "1770000000",
+      secret: "production-secret",
+    }),
+    "1a4f8db5b3952a3bbaf68202718b737b4330dee32f00c5812b27b1daeed89b26",
+  );
+});
+
 test("resolveProductionAuthContext accepts valid trusted-header HMAC", () => {
   const timestamp = "1770000000";
   const request = new Request("https://lexnet.example/api/passports", {
@@ -1248,7 +1271,10 @@ test("resolveProductionAuthContext rejects invalid signature without leaking sec
   assert.equal(context.authorized, false);
   if (!context.authorized) {
     assert.equal(context.status, 401);
-    assert.equal(context.reason.includes("production-secret"), false);
+    assert.equal(context.code, "invalid_signature");
+    assert.equal(context.reason, "Production authentication signature is invalid.");
+    assert.equal(JSON.stringify(context).includes("production-secret"), false);
+    assert.equal(JSON.stringify(context).includes("bad-signature"), false);
   }
 });
 
@@ -1281,6 +1307,7 @@ test("resolveProductionAuthContext rejects stale timestamps", () => {
 
   assert.equal(context.authorized, false);
   if (!context.authorized) {
+    assert.equal(context.code, "stale_timestamp");
     assert.match(context.reason, /timestamp/i);
   }
 });

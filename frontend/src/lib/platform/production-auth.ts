@@ -17,9 +17,17 @@ export interface ProductionAuthSignatureInput {
   secret: string;
 }
 
+export type ProductionAuthFailureCode =
+  | "mode_not_configured"
+  | "secret_not_configured"
+  | "missing_headers"
+  | "invalid_timestamp"
+  | "stale_timestamp"
+  | "invalid_signature";
+
 export type ProductionAuthContext =
   | { authorized: true; mode: ProductionAuthMode; operatorId: string }
-  | { authorized: false; status: number; reason: string };
+  | { authorized: false; status: number; code: ProductionAuthFailureCode; reason: string };
 
 const DEFAULT_CLOCK_SKEW_SECONDS = 300;
 
@@ -63,12 +71,22 @@ export function resolveProductionAuthContext(
   nowSeconds = Math.floor(Date.now() / 1000),
 ): ProductionAuthContext {
   if (env.LEXNET_PRODUCTION_AUTH_MODE !== "trusted-header") {
-    return { authorized: false, status: 403, reason: "Production authentication mode is not configured." };
+    return {
+      authorized: false,
+      status: 403,
+      code: "mode_not_configured",
+      reason: "Production authentication mode is not configured.",
+    };
   }
 
   const secret = env.LEXNET_PRODUCTION_AUTH_SECRET;
   if (!secret) {
-    return { authorized: false, status: 403, reason: "Production authentication secret is not configured." };
+    return {
+      authorized: false,
+      status: 403,
+      code: "secret_not_configured",
+      reason: "Production authentication secret is not configured.",
+    };
   }
 
   const operatorId = request.headers.get("x-lexnet-production-operator-id") ?? "";
@@ -76,16 +94,31 @@ export function resolveProductionAuthContext(
   const signature = request.headers.get("x-lexnet-production-auth-signature") ?? "";
 
   if (!operatorId || !timestamp || !signature) {
-    return { authorized: false, status: 401, reason: "Production authentication headers are required." };
+    return {
+      authorized: false,
+      status: 401,
+      code: "missing_headers",
+      reason: "Production authentication headers are required.",
+    };
   }
 
   const timestampSeconds = Number(timestamp);
   if (!Number.isInteger(timestampSeconds)) {
-    return { authorized: false, status: 401, reason: "Production authentication timestamp is invalid." };
+    return {
+      authorized: false,
+      status: 401,
+      code: "invalid_timestamp",
+      reason: "Production authentication timestamp is invalid.",
+    };
   }
 
   if (Math.abs(nowSeconds - timestampSeconds) > parseClockSkew(env)) {
-    return { authorized: false, status: 401, reason: "Production authentication timestamp is outside the allowed window." };
+    return {
+      authorized: false,
+      status: 401,
+      code: "stale_timestamp",
+      reason: "Production authentication timestamp is outside the allowed window.",
+    };
   }
 
   const { pathname } = new URL(request.url);
@@ -98,7 +131,12 @@ export function resolveProductionAuthContext(
   });
 
   if (!signaturesMatch(expected, signature)) {
-    return { authorized: false, status: 401, reason: "Production authentication signature is invalid." };
+    return {
+      authorized: false,
+      status: 401,
+      code: "invalid_signature",
+      reason: "Production authentication signature is invalid.",
+    };
   }
 
   return { authorized: true, mode: "trusted-header", operatorId };
