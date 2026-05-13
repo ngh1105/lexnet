@@ -1,4 +1,5 @@
 import { getLexNetContractReadiness } from "../lexnet-contract";
+import { isProductionAuthConfigured, type ProductionAuthMode } from "./production-auth";
 
 export type LexNetRuntimeMode = "local-demo" | "pilot" | "production";
 
@@ -8,6 +9,9 @@ export interface PlatformReadinessEnv {
   LEXNET_ENABLE_DEMO_PRIVATE_API?: string;
   LEXNET_DEMO_PRIVATE_API_TOKEN?: string;
   LEXNET_PRODUCTION_AUTH_PROVIDER?: string;
+  LEXNET_PRODUCTION_AUTH_MODE?: string;
+  LEXNET_PRODUCTION_AUTH_SECRET?: string;
+  LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS?: string;
   LEXNET_MANAGED_DATABASE_URL?: string;
   LEXNET_MANAGED_PERSISTENCE_PROVIDER?: string;
   LEXNET_EVIDENCE_RETENTION_POLICY?: string;
@@ -22,6 +26,8 @@ export interface AuthReadiness {
   demoPrivateApiEnabled: boolean;
   demoPrivateApiTokenConfigured: boolean;
   productionAuthConfigured: boolean;
+  productionAuthEnforced: boolean;
+  productionAuthMode?: ProductionAuthMode;
   mutatingRoutesAllowed: boolean;
   blockingReasons: string[];
 }
@@ -81,7 +87,8 @@ export function buildAuthReadiness(env: PlatformReadinessEnv): AuthReadiness {
   const mode = getLexNetRuntimeMode(env);
   const demoPrivateApiEnabled = env.LEXNET_ENABLE_DEMO_PRIVATE_API === "true";
   const demoPrivateApiTokenConfigured = Boolean(env.LEXNET_DEMO_PRIVATE_API_TOKEN);
-  const productionAuthConfigured = Boolean(env.LEXNET_PRODUCTION_AUTH_PROVIDER);
+  const productionAuthEnforced = isProductionAuthConfigured(env);
+  const productionAuthConfigured = Boolean(env.LEXNET_PRODUCTION_AUTH_PROVIDER) || productionAuthEnforced;
   const blockingReasons: string[] = [];
 
   if (demoPrivateApiEnabled && !demoPrivateApiTokenConfigured) {
@@ -92,8 +99,8 @@ export function buildAuthReadiness(env: PlatformReadinessEnv): AuthReadiness {
     blockingReasons.push("Production authentication is not configured.");
   }
 
-  if (mode === "production" && demoPrivateApiEnabled && !productionAuthConfigured) {
-    blockingReasons.push("Production mode cannot rely on demo-private API authorization only.");
+  if (mode === "production" && !productionAuthEnforced) {
+    blockingReasons.push("Production authentication enforcement is not configured.");
   }
 
   return {
@@ -101,7 +108,9 @@ export function buildAuthReadiness(env: PlatformReadinessEnv): AuthReadiness {
     demoPrivateApiEnabled,
     demoPrivateApiTokenConfigured,
     productionAuthConfigured,
-    mutatingRoutesAllowed: mode !== "production" || productionAuthConfigured,
+    productionAuthEnforced,
+    productionAuthMode: productionAuthEnforced ? "trusted-header" : undefined,
+    mutatingRoutesAllowed: mode !== "production" || productionAuthEnforced,
     blockingReasons,
   };
 }

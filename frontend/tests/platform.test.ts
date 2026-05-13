@@ -1359,7 +1359,7 @@ test("authorizeDemoPrivateApi rejects production demo-private mutation without p
   }
 });
 
-test("authorizeDemoPrivateApi allows production POST when production auth provider is configured", () => {
+test("authorizeDemoPrivateApi rejects production POST when only production auth provider is configured", () => {
   const request = new Request("http://localhost/api/passports", {
     method: "POST",
     headers: { "x-lexnet-operator-id": "operator-demo" },
@@ -1374,7 +1374,10 @@ test("authorizeDemoPrivateApi allows production POST when production auth provid
     createDefaultPlatformStore(),
   );
 
-  assert.equal(authorization.authorized, true);
+  assert.equal(authorization.authorized, false);
+  if (!authorization.authorized) {
+    assert.equal(authorization.response.status, 403);
+  }
 });
 
 test("authorizeDemoPrivateApi rejects missing bearer token when demo API token is configured", async () => {
