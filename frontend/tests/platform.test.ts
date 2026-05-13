@@ -244,7 +244,11 @@ test("evaluateEvidenceUrlPolicy rejects private and internal hosts in pilot", ()
 test("evaluateEvidenceUrlPolicy rejects IPv6 private and link-local literals", () => {
   const result = evaluateEvidenceUrlPolicy(
     [
+      "https://[::]/proof",
       "https://[::1]/proof",
+      "https://[::ffff:127.0.0.1]/proof",
+      "https://[::ffff:192.168.1.10]/proof",
+      "https://[::ffff:10.0.0.1]/proof",
       "https://[fc00::1]/proof",
       "https://[fd00::1]/proof",
       "https://[fe80::1]/proof",
@@ -256,7 +260,7 @@ test("evaluateEvidenceUrlPolicy rejects IPv6 private and link-local literals", (
   );
 
   assert.deepEqual(result.acceptedUrls, ["https://[2001:db8::1]/proof"]);
-  assert.equal(result.rejectedUrls.length, 6);
+  assert.equal(result.rejectedUrls.length, 10);
 });
 
 test("evaluateEvidenceUrlPolicy accepts public hosts that resemble IPv6 private prefixes", () => {

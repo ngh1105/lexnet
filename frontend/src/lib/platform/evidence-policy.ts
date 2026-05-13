@@ -111,17 +111,42 @@ function getPrivateIpv4Reason(host: string): string | null {
   return isBlocked ? "Evidence URL host must not be private or internal." : null;
 }
 
+function getMappedIpv4Address(normalizedIpv6: string): string | null {
+  const dotted = normalizedIpv6.match(/(?:^|:)ffff:(\d+\.\d+\.\d+\.\d+)$/)?.[1];
+  if (dotted) {
+    return dotted;
+  }
+
+  const hextet = normalizedIpv6.match(/(?:^|:)ffff:([a-f0-9]{1,4}):([a-f0-9]{1,4})$/i);
+  if (!hextet) {
+    return null;
+  }
+
+  const high = Number.parseInt(hextet[1] ?? "", 16);
+  const low = Number.parseInt(hextet[2] ?? "", 16);
+  if (!Number.isInteger(high) || !Number.isInteger(low)) {
+    return null;
+  }
+
+  return [high >> 8, high & 0xff, low >> 8, low & 0xff].join(".");
+}
+
 function getPrivateIpv6Reason(host: string): string | null {
   const normalized = host.toLowerCase();
   if (!normalized.includes(":")) {
     return null;
   }
 
+  const mappedIpv4 = getMappedIpv4Address(normalized);
+  if (mappedIpv4 && getPrivateIpv4Reason(mappedIpv4)) {
+    return "Evidence URL host must not be private or internal.";
+  }
+
   const firstHextet = Number.parseInt(normalized.split(":", 1)[0] ?? "", 16);
   const isUniqueLocal = Number.isInteger(firstHextet) && (firstHextet & 0xfe00) === 0xfc00;
   const isLinkLocal = Number.isInteger(firstHextet) && (firstHextet & 0xffc0) === 0xfe80;
 
-  if (normalized === "::1" || isUniqueLocal || isLinkLocal) {
+  if (normalized === "::" || normalized === "::1" || isUniqueLocal || isLinkLocal) {
     return "Evidence URL host must not be private or internal.";
   }
 
