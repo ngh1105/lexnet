@@ -241,6 +241,24 @@ test("evaluateEvidenceUrlPolicy rejects private and internal hosts in pilot", ()
   assert.equal(result.rejectedUrls.length, 4);
 });
 
+test("evaluateEvidenceUrlPolicy accepts public hosts that resemble IPv6 private prefixes", () => {
+  const result = evaluateEvidenceUrlPolicy(
+    [
+      "https://fcommerce.example/proof",
+      "https://fd-example.com/proof",
+      "https://fe80proof.example/proof",
+    ],
+    { LEXNET_RUNTIME_MODE: "production" },
+  );
+
+  assert.deepEqual(result.acceptedUrls, [
+    "https://fcommerce.example/proof",
+    "https://fd-example.com/proof",
+    "https://fe80proof.example/proof",
+  ]);
+  assert.deepEqual(result.rejectedUrls, []);
+});
+
 test("evaluateEvidenceUrlPolicy rejects non-HTTPS URLs in production", () => {
   const result = evaluateEvidenceUrlPolicy(["http://example.com/proof"], {
     LEXNET_RUNTIME_MODE: "production",

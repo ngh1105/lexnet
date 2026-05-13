@@ -113,6 +113,9 @@ function getPrivateIpv4Reason(host: string): string | null {
 
 function getPrivateIpv6Reason(host: string): string | null {
   const normalized = host.toLowerCase();
+  if (!normalized.includes(":")) {
+    return null;
+  }
 
   if (
     normalized === "::1" ||
