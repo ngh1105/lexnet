@@ -104,6 +104,7 @@ The filesystem store is the backend source of truth for platform mode. Browser l
 | `/api/passports/public/[slug]` | Public | Privacy-safe public passport JSON |
 | `/api/admin/backup` | Demo-private | Backup/export summary with audit event |
 | `/api/genlayer/verify-case` | Demo-private | Guarded `genlayer-js` write endpoint for `verify_case` |
+| `/api/genlayer/cases/[caseId]` | Demo-private | Contract state read-back for verification proof |
 | `/api/security/status` | Public status | Environment and platform readiness summary |
 
 ## Public Passport Privacy Boundary
