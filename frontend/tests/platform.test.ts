@@ -62,6 +62,7 @@ import {
   getLexNetContractReadiness,
 } from "../src/lib/lexnet-contract";
 import { chooseDemoDevPort } from "../scripts/dev-port";
+import { buildDemoDevEnv } from "../scripts/demo-dev";
 import {
   findForbiddenStoreSecretKeys,
   parseRawStoreForSecretScan,
@@ -93,6 +94,11 @@ test("package scripts expose demo seed, reset, dev, and pilot commands", () => {
   assert.equal(packageJson.scripts["demo:restore"], "tsx scripts/demo-restore.ts");
   assert.equal(packageJson.scripts["pilot:check"], "tsx scripts/pilot-check.ts");
   assert.equal(packageJson.scripts["pilot:prepare"], "tsx scripts/pilot-prepare.ts");
+});
+
+test("buildDemoDevEnv enables demo-private APIs for pilot walkthroughs", () => {
+  assert.equal(buildDemoDevEnv({}).LEXNET_ENABLE_DEMO_PRIVATE_API, "true");
+  assert.equal(buildDemoDevEnv({ LEXNET_ENABLE_DEMO_PRIVATE_API: "false" }).LEXNET_ENABLE_DEMO_PRIVATE_API, "false");
 });
 
 test("chooseDemoDevPort prefers 3002 when it is available", async () => {
