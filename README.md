@@ -111,12 +111,14 @@ NEXT_PUBLIC_GENLAYER_NETWORK_LABEL=Studionet
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
 ```
 
-Demo-private backend API configuration:
+Demo-private and production boundary configuration:
 
 ```bash
 LEXNET_ENABLE_DEMO_PRIVATE_API=true
 LEXNET_DEMO_PRIVATE_API_TOKEN=
-LEXNET_PRODUCTION_AUTH_PROVIDER=
+LEXNET_PRODUCTION_AUTH_MODE=off
+LEXNET_PRODUCTION_AUTH_SECRET=
+LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS=60
 ```
 
 Demo-private API requests also require:
@@ -126,6 +128,8 @@ x-lexnet-operator-id: operator-demo
 ```
 
 If `LEXNET_DEMO_PRIVATE_API_TOKEN` is set, demo-private API requests must also include `Authorization: Bearer <token>`. Leave it blank for local-only demos.
+
+`LEXNET_PRODUCTION_AUTH_MODE` is `off` outside production and `trusted-header` when an upstream gateway signs production mutations. In trusted-header mode, `LEXNET_PRODUCTION_AUTH_SECRET` must be a strong random secret, for example `openssl rand -hex 32`, and must never be empty in production. `LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS` controls the allowed timestamp drift for signed headers; the default is 60 seconds.
 
 Do not commit `.env.local` or private keys.
 
@@ -160,11 +164,12 @@ Local verification remains the fallback. The UI must not claim settlement comple
 Current hardening status:
 
 - Demo-private APIs can require both `x-lexnet-operator-id: operator-demo` and an optional `Authorization: Bearer <token>` header.
+- Production mode now requires enforced production auth, such as the trusted-header HMAC boundary; provider/env naming alone is not enough.
 - Filesystem persistence is local demo/pilot infrastructure, not a managed production database.
 - Backup/restore commands are local operational tools, not a managed disaster recovery system.
 - The guarded GenLayer SDK path can submit `verify_case` through `genlayer-js` only when readiness checks pass, and it does not claim settlement finality.
 
-Before production use, LexNet still needs production authentication, managed persistence, evidence retention policy, deployment observability, managed backups, audited GenLayer transaction execution/state verification, and security review. Payment custody or settlement transfer paths are out of scope until explicitly designed and audited.
+Before production use, LexNet still needs a real managed DB adapter, deployment observability, managed backups, audited GenLayer transaction execution/state verification, and security review. Payment custody or settlement transfer paths remain out of scope until explicitly designed and audited.
 
 ## License
 

@@ -35,7 +35,17 @@ import {
   checkRateLimit,
   resetRateLimitForTests,
 } from "../src/lib/platform/api";
-import { authorizeDemoPrivateApi, isDemoOperatorRequest } from "../src/lib/platform/auth";
+import {
+  authorizeDemoPrivateApi,
+  authorizePlatformMutation,
+  isDemoOperatorRequest,
+} from "../src/lib/platform/auth";
+import {
+  buildProductionAuthPayload,
+  buildProductionAuthSignature,
+  resetProductionAuthNonceCacheForTests,
+  resolveProductionAuthContext,
+} from "../src/lib/platform/production-auth";
 import {
   buildAuthReadiness,
   buildEvidencePolicyStatus,
@@ -45,6 +55,8 @@ import {
   getLexNetRuntimeMode,
   type PlatformReadinessEnv,
 } from "../src/lib/platform/readiness";
+import { getPlatformStoreAdapterStatus } from "../src/lib/platform/persistence-adapter";
+import { evaluateEvidenceUrlPolicy } from "../src/lib/platform/evidence-policy";
 import { buildPilotSummary } from "../src/lib/platform/pilot-summary";
 import {
   backupPlatformStore,
@@ -171,6 +183,28 @@ test("buildAuthReadiness allows pilot demo-private mode but reports production a
   assert.match(readiness.blockingReasons.join("\n"), /Production authentication is not configured/);
 });
 
+test("buildAuthReadiness distinguishes configured from enforced production auth", () => {
+  const providerOnly = buildAuthReadiness({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_PRODUCTION_AUTH_PROVIDER: "oauth-provider",
+  });
+
+  assert.equal(providerOnly.productionAuthConfigured, true);
+  assert.equal(providerOnly.productionAuthEnforced, false);
+  assert.equal(providerOnly.mutatingRoutesAllowed, false);
+
+  const enforced = buildAuthReadiness({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_SECRET: "secret",
+  });
+
+  assert.equal(enforced.productionAuthConfigured, true);
+  assert.equal(enforced.productionAuthEnforced, true);
+  assert.equal(enforced.productionAuthMode, "trusted-header");
+  assert.equal(enforced.mutatingRoutesAllowed, true);
+});
+
 test("buildPersistenceReadiness requires managed persistence in production", () => {
   const missing = buildPersistenceReadiness({ LEXNET_RUNTIME_MODE: "production" });
   assert.equal(missing.mode, "managed-missing");
@@ -183,7 +217,119 @@ test("buildPersistenceReadiness requires managed persistence in production", () 
   });
   assert.equal(configured.mode, "managed-configured");
   assert.equal(configured.managedPersistenceConfigured, true);
-  assert.deepEqual(configured.blockingReasons, []);
+  assert.match(configured.blockingReasons.join("\n"), /Managed persistence adapter is not implemented/);
+});
+
+test("getPlatformStoreAdapterStatus allows filesystem outside production", () => {
+  const status = getPlatformStoreAdapterStatus({ LEXNET_RUNTIME_MODE: "pilot" });
+
+  assert.equal(status.runtimeMode, "pilot");
+  assert.equal(status.mode, "filesystem-local");
+  assert.equal(status.canRead, true);
+  assert.equal(status.canMutate, true);
+  assert.equal(status.managedPersistenceConfigured, false);
+  assert.equal(status.managedPersistenceEnforced, false);
+  assert.match(status.blockingReasons.join("\n"), /Local filesystem persistence is pilot infrastructure, not production infrastructure/);
+});
+
+test("getPlatformStoreAdapterStatus blocks production managed adapter until enforced", () => {
+  const status = getPlatformStoreAdapterStatus({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_MANAGED_PERSISTENCE_PROVIDER: "postgres",
+  });
+
+  assert.equal(status.runtimeMode, "production");
+  assert.equal(status.mode, "managed-required");
+  assert.equal(status.canRead, false);
+  assert.equal(status.canMutate, false);
+  assert.equal(status.managedPersistenceConfigured, true);
+  assert.equal(status.managedPersistenceEnforced, false);
+  assert.match(status.blockingReasons.join("\n"), /Managed persistence adapter is not implemented/);
+});
+
+test("evaluateEvidenceUrlPolicy accepts public HTTPS URLs in production", () => {
+  const result = evaluateEvidenceUrlPolicy(["https://example.com/proof.pdf"], {
+    LEXNET_RUNTIME_MODE: "production",
+  });
+
+  assert.deepEqual(result.acceptedUrls, ["https://example.com/proof.pdf"]);
+  assert.deepEqual(result.rejectedUrls, []);
+});
+
+test("evaluateEvidenceUrlPolicy rejects private and internal hosts in pilot", () => {
+  const result = evaluateEvidenceUrlPolicy(
+    [
+      "https://localhost/proof",
+      "https://192.168.1.10/proof",
+      "https://169.254.169.254/latest/meta-data",
+      "https://service.local/proof",
+    ],
+    { LEXNET_RUNTIME_MODE: "pilot" },
+  );
+
+  assert.deepEqual(result.acceptedUrls, []);
+  assert.equal(result.rejectedUrls.length, 4);
+});
+
+test("evaluateEvidenceUrlPolicy rejects IPv6 private and link-local literals", () => {
+  const result = evaluateEvidenceUrlPolicy(
+    [
+      "https://[::]/proof",
+      "https://[::1]/proof",
+      "https://[::ffff:127.0.0.1]/proof",
+      "https://[::ffff:192.168.1.10]/proof",
+      "https://[::ffff:10.0.0.1]/proof",
+      "https://[fc00::1]/proof",
+      "https://[fd00::1]/proof",
+      "https://[fe80::1]/proof",
+      "https://[fe90::1]/proof",
+      "https://[febf::1]/proof",
+      "https://[2001:db8::1]/proof",
+    ],
+    { LEXNET_RUNTIME_MODE: "production" },
+  );
+
+  assert.deepEqual(result.acceptedUrls, ["https://[2001:db8::1]/proof"]);
+  assert.equal(result.rejectedUrls.length, 10);
+});
+
+test("evaluateEvidenceUrlPolicy accepts public hosts that resemble IPv6 private prefixes", () => {
+  const result = evaluateEvidenceUrlPolicy(
+    [
+      "https://fcommerce.example/proof",
+      "https://fd-example.com/proof",
+      "https://fe80proof.example/proof",
+    ],
+    { LEXNET_RUNTIME_MODE: "production" },
+  );
+
+  assert.deepEqual(result.acceptedUrls, [
+    "https://fcommerce.example/proof",
+    "https://fd-example.com/proof",
+    "https://fe80proof.example/proof",
+  ]);
+  assert.deepEqual(result.rejectedUrls, []);
+});
+
+test("evaluateEvidenceUrlPolicy rejects non-HTTPS URLs in production", () => {
+  const result = evaluateEvidenceUrlPolicy(["http://example.com/proof"], {
+    LEXNET_RUNTIME_MODE: "production",
+  });
+
+  assert.deepEqual(result.acceptedUrls, []);
+  assert.match(result.rejectedUrls[0]?.reason ?? "", /HTTPS/);
+});
+
+test("buildPersistenceReadiness distinguishes configured from enforced managed persistence", () => {
+  const readiness = buildPersistenceReadiness({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_MANAGED_DATABASE_URL: "postgres://user:password@example.com/db",
+  });
+
+  assert.equal(readiness.mode, "managed-configured");
+  assert.equal(readiness.managedPersistenceConfigured, true);
+  assert.equal(readiness.managedPersistenceEnforced, false);
+  assert.match(readiness.blockingReasons.join("\n"), /Managed persistence adapter is not implemented/);
 });
 
 test("buildPersistenceReadiness allows pilot filesystem persistence with warning", () => {
@@ -204,17 +350,11 @@ test("buildEvidencePolicyStatus requires retention policy in production", () => 
   assert.match(readiness.blockingReasons.join("\n"), /Evidence retention policy is not configured/);
 });
 
-test("buildPlatformReadinessStatus omits raw secret values and connection strings", () => {
+test("buildPlatformReadinessStatus includes enforcement blockers in production", () => {
   const env: PlatformReadinessEnv = {
     LEXNET_RUNTIME_MODE: "production",
-    LEXNET_ENABLE_DEMO_PRIVATE_API: "true",
-    LEXNET_DEMO_PRIVATE_API_TOKEN: "secret-token-value",
     LEXNET_PRODUCTION_AUTH_PROVIDER: "oauth-provider",
     LEXNET_MANAGED_DATABASE_URL: "postgres://user:password@example.com/db",
-    LEXNET_EVIDENCE_RETENTION_POLICY: "90-days",
-    NEXT_PUBLIC_GENLAYER_RPC_URL: "https://studio.genlayer.com/api",
-    NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: "0x1111111111111111111111111111111111111111",
-    NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: "walletconnect-secret",
   };
 
   const status = buildPlatformReadinessStatus(env);
@@ -222,12 +362,14 @@ test("buildPlatformReadinessStatus omits raw secret values and connection string
 
   assert.equal(status.runtimeMode, "production");
   assert.equal(status.auth.productionAuthConfigured, true);
-  assert.equal(Object.prototype.hasOwnProperty.call(status.auth, "productionAuthProvider"), false);
+  assert.equal(status.auth.productionAuthEnforced, false);
   assert.equal(status.persistence.managedPersistenceConfigured, true);
-  assert.equal(serialized.includes("secret-token-value"), false);
+  assert.equal(status.persistence.managedPersistenceEnforced, false);
+  assert.match(status.productionBlockers.join("\n"), /Production authentication enforcement is not configured/);
+  assert.match(status.productionBlockers.join("\n"), /Managed persistence adapter is not implemented/);
+  assert.equal(Object.prototype.hasOwnProperty.call(status.auth, "productionAuthProvider"), false);
   assert.equal(serialized.includes("oauth-provider"), false);
   assert.equal(serialized.includes("password@example.com"), false);
-  assert.equal(serialized.includes("walletconnect-secret"), false);
 });
 
 test("buildGenLayerReadinessStatus requires explicit public RPC and contract configuration", () => {
@@ -1199,6 +1341,380 @@ test("isDemoOperatorRequest accepts operator-demo header", () => {
   assert.equal(isDemoOperatorRequest(request), true);
 });
 
+test("buildProductionAuthSignature uses deterministic payload canonicalization", () => {
+  assert.equal(
+    buildProductionAuthPayload({
+      method: "post",
+      pathname: "/api/passports",
+      queryString: "publish=true",
+      operatorId: "operator-demo",
+      timestamp: "1770000000",
+      nonce: "nonce-123",
+      bodySha256Hex: "3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7",
+    }),
+    "POST\n/api/passports\npublish=true\noperator-demo\n1770000000\nnonce-123\n3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7",
+  );
+  assert.equal(
+    buildProductionAuthSignature({
+      method: "post",
+      pathname: "/api/passports",
+      queryString: "publish=true",
+      operatorId: "operator-demo",
+      timestamp: "1770000000",
+      nonce: "nonce-123",
+      bodySha256Hex: "3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7",
+      secret: "production-secret",
+    }),
+    "ac9f9c2eb871a0fffa0786463147bc0485200607c53465245dd9752732ca446e",
+  );
+});
+
+test("resolveProductionAuthContext accepts valid trusted-header HMAC", async () => {
+  resetProductionAuthNonceCacheForTests();
+  const timestamp = "1770000000";
+  const nonce = "nonce-valid-context";
+  const request = new Request("https://lexnet.example/api/passports?publish=true", {
+    method: "POST",
+    headers: {
+      "x-lexnet-production-operator-id": "operator-demo",
+      "x-lexnet-production-auth-timestamp": timestamp,
+      "x-lexnet-production-auth-nonce": nonce,
+      "x-lexnet-production-auth-signature": buildProductionAuthSignature({
+        method: "POST",
+        pathname: "/api/passports",
+        queryString: "publish=true",
+        operatorId: "operator-demo",
+        timestamp,
+        nonce,
+        secret: "production-secret",
+      }),
+    },
+  });
+
+  const context = await resolveProductionAuthContext(
+    request,
+    {
+      LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+      LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
+      LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS: "300",
+    },
+    1770000000,
+  );
+
+  assert.equal(context.authorized, true);
+  if (context.authorized) {
+    assert.equal(context.operatorId, "operator-demo");
+    assert.equal(context.mode, "trusted-header");
+  }
+});
+
+test("resolveProductionAuthContext rejects replayed nonces", async () => {
+  resetProductionAuthNonceCacheForTests();
+  const timestamp = "1770000000";
+  const nonce = "nonce-replay";
+  const headers = {
+    "x-lexnet-production-operator-id": "operator-demo",
+    "x-lexnet-production-auth-timestamp": timestamp,
+    "x-lexnet-production-auth-nonce": nonce,
+    "x-lexnet-production-auth-signature": buildProductionAuthSignature({
+      method: "POST",
+      pathname: "/api/passports",
+      operatorId: "operator-demo",
+      timestamp,
+      nonce,
+      secret: "production-secret",
+    }),
+  };
+  const env = {
+    LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
+  };
+
+  assert.equal((await resolveProductionAuthContext(
+    new Request("https://lexnet.example/api/passports", { method: "POST", headers }),
+    env,
+    1770000000,
+  )).authorized, true);
+  const replayed = await resolveProductionAuthContext(
+    new Request("https://lexnet.example/api/passports", { method: "POST", headers }),
+    env,
+    1770000001,
+  );
+
+  assert.equal(replayed.authorized, false);
+  if (!replayed.authorized) {
+    assert.equal(replayed.code, "replayed_nonce");
+  }
+});
+
+test("resolveProductionAuthContext rejects signatures when query changes", async () => {
+  resetProductionAuthNonceCacheForTests();
+  const timestamp = "1770000000";
+  const nonce = "nonce-query-tamper";
+  const request = new Request("https://lexnet.example/api/passports?publish=false", {
+    method: "POST",
+    headers: {
+      "x-lexnet-production-operator-id": "operator-demo",
+      "x-lexnet-production-auth-timestamp": timestamp,
+      "x-lexnet-production-auth-nonce": nonce,
+      "x-lexnet-production-auth-signature": buildProductionAuthSignature({
+        method: "POST",
+        pathname: "/api/passports",
+        queryString: "publish=true",
+        operatorId: "operator-demo",
+        timestamp,
+        nonce,
+        secret: "production-secret",
+      }),
+    },
+  });
+
+  const context = await resolveProductionAuthContext(
+    request,
+    {
+      LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+      LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
+    },
+    1770000000,
+  );
+
+  assert.equal(context.authorized, false);
+  if (!context.authorized) {
+    assert.equal(context.code, "invalid_signature");
+  }
+});
+
+test("resolveProductionAuthContext rejects invalid signature without leaking secret", async () => {
+  resetProductionAuthNonceCacheForTests();
+  const request = new Request("https://lexnet.example/api/passports", {
+    method: "POST",
+    headers: {
+      "x-lexnet-production-operator-id": "operator-demo",
+      "x-lexnet-production-auth-timestamp": "1770000000",
+      "x-lexnet-production-auth-nonce": "nonce-invalid-signature",
+      "x-lexnet-production-auth-signature": "bad-signature",
+    },
+  });
+
+  const context = await resolveProductionAuthContext(
+    request,
+    {
+      LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+      LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
+    },
+    1770000000,
+  );
+
+  assert.equal(context.authorized, false);
+  if (!context.authorized) {
+    assert.equal(context.status, 401);
+    assert.equal(context.code, "invalid_signature");
+    assert.equal(context.reason, "Production authentication signature is invalid.");
+    assert.equal(JSON.stringify(context).includes("production-secret"), false);
+    assert.equal(JSON.stringify(context).includes("bad-signature"), false);
+  }
+});
+
+test("resolveProductionAuthContext rejects mismatched request body hash", async () => {
+  resetProductionAuthNonceCacheForTests();
+  const timestamp = "1770000000";
+  const nonce = "nonce-body-mismatch";
+  const signedBody = JSON.stringify({ published: true });
+  const actualBody = JSON.stringify({ published: false });
+  const bodySha256Hex = "4b08f22d9467f26b0d9aaef22984f5426204b62ef4f5a2de83285cacf7b8111f";
+  const request = new Request("https://lexnet.example/api/passports", {
+    method: "PATCH",
+    headers: {
+      "content-type": "application/json",
+      "content-length": String(Buffer.byteLength(actualBody)),
+      "x-lexnet-production-operator-id": "operator-demo",
+      "x-lexnet-production-auth-timestamp": timestamp,
+      "x-lexnet-production-auth-nonce": nonce,
+      "x-lexnet-production-auth-body-sha256": bodySha256Hex,
+      "x-lexnet-production-auth-signature": buildProductionAuthSignature({
+        method: "PATCH",
+        pathname: "/api/passports",
+        operatorId: "operator-demo",
+        timestamp,
+        nonce,
+        bodySha256Hex,
+        secret: "production-secret",
+      }),
+    },
+    body: actualBody,
+  });
+
+  assert.notEqual(actualBody, signedBody);
+
+  const context = await resolveProductionAuthContext(
+    request,
+    {
+      LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+      LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
+    },
+    1770000000,
+  );
+
+  assert.equal(context.authorized, false);
+  if (!context.authorized) {
+    assert.equal(context.code, "invalid_signature");
+    assert.equal(context.reason, "Production authentication signature is invalid.");
+  }
+});
+
+test("resolveProductionAuthContext rejects oversized request bodies without leaking auth material", async () => {
+  resetProductionAuthNonceCacheForTests();
+  const timestamp = "1770000000";
+  const nonce = "nonce-oversized-body";
+  const oversizedBody = JSON.stringify({ body: "x".repeat(1024 * 1024) });
+  const bodySha256Hex = "0".repeat(64);
+  const headers = {
+    "content-type": "application/json",
+    "x-lexnet-production-operator-id": "operator-demo",
+    "x-lexnet-production-auth-timestamp": timestamp,
+    "x-lexnet-production-auth-nonce": nonce,
+    "x-lexnet-production-auth-body-sha256": bodySha256Hex,
+    "x-lexnet-production-auth-signature": buildProductionAuthSignature({
+      method: "PATCH",
+      pathname: "/api/passports",
+      operatorId: "operator-demo",
+      timestamp,
+      nonce,
+      bodySha256Hex,
+      secret: "production-secret",
+    }),
+  };
+  const declaredOversizedRequest = new Request("https://lexnet.example/api/passports", {
+    method: "PATCH",
+    headers: {
+      ...headers,
+      "content-length": String(Buffer.byteLength(oversizedBody)),
+    },
+    body: oversizedBody,
+  });
+  const underreportedRequest = new Request("https://lexnet.example/api/passports", {
+    method: "PATCH",
+    headers: { ...headers, "content-length": "1" },
+    body: oversizedBody,
+  });
+
+  for (const request of [declaredOversizedRequest, underreportedRequest]) {
+    const context = await resolveProductionAuthContext(
+      request,
+      {
+        LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+        LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
+      },
+      1770000000,
+    );
+
+    assert.equal(context.authorized, false);
+    if (!context.authorized) {
+      assert.equal(context.status, 413);
+      assert.equal(context.code, "body_too_large");
+      assert.equal(JSON.stringify(context).includes(oversizedBody), false);
+      assert.equal(JSON.stringify(context).includes(bodySha256Hex), false);
+      assert.equal(JSON.stringify(context).includes("production-secret"), false);
+    }
+  }
+});
+
+test("resolveProductionAuthContext stops reading underreported oversized request streams", async () => {
+  resetProductionAuthNonceCacheForTests();
+  const timestamp = "1770000000";
+  const nonce = "nonce-oversized-stream";
+  const chunk = new Uint8Array(64 * 1024);
+  const totalChunks = 20;
+  let pulledChunks = 0;
+  const stream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      pulledChunks += 1;
+      if (pulledChunks > totalChunks) {
+        controller.close();
+        return;
+      }
+
+      controller.enqueue(chunk);
+    },
+  });
+  const bodySha256Hex = "0".repeat(64);
+  const request = new Request("https://lexnet.example/api/passports", {
+    method: "PATCH",
+    headers: {
+      "content-type": "application/json",
+      "content-length": "1",
+      "x-lexnet-production-operator-id": "operator-demo",
+      "x-lexnet-production-auth-timestamp": timestamp,
+      "x-lexnet-production-auth-nonce": nonce,
+      "x-lexnet-production-auth-body-sha256": bodySha256Hex,
+      "x-lexnet-production-auth-signature": buildProductionAuthSignature({
+        method: "PATCH",
+        pathname: "/api/passports",
+        operatorId: "operator-demo",
+        timestamp,
+        nonce,
+        bodySha256Hex,
+        secret: "production-secret",
+      }),
+    },
+    body: stream,
+    duplex: "half",
+  } as RequestInit & { duplex: "half" });
+
+  const context = await resolveProductionAuthContext(
+    request,
+    {
+      LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+      LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
+    },
+    1770000000,
+  );
+
+  assert.equal(context.authorized, false);
+  if (!context.authorized) {
+    assert.equal(context.status, 413);
+    assert.equal(context.code, "body_too_large");
+  }
+  assert.ok(pulledChunks < totalChunks);
+});
+
+test("resolveProductionAuthContext rejects stale timestamps", async () => {
+  resetProductionAuthNonceCacheForTests();
+  const timestamp = "1769999000";
+  const nonce = "nonce-stale-timestamp";
+  const request = new Request("https://lexnet.example/api/passports", {
+    method: "POST",
+    headers: {
+      "x-lexnet-production-operator-id": "operator-demo",
+      "x-lexnet-production-auth-timestamp": timestamp,
+      "x-lexnet-production-auth-nonce": nonce,
+      "x-lexnet-production-auth-signature": buildProductionAuthSignature({
+        method: "POST",
+        pathname: "/api/passports",
+        operatorId: "operator-demo",
+        timestamp,
+        nonce,
+        secret: "production-secret",
+      }),
+    },
+  });
+
+  const context = await resolveProductionAuthContext(
+    request,
+    {
+      LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+      LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
+      LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS: "300",
+    },
+    1770000000,
+  );
+
+  assert.equal(context.authorized, false);
+  if (!context.authorized) {
+    assert.equal(context.code, "stale_timestamp");
+    assert.match(context.reason, /timestamp/i);
+  }
+});
 test("authorizeDemoPrivateApi rejects demo header when private demo API flag is missing", () => {
   const request = new Request("https://lexnet.local/api/operators", {
     headers: { "x-lexnet-operator-id": "operator-demo" },
@@ -1247,7 +1763,7 @@ test("authorizeDemoPrivateApi rejects production demo-private mutation without p
   }
 });
 
-test("authorizeDemoPrivateApi allows production POST when production auth provider is configured", () => {
+test("authorizeDemoPrivateApi rejects production POST when only production auth provider is configured", () => {
   const request = new Request("http://localhost/api/passports", {
     method: "POST",
     headers: { "x-lexnet-operator-id": "operator-demo" },
@@ -1262,7 +1778,71 @@ test("authorizeDemoPrivateApi allows production POST when production auth provid
     createDefaultPlatformStore(),
   );
 
+  assert.equal(authorization.authorized, false);
+  if (!authorization.authorized) {
+    assert.equal(authorization.response.status, 403);
+  }
+});
+
+test("authorizePlatformMutation rejects production mutation when only provider name is set", async () => {
+  const request = new Request("https://lexnet.example/api/passports", {
+    method: "POST",
+    headers: { "x-lexnet-operator-id": "operator-demo" },
+  });
+
+  const authorization = await authorizePlatformMutation(
+    request,
+    {
+      LEXNET_RUNTIME_MODE: "production",
+      LEXNET_ENABLE_DEMO_PRIVATE_API: "true",
+      LEXNET_PRODUCTION_AUTH_PROVIDER: "oauth-provider",
+    },
+    createDefaultPlatformStore(),
+  );
+
+  assert.equal(authorization.authorized, false);
+  if (!authorization.authorized) {
+    assert.equal(authorization.response.status, 403);
+  }
+});
+
+test("authorizePlatformMutation accepts production mutation with valid production auth", async () => {
+  resetProductionAuthNonceCacheForTests();
+  const timestamp = "1770000000";
+  const nonce = "nonce-platform-mutation";
+  const request = new Request("https://lexnet.example/api/passports", {
+    method: "POST",
+    headers: {
+      "x-lexnet-production-operator-id": "operator-demo",
+      "x-lexnet-production-auth-timestamp": timestamp,
+      "x-lexnet-production-auth-nonce": nonce,
+      "x-lexnet-production-auth-signature": buildProductionAuthSignature({
+        method: "POST",
+        pathname: "/api/passports",
+        operatorId: "operator-demo",
+        timestamp,
+        nonce,
+        secret: "production-secret",
+      }),
+    },
+  });
+
+  const authorization = await authorizePlatformMutation(
+    request,
+    {
+      LEXNET_RUNTIME_MODE: "production",
+      LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+      LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
+    },
+    createDefaultPlatformStore(),
+    1770000000,
+  );
+
   assert.equal(authorization.authorized, true);
+  if (authorization.authorized) {
+    assert.equal(authorization.operator.id, "operator-demo");
+    assert.equal(authorization.authType, "production");
+  }
 });
 
 test("authorizeDemoPrivateApi rejects missing bearer token when demo API token is configured", async () => {

@@ -1,3 +1,6 @@
+import { evaluateEvidenceUrlPolicy } from "./platform/evidence-policy";
+import type { PlatformReadinessEnv } from "./platform/readiness";
+
 import type {
   CaseTimelineItem,
   CommerceCase,
@@ -29,27 +32,12 @@ const SETTLEMENT_READY_STATUSES = new Set([
   "SETTLEMENT_RECOMMENDED",
 ]);
 
-export function normalizeEvidenceUrls(urls: string[]): string[] {
-  const seen = new Set<string>();
-  const normalized: string[] = [];
-
-  for (const rawUrl of urls) {
-    const url = rawUrl.trim();
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      continue;
-    }
-    if (seen.has(url)) {
-      continue;
-    }
-    seen.add(url);
-    normalized.push(url);
-  }
-
-  return normalized;
+export function normalizeEvidenceUrls(urls: string[], env = getEvidencePolicyEnv()): string[] {
+  return evaluateEvidenceUrlPolicy(urls, env).acceptedUrls;
 }
 
-export function buildEvidencePack(urls: string[]): EvidencePack {
-  const normalizedUrls = normalizeEvidenceUrls(urls).slice(0, MAX_EVIDENCE_URLS);
+export function buildEvidencePack(urls: string[], env = getEvidencePolicyEnv()): EvidencePack {
+  const normalizedUrls = normalizeEvidenceUrls(urls, env).slice(0, MAX_EVIDENCE_URLS);
   const items = normalizedUrls.map((url) => ({
     url,
     resourceType: inferEvidenceResourceType(url),
@@ -108,9 +96,10 @@ export function createCommerceCase(
 
 export function appendEvidenceToCase(
   commerceCase: CommerceCase,
-  urls: string[]
+  urls: string[],
+  env = getEvidencePolicyEnv()
 ): CommerceCase {
-  const incomingPack = buildEvidencePack(urls);
+  const incomingPack = buildEvidencePack(urls, env);
   const existingByUrl = new Map(
     commerceCase.evidence.map((item) => [item.url, item])
   );
@@ -433,6 +422,14 @@ function getStatusForVerdict(verdict: VerificationVerdict): CommerceCase["status
     case "SPLIT_RECOMMENDED":
       return "SETTLEMENT_RECOMMENDED";
   }
+}
+
+function getEvidencePolicyEnv(): PlatformReadinessEnv {
+  if (typeof process === "undefined") {
+    return {};
+  }
+
+  return process.env;
 }
 
 function getTrustPassportLevel(

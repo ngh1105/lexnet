@@ -77,6 +77,9 @@ The platform layer lives under `frontend/src/lib/platform/`.
 - `api.ts` centralizes JSON responses, request parsing, security status, and lightweight rate limiting.
 - `backup.ts` creates and restores local `.lexnet-data/store.json` snapshots.
 - `auth.ts` implements demo-private operator authorization using `LEXNET_ENABLE_DEMO_PRIVATE_API=true`, `x-lexnet-operator-id: operator-demo`, and optional bearer-token hardening.
+- `production-auth.ts` validates the production trusted-header HMAC boundary for upstream gateways.
+- `persistence-adapter.ts` reports filesystem versus managed-persistence adapter status.
+- `evidence-policy.ts` enforces configured evidence URL policy before evidence mutations.
 
 The filesystem store is the backend source of truth for platform mode. Browser localStorage is not the platform source of truth; it remains a local fallback/cache for demo-created browser state.
 
@@ -101,6 +104,7 @@ The filesystem store is the backend source of truth for platform mode. Browser l
 | `/api/passports/public/[slug]` | Public | Privacy-safe public passport JSON |
 | `/api/admin/backup` | Demo-private | Backup/export summary with audit event |
 | `/api/genlayer/verify-case` | Demo-private | Guarded `genlayer-js` write endpoint for `verify_case` |
+| `/api/genlayer/cases/[caseId]` | Demo-private | Contract state read-back for verification proof |
 | `/api/security/status` | Public status | Environment and platform readiness summary |
 
 ## Public Passport Privacy Boundary
@@ -135,7 +139,11 @@ These controls do not replace production authentication, managed database storag
 
 The production readiness boundary now reports runtime mode, auth readiness, persistence readiness, evidence policy readiness, GenLayer state verification capability, and production blockers through `/api/security/status` and `pilot:check`.
 
-`LEXNET_RUNTIME_MODE=production` blocks demo-private-only mutating routes unless `LEXNET_PRODUCTION_AUTH_PROVIDER` is configured. Production mode also requires managed persistence configuration and evidence retention policy before the readiness check is clear.
+`LEXNET_RUNTIME_MODE=production` blocks mutating routes unless production auth is enforced. The current production-auth boundary expects a trusted upstream gateway to sign method, path, query, operator, timestamp, nonce, and body hash headers with HMAC; the app verifies signature, timestamp drift, and nonce replay using `LEXNET_PRODUCTION_AUTH_MODE`, `LEXNET_PRODUCTION_AUTH_SECRET`, and `LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS`.
+
+Persistence status is adapter-aware but still local: filesystem storage remains demo/pilot infrastructure, and no real managed DB adapter is implemented yet. Production readiness also requires configured managed persistence.
+
+Evidence policy is enforced before evidence mutations. Production readiness requires a configured retention/URL policy, but this is not a full evidence storage or retention service.
 
 Before using LexNet for production commerce workflows, add and review:
 

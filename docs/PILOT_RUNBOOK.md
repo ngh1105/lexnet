@@ -22,7 +22,10 @@ The dev server prefers `http://localhost:3002` and falls back to `http://localho
 LEXNET_RUNTIME_MODE=pilot
 LEXNET_ENABLE_DEMO_PRIVATE_API=true
 LEXNET_DEMO_PRIVATE_API_TOKEN=
-LEXNET_PRODUCTION_AUTH_PROVIDER=
+LEXNET_PRODUCTION_AUTH_PROVIDER= # descriptive only; does not authorize production mutations
+LEXNET_PRODUCTION_AUTH_MODE=off # use trusted-header for production/staging gateway enforcement
+LEXNET_PRODUCTION_AUTH_SECRET=
+LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS=60
 LEXNET_MANAGED_DATABASE_URL=
 LEXNET_MANAGED_PERSISTENCE_PROVIDER=
 LEXNET_EVIDENCE_RETENTION_POLICY=
@@ -32,7 +35,7 @@ NEXT_PUBLIC_GENLAYER_NETWORK_LABEL=Studionet
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
 ```
 
-Pilot mode may use filesystem persistence and demo-private auth. Production mode must configure production auth, managed persistence, and evidence retention policy before mutating routes are allowed.
+Pilot mode may use filesystem persistence and demo-private auth. Production mode must configure enforced production auth, managed persistence, and evidence retention policy before mutating routes are allowed.
 
 ## Seed, Reset, Backup, and Restore
 
@@ -46,6 +49,12 @@ npm --prefix frontend run demo:reset
 `pilot:prepare` resets and reseeds `.lexnet-data/store.json`. It refuses to run when `LEXNET_RUNTIME_MODE=production`.
 
 Use `demo:backup` before destructive resets when you need a local snapshot. Restore with the exact timestamped path printed by `demo:backup`. Backups remain local under `.lexnet-data/` and must not be committed.
+
+## Trusted-Header Auth Boundary
+
+Future staging gateways can use trusted-header mode by deriving operator context at the edge and signing the request method, pathname, raw query string, operator id, timestamp, nonce, and request body SHA-256 with HMAC. LexNet verifies the signature, rejects replayed nonces within the clock-skew window, and checks timestamp drift before accepting production mutations. Keep the signing secret only in the gateway/app environment; do not commit it or include real values in runbooks.
+
+Phase E hardens the production backbone for auth/readiness/policy checks. It is not a deploy, payment, custody, payout, or settlement-transfer milestone.
 
 ## GenLayer Proof Workflow
 
@@ -72,8 +81,8 @@ npm --prefix frontend run build
 
 ## Known Production Blockers
 
-- Production authentication provider is not implemented.
-- Managed persistence is not selected or provisioned.
+- Production auth requires an enforced trusted-header boundary and operational gateway review.
+- Managed persistence is not selected or provisioned; no real managed DB adapter is implemented yet.
 - Evidence retention policy must be configured.
 - Managed backup, monitoring, and disaster recovery are not configured.
 - GenLayer execution needs audited production operations.
