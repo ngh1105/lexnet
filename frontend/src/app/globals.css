@@ -1,16 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f7f5f0;
+  --bg: #f4f1ea;
+  --bg-deep: #ebe5d8;
   --surface: #ffffff;
   --surface-subtle: #fbfaf7;
   --surface-muted: #f1eee8;
+  --surface-raised: #fffdf8;
   --ink: #111827;
   --ink-soft: #374151;
   --muted: #5b6472;
   --muted-light: #8a93a3;
-  --border: #e4e0d7;
-  --border-strong: #d7d1c5;
+  --border: #e4ded2;
+  --border-strong: #d4cbbc;
   --charcoal: #18181b;
   --charcoal-soft: #242428;
   --teal: #0f766e;
@@ -25,7 +27,11 @@
   --green: #059669;
   --green-soft: #e8f7ef;
   --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.05);
-  --shadow-md: 0 16px 40px rgba(17, 24, 39, 0.08);
+  --shadow-md: 0 18px 45px rgba(17, 24, 39, 0.09);
+  --shadow-lg: 0 24px 70px rgba(17, 24, 39, 0.13);
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
 }
 
 *,
@@ -67,7 +73,9 @@ textarea {
   width: 100%;
   min-height: 100vh;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(247, 245, 240, 0)),
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 32rem),
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.10), transparent 30rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(244, 241, 234, 0.9)),
     var(--bg);
   color: var(--ink);
 }
@@ -96,28 +104,32 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  min-height: 64px;
-  margin-bottom: 18px;
-  padding: 12px 14px 12px 18px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: var(--shadow-sm);
+  gap: 18px;
+  min-height: 76px;
+  margin-bottom: 20px;
+  padding: 18px 20px;
+  border: 1px solid rgba(212, 203, 188, 0.82);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(251, 250, 247, 0.86)),
+    var(--surface);
+  box-shadow: var(--shadow-md);
 }
 
 .topbar-title {
   color: var(--ink);
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1.15;
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
 }
 
 .topbar-subtitle {
-  margin-top: 4px;
+  max-width: 760px;
+  margin-top: 7px;
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.65;
 }
 
 .topbar-actions {
@@ -154,7 +166,7 @@ textarea {
 .glass-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
 }
 
@@ -169,19 +181,23 @@ textarea {
 }
 
 .panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 18px;
-  box-shadow: var(--shadow-sm);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(251, 250, 247, 0.94)),
+    var(--surface);
+  border: 1px solid rgba(212, 203, 188, 0.86);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  box-shadow: var(--shadow-md);
 }
 
 .inspector {
-  background: var(--surface-subtle);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 18px;
-  box-shadow: var(--shadow-sm);
+  background:
+    linear-gradient(180deg, rgba(36, 36, 40, 0.035), rgba(255, 255, 255, 0.86)),
+    var(--surface-subtle);
+  border: 1px solid rgba(212, 203, 188, 0.9);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-md);
 }
 
 .section-label,
@@ -206,19 +222,32 @@ textarea {
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
 }
 
 .metric-card {
+  position: relative;
   display: grid;
-  gap: 10px;
-  min-height: 112px;
-  padding: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
+  gap: 12px;
+  min-height: 124px;
+  padding: 18px;
+  overflow: hidden;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.98), rgba(251, 250, 247, 0.86)),
+    var(--surface);
+  border: 1px solid rgba(212, 203, 188, 0.82);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.metric-card::after {
+  content: "";
+  position: absolute;
+  inset: auto 16px 0;
+  height: 3px;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(90deg, rgba(15, 118, 110, 0.68), rgba(37, 99, 235, 0.52));
 }
 
 .metric-label {
@@ -233,8 +262,9 @@ textarea {
 
 .metric-value {
   color: var(--ink);
-  font-size: 27px;
-  font-weight: 800;
+  font-size: clamp(28px, 4vw, 38px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
   line-height: 1;
 }
 
@@ -307,10 +337,10 @@ textarea {
 
 .queue-table-wrap {
   overflow-x: auto;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid rgba(212, 203, 188, 0.9);
+  border-radius: var(--radius-md);
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
 }
 
 .queue-table {
@@ -320,20 +350,21 @@ textarea {
 }
 
 .queue-table th {
-  height: 42px;
-  padding: 0 14px;
+  height: 46px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--border);
+  background: rgba(251, 250, 247, 0.82);
   color: var(--muted);
   font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-weight: 900;
+  letter-spacing: 0.07em;
   text-align: left;
   text-transform: uppercase;
 }
 
 .queue-table td {
-  padding: 13px 14px;
-  border-bottom: 1px solid var(--border);
+  padding: 16px;
+  border-bottom: 1px solid rgba(228, 222, 210, 0.78);
   color: var(--ink-soft);
   font-size: 13px;
   vertical-align: middle;
@@ -377,8 +408,9 @@ textarea {
   min-width: 0;
   padding: 10px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
+  box-shadow: 0 1px 0 rgba(17, 24, 39, 0.03);
 }
 
 .evidence-row {
@@ -388,10 +420,11 @@ textarea {
   min-width: 0;
   padding: 11px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--ink);
   text-decoration: none;
+  box-shadow: 0 1px 0 rgba(17, 24, 39, 0.03);
 }
 
 .evidence-row:hover {
@@ -415,24 +448,27 @@ textarea {
 .form-section {
   display: grid;
   gap: 14px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-subtle);
+  padding: 18px;
+  border: 1px solid rgba(212, 203, 188, 0.88);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(251, 250, 247, 0.72)),
+    var(--surface-subtle);
+  box-shadow: var(--shadow-sm);
 }
 
 .lexnet-input {
   width: 100%;
-  min-height: 38px;
+  min-height: 42px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 12px;
+  border: 1px solid rgba(212, 203, 188, 0.92);
+  border-radius: var(--radius-sm);
+  padding: 11px 13px;
   color: var(--ink);
   font-size: 14px;
   font-family: inherit;
   outline: none;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 }
 
 .lexnet-input:focus {
@@ -454,7 +490,7 @@ textarea {
   justify-content: center;
   gap: 8px;
   min-height: 38px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 9px 14px;
   font-size: 13px;
   font-weight: 700;
@@ -511,6 +547,96 @@ textarea {
   opacity: 0.55;
   cursor: not-allowed;
   transform: none;
+}
+
+.hero-panel {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(212, 203, 188, 0.88);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(15, 118, 110, 0.16), transparent 28rem),
+    radial-gradient(circle at 92% 18%, rgba(37, 99, 235, 0.13), transparent 26rem),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(251, 250, 247, 0.88));
+  box-shadow: var(--shadow-lg);
+}
+
+.hero-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(17, 24, 39, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(17, 24, 39, 0.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(135deg, rgba(0, 0, 0, 0.55), transparent 64%);
+}
+
+.hero-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.surface-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 14px;
+}
+
+.insight-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(212, 203, 188, 0.82);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(251, 250, 247, 0.82)),
+    var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.action-rail {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.workspace-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.review-panel {
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(251, 250, 247, 0.9)),
+    var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.trust-report-shell {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  border: 1px solid rgba(212, 203, 188, 0.9);
+  background:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.14), transparent 26rem),
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 24rem),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(251, 250, 247, 0.9));
+  box-shadow: var(--shadow-lg);
+  padding: 24px;
+}
+
+.step-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--charcoal);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
 }
 
 .two-column {
@@ -666,8 +792,9 @@ textarea {
   }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 860px) {
   .app-shell {
+    display: block;
     flex-direction: column;
   }
 
@@ -683,19 +810,22 @@ textarea {
   }
 
   .topbar {
-    align-items: stretch;
+    align-items: flex-start;
     flex-direction: column;
   }
 
   .topbar-actions {
+    width: 100%;
     justify-content: flex-start;
   }
 
   .search-box {
-    min-width: 0;
+    min-width: min(100%, 250px);
     width: 100%;
   }
 
+  .metric-grid,
+  .surface-grid,
   .dashboard-grid,
   .two-column {
     grid-template-columns: 1fr;
