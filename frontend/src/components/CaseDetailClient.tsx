@@ -113,7 +113,7 @@ export default function CaseDetailClient({
     }
 
     setCommerceCase(updatedCase);
-    setMessage("Local AI verification report generated.");
+    setMessage("Local AI recommendation report generated.");
   }
 
   async function submitGenLayerVerification() {
@@ -245,10 +245,27 @@ export default function CaseDetailClient({
                 className="btn-primary"
               >
                 <ScanSearch size={15} strokeWidth={1.75} />
-                {isVerifying ? "Verifying Locally" : "Run Local Verification"}
+                {isVerifying ? "Reviewing Locally" : "Run Local Review"}
               </button>
             </div>
           </header>
+
+          <section className="panel" style={{ marginBottom: 16, display: "grid", gap: 10 }}>
+            <div className="section-label">
+              <ListChecks size={14} strokeWidth={1.75} />
+              Operator Brief
+            </div>
+            <p className="muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.7 }}>
+              This case is part of the local pilot workflow. LexNet can summarize evidence,
+              produce an AI recommendation, and track proof state, but it does not custody
+              funds, execute payouts, or finalize settlement.
+            </p>
+            <div className="inspector-list">
+              <InspectorRow label="Current status" value={commerceCase.status.replaceAll("_", " ")} />
+              <InspectorRow label="Evidence quality" value={evidenceQuality.qualityLabel} />
+              <InspectorRow label="Next operator action" value={summary.nextAction} />
+            </div>
+          </section>
 
           <div className="two-column">
             <div style={{ display: "grid", gap: 16 }}>
@@ -510,3 +527,12 @@ export default function CaseDetailClient({
     </div>
   );
 }
+function InspectorRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
