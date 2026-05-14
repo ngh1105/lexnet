@@ -57,6 +57,10 @@ import {
 } from "../src/lib/platform/readiness";
 import { getPlatformStoreAdapterStatus } from "../src/lib/platform/persistence-adapter";
 import { evaluateEvidenceUrlPolicy } from "../src/lib/platform/evidence-policy";
+import {
+  buildPlatformObservabilityStatus,
+  buildProductionAuthAuditEvent,
+} from "../src/lib/platform/observability";
 import { buildPilotSummary } from "../src/lib/platform/pilot-summary";
 import {
   backupPlatformStore,
@@ -592,6 +596,53 @@ test("writePlatformStore persists platform data", async () => {
     const reloaded = await readPlatformStore(storePath);
     assert.equal(reloaded.workspaces[0]?.name, "Pilot Workspace");
   });
+});
+
+test("buildPlatformObservabilityStatus redacts production-sensitive data", () => {
+  const store = createDefaultPlatformStore();
+  store.auditEvents.push({
+    id: "audit-1",
+    type: "production.auth.accepted",
+    entityType: "workspace",
+    entityId: "workspace-demo",
+    actorId: "operator-demo",
+    createdAt: "2026-05-14T00:00:00.000Z",
+    detail: "Production mutation authorized.",
+  });
+
+  const status = buildPlatformObservabilityStatus(store, {
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_PRODUCTION_AUTH_PROVIDER: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_SECRET: "super-secret",
+    LEXNET_MANAGED_PERSISTENCE_PROVIDER: "postgres",
+    LEXNET_MANAGED_DATABASE_URL: "postgres://lexnet.example/db",
+    LEXNET_EVIDENCE_RETENTION_POLICY: "metadata-365d",
+  });
+
+  assert.equal(status.runtimeMode, "production");
+  assert.equal(status.auditEventCount, 1);
+  assert.equal(status.latestAuditEventType, "production.auth.accepted");
+  assert.equal("auditEvents" in status, false);
+  assert.equal("operators" in status, false);
+  assert.equal("memberships" in status, false);
+  assert.equal(JSON.stringify(status).includes("super-secret"), false);
+  assert.equal(JSON.stringify(status).includes("postgres://lexnet.example/db"), false);
+});
+
+test("buildProductionAuthAuditEvent records accepted production auth", () => {
+  const event = buildProductionAuthAuditEvent({
+    accepted: true,
+    operatorId: "operator-demo",
+    pathname: "/api/cases",
+    method: "POST",
+    createdAt: "2026-05-14T00:00:00.000Z",
+  });
+
+  assert.equal(event.type, "production.auth.accepted");
+  assert.equal(event.entityType, "workspace");
+  assert.equal(event.actorId, "operator-demo");
+  assert.equal(event.detail, "Production mutation authorized for POST /api/cases.");
 });
 
 test("appendAuditEvent records operational metadata", async () => {
