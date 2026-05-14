@@ -139,8 +139,8 @@ Demo-private backend API configuration:
 LEXNET_RUNTIME_MODE=local-demo
 LEXNET_ENABLE_DEMO_PRIVATE_API=true
 LEXNET_DEMO_PRIVATE_API_TOKEN=
-LEXNET_PRODUCTION_AUTH_PROVIDER=
-LEXNET_PRODUCTION_AUTH_MODE=off
+LEXNET_PRODUCTION_AUTH_PROVIDER=trusted-header
+LEXNET_PRODUCTION_AUTH_MODE=trusted-header
 LEXNET_PRODUCTION_AUTH_SECRET=
 LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS=60
 LEXNET_MANAGED_DATABASE_URL=
@@ -148,7 +148,7 @@ LEXNET_MANAGED_PERSISTENCE_PROVIDER=
 LEXNET_EVIDENCE_RETENTION_POLICY=
 ```
 
-Demo-private API calls also require header `x-lexnet-operator-id: operator-demo`. If `LEXNET_DEMO_PRIVATE_API_TOKEN` is set, include `Authorization: Bearer <token>` as well. Production trusted-header mode requires gateway-signed operator headers; do not place real secrets in docs or committed env files.
+Demo-private API calls also require header `x-lexnet-operator-id: operator-demo`. If `LEXNET_DEMO_PRIVATE_API_TOKEN` is set, include `Authorization: Bearer <token>` as well. Production trusted-header mode requires gateway-signed operator headers; do not place real secrets in docs or committed env files. Production mutation routes fail closed unless `LEXNET_PRODUCTION_AUTH_PROVIDER=trusted-header`, `LEXNET_PRODUCTION_AUTH_MODE=trusted-header`, and `LEXNET_PRODUCTION_AUTH_SECRET` are configured together.
 
 ## Case State Machine
 

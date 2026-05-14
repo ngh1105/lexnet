@@ -169,7 +169,7 @@ test("buildAuthReadiness blocks production mutating routes without provider", ()
   assert.equal(readiness.demoPrivateApiEnabled, true);
   assert.equal(readiness.productionAuthConfigured, false);
   assert.equal(readiness.mutatingRoutesAllowed, false);
-  assert.match(readiness.blockingReasons.join("\n"), /Production authentication is not configured/);
+  assert.match(readiness.blockingReasons.join("\n"), /Production authentication provider is not configured/);
 });
 
 test("buildAuthReadiness allows pilot demo-private mode but reports production auth blocker", () => {
@@ -180,7 +180,7 @@ test("buildAuthReadiness allows pilot demo-private mode but reports production a
 
   assert.equal(readiness.mode, "pilot");
   assert.equal(readiness.mutatingRoutesAllowed, true);
-  assert.match(readiness.blockingReasons.join("\n"), /Production authentication is not configured/);
+  assert.match(readiness.blockingReasons.join("\n"), /Production authentication provider is not configured/);
 });
 
 test("buildAuthReadiness distinguishes configured from enforced production auth", () => {
@@ -195,6 +195,7 @@ test("buildAuthReadiness distinguishes configured from enforced production auth"
 
   const enforced = buildAuthReadiness({
     LEXNET_RUNTIME_MODE: "production",
+    LEXNET_PRODUCTION_AUTH_PROVIDER: "trusted-header",
     LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
     LEXNET_PRODUCTION_AUTH_SECRET: "secret",
   });
@@ -203,6 +204,41 @@ test("buildAuthReadiness distinguishes configured from enforced production auth"
   assert.equal(enforced.productionAuthEnforced, true);
   assert.equal(enforced.productionAuthMode, "trusted-header");
   assert.equal(enforced.mutatingRoutesAllowed, true);
+});
+
+test("production readiness requires trusted-header provider and secret", () => {
+  const status = buildPlatformReadinessStatus({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_PRODUCTION_AUTH_PROVIDER: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_SECRET: "super-secret",
+    LEXNET_MANAGED_PERSISTENCE_PROVIDER: "postgres",
+    LEXNET_MANAGED_DATABASE_URL: "postgres://lexnet.example/db",
+    LEXNET_EVIDENCE_RETENTION_POLICY: "metadata-365d",
+    NEXT_PUBLIC_GENLAYER_RPC_URL: "https://studio.genlayer.com/api",
+    NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: "0xabc",
+  });
+
+  assert.equal(status.auth.productionAuthConfigured, true);
+  assert.equal(status.auth.productionAuthEnforced, true);
+  assert.equal(status.auth.productionAuthMode, "trusted-header");
+  assert.equal(
+    status.auth.blockingReasons.includes("Production authentication provider must be trusted-header."),
+    false,
+  );
+});
+
+test("production readiness blocks unsupported production auth provider", () => {
+  const status = buildPlatformReadinessStatus({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_PRODUCTION_AUTH_PROVIDER: "oauth",
+    LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_SECRET: "super-secret",
+  });
+
+  assert.equal(status.auth.productionAuthConfigured, true);
+  assert.equal(status.auth.productionAuthEnforced, false);
+  assert.ok(status.auth.blockingReasons.includes("Production authentication provider must be trusted-header."));
 });
 
 test("buildPersistenceReadiness requires managed persistence in production", () => {
@@ -365,7 +401,7 @@ test("buildPlatformReadinessStatus includes enforcement blockers in production",
   assert.equal(status.auth.productionAuthEnforced, false);
   assert.equal(status.persistence.managedPersistenceConfigured, true);
   assert.equal(status.persistence.managedPersistenceEnforced, false);
-  assert.match(status.productionBlockers.join("\n"), /Production authentication enforcement is not configured/);
+  assert.match(status.productionBlockers.join("\n"), /Production authentication provider must be trusted-header/);
   assert.match(status.productionBlockers.join("\n"), /Managed persistence adapter is not implemented/);
   assert.equal(Object.prototype.hasOwnProperty.call(status.auth, "productionAuthProvider"), false);
   assert.equal(serialized.includes("oauth-provider"), false);
@@ -1117,7 +1153,9 @@ test("buildSecurityStatus reports configured and missing environment settings", 
   assert.deepEqual(security.blockingReasons, [
     "Contract address is not configured.",
     "Wallet is not connected.",
-    "Production authentication is not configured.",
+    "Production authentication provider is not configured.",
+    "Production authentication mode is not configured.",
+    "Production authentication secret is not configured.",
   ]);
 });
 
@@ -1134,7 +1172,7 @@ test("buildSecurityStatus reports demo API and persistence readiness", () => {
   assert.equal(status.demoPrivateApiTokenConfigured, true);
   assert.equal(status.productionAuthConfigured, false);
   assert.equal(status.persistenceMode, "filesystem-local");
-  assert.equal(status.blockingReasons.includes("Production authentication is not configured."), true);
+  assert.equal(status.blockingReasons.includes("Production authentication provider is not configured."), true);
 });
 
 test("buildSecurityStatus reports missing demo API token as a warning reason when demo API is enabled", () => {
@@ -1831,6 +1869,7 @@ test("authorizePlatformMutation accepts production mutation with valid productio
     request,
     {
       LEXNET_RUNTIME_MODE: "production",
+      LEXNET_PRODUCTION_AUTH_PROVIDER: "trusted-header",
       LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
       LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
     },
