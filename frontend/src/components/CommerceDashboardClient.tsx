@@ -11,6 +11,7 @@ import {
   FileSearch,
   IdCard,
   Inbox,
+  ListChecks,
   Scale,
   Search,
   ShieldCheck,
@@ -126,8 +127,8 @@ export default function CommerceDashboardClient({
               </div>
               <h1 className="topbar-title">Evidence Review</h1>
               <p className="topbar-subtitle">
-                Prioritize commerce cases, inspect evidence, and review AI
-                settlement recommendations.
+                Prioritize commerce cases, inspect evidence, and review AI recommendations
+                before an operator decides the next action.
               </p>
             </div>
             <div className="topbar-actions">
@@ -151,7 +152,7 @@ export default function CommerceDashboardClient({
           <section className="metric-grid" style={{ marginBottom: 16 }}>
             <MetricCard
               icon={<ShieldCheck size={18} strokeWidth={1.75} />}
-              label="Protected Value"
+              label="Reviewed Value"
               value={`$${commandMetrics.protectedValue.toLocaleString()}`}
             />
             <MetricCard
@@ -161,7 +162,7 @@ export default function CommerceDashboardClient({
             />
             <MetricCard
               icon={<BadgeCheck size={18} strokeWidth={1.75} />}
-              label="Settlement Ready"
+              label="Recommendation Ready"
               value={commandMetrics.settlementReadyCases.toLocaleString()}
             />
             <MetricCard
@@ -178,11 +179,15 @@ export default function CommerceDashboardClient({
                 AI Commerce Trust Pipeline
               </div>
               <h2 style={{ marginTop: 8, color: "var(--ink)", fontSize: 20, fontWeight: 900 }}>
-                From agreement to portable trust in one review loop
+                Pilot walkthrough: evidence to recommendation to trust signal
               </h2>
+              <p className="muted" style={{ marginTop: 6, fontSize: 13, lineHeight: 1.6 }}>
+                This local pilot shows review recommendations only. LexNet does not custody funds,
+                release payouts, or claim settlement finality in this workflow.
+              </p>
             </div>
             <div className="pipeline-steps">
-              {["Intake", "Evidence", "AI Review", "Settlement", "Passport"].map((step, index) => (
+              {["Intake", "Evidence", "AI Review", "Operator Action", "Passport"].map((step, index) => (
                 <div key={step} className="pipeline-step">
                   <span>{index + 1}</span>
                   {step}
@@ -272,6 +277,18 @@ export default function CommerceDashboardClient({
             </div>
 
             <aside style={{ display: "grid", gap: 16 }}>
+              <div className="panel" style={{ display: "grid", gap: 12 }}>
+                <div className="section-label">
+                  <ListChecks size={14} strokeWidth={1.75} />
+                  Pilot Operator Brief
+                </div>
+                <div className="inspector-list">
+                  <InspectorRow label="Workflow" value="Recommendation-only review" />
+                  <InspectorRow label="Primary action" value="Review evidence and next step" />
+                  <InspectorRow label="Public output" value="Privacy-safe passport signals" />
+                </div>
+              </div>
+
               <div className="panel" style={{ display: "grid", gap: 12 }}>
                 <div className="section-label">
                   <Activity size={14} strokeWidth={1.75} />
