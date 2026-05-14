@@ -28,8 +28,8 @@ export default function PublicPassportClient({
 
   return (
     <main className="main-shell" style={{ minHeight: "100vh", marginLeft: 0 }}>
-      <div className="content-frame" style={{ maxWidth: 920, margin: "0 auto" }}>
-        <header className="topbar">
+      <div className="content-frame trust-report-shell" style={{ maxWidth: 920, margin: "0 auto" }}>
+        <header className="topbar hero-panel" style={{ boxShadow: "none" }}>
           <div>
             <div className="section-label">
               <IdCard size={14} strokeWidth={1.75} />
@@ -52,7 +52,7 @@ export default function PublicPassportClient({
           </span>
         </header>
 
-        <section className="metric-grid" style={{ marginBottom: 16 }}>
+        <section className="metric-grid" style={{ marginBottom: 18 }}>
           <PublicMetric
             icon={<ShieldCheck size={18} strokeWidth={1.75} />}
             label="Verified Cases"
@@ -71,7 +71,7 @@ export default function PublicPassportClient({
           <PublicMetric label="Published" value={formatDate(passport.publishedAt)} />
         </section>
 
-        <section className="panel" style={{ display: "grid", gap: 16 }}>
+        <section className="panel review-panel" style={{ display: "grid", gap: 16 }}>
           <div>
             <div className="section-label">Published Verification Summary</div>
             <p className="muted" style={{ marginTop: 8, fontSize: 13, lineHeight: 1.7 }}>
@@ -100,7 +100,7 @@ export default function PublicPassportClient({
             </span>
           )}
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <div className="insight-card" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {[
               "No raw evidence",
               "No private case IDs",
