@@ -101,7 +101,10 @@ test("buildEvidencePack requires HTTPS evidence in production", () => {
   const pack = buildEvidencePack([
     "http://example.com/plain-proof",
     "https://example.com/secure-proof",
-  ], { LEXNET_RUNTIME_MODE: "production" });
+  ], {
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_EVIDENCE_RETENTION_POLICY: "metadata-365d",
+  });
 
   assert.deepEqual(pack.items.map((item) => item.url), ["https://example.com/secure-proof"]);
 });
