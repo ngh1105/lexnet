@@ -119,7 +119,7 @@ export default function CommerceDashboardClient({
       <Sidebar />
       <main className="main-shell">
         <div className="content-frame">
-          <header className="topbar">
+          <header className="topbar hero-panel">
             <div>
               <div className="section-label">
                 <Inbox size={14} strokeWidth={1.75} />
@@ -149,7 +149,7 @@ export default function CommerceDashboardClient({
             </div>
           </header>
 
-          <section className="metric-grid" style={{ marginBottom: 16 }}>
+          <section className="metric-grid" style={{ marginBottom: 18 }}>
             <MetricCard
               icon={<ShieldCheck size={18} strokeWidth={1.75} />}
               label="Reviewed Value"
@@ -172,7 +172,7 @@ export default function CommerceDashboardClient({
             />
           </section>
 
-          <section className="panel command-strip" style={{ marginBottom: 16 }}>
+          <section className="panel command-strip hero-panel" style={{ marginBottom: 18 }}>
             <div>
               <div className="section-label">
                 <Workflow size={14} strokeWidth={1.75} />
@@ -196,16 +196,17 @@ export default function CommerceDashboardClient({
             </div>
           </section>
 
-          <section className="dashboard-grid">
-            <div className="panel" style={{ padding: 0, overflow: "hidden" }}>
+          <section className="dashboard-grid workspace-shell">
+            <div className="panel review-panel" style={{ padding: 0, overflow: "hidden" }}>
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
                   gap: 12,
-                  padding: 14,
+                  padding: 18,
                   borderBottom: "1px solid var(--border)",
+                  background: "linear-gradient(180deg, rgba(251,250,247,0.92), rgba(255,255,255,0.82))",
                 }}
               >
                 <div>
@@ -276,8 +277,8 @@ export default function CommerceDashboardClient({
               </div>
             </div>
 
-            <aside style={{ display: "grid", gap: 16 }}>
-              <div className="panel" style={{ display: "grid", gap: 12 }}>
+            <aside className="action-rail">
+              <div className="panel hero-panel" style={{ display: "grid", gap: 12 }}>
                 <div className="section-label">
                   <ListChecks size={14} strokeWidth={1.75} />
                   Pilot Operator Brief
