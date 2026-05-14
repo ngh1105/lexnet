@@ -19,6 +19,7 @@ export interface LexNetContractEnvironment {
 export interface LexNetContractReadinessInput {
   env?: Record<string, string | undefined>;
   walletConnected?: boolean;
+  connectedWalletAddress?: string;
 }
 
 export interface LexNetContractReadiness {
@@ -26,8 +27,11 @@ export interface LexNetContractReadiness {
   rpcUrl: string;
   networkLabel: string;
   walletConnected: boolean;
+  connectedWalletAddress: string | null;
+  ownerWalletAddress: string | null;
   hasContractAddress: boolean;
   hasRpcUrl: boolean;
+  isOwnerWallet: boolean;
   isReady: boolean;
   modeLabel: string;
   blockingReasons: string[];
@@ -101,8 +105,15 @@ export function getLexNetContractReadiness(
 ): LexNetContractReadiness {
   const contract = readLexNetContractEnvironment(input.env);
   const walletConnected = input.walletConnected ?? false;
+  const connectedWalletAddress = normalizeValue(input.connectedWalletAddress);
+  const ownerWalletAddress = normalizeValue(input.env?.NEXT_PUBLIC_LEXNET_OWNER_WALLET_ADDRESS);
   const hasContractAddress = contract.contractAddress !== null;
   const hasRpcUrl = contract.rpcUrl.trim().length > 0;
+  const isOwnerWallet = Boolean(
+    ownerWalletAddress &&
+      connectedWalletAddress &&
+      ownerWalletAddress.toLowerCase() === connectedWalletAddress.toLowerCase(),
+  );
   const blockingReasons: string[] = [];
 
   if (!hasContractAddress) {
@@ -114,12 +125,18 @@ export function getLexNetContractReadiness(
   if (!walletConnected) {
     blockingReasons.push("Wallet is not connected.");
   }
+  if (walletConnected && ownerWalletAddress && !isOwnerWallet) {
+    blockingReasons.push("Connect the owner wallet before adding a watched contract.");
+  }
 
   return {
     ...contract,
     walletConnected,
+    connectedWalletAddress,
+    ownerWalletAddress,
     hasContractAddress,
     hasRpcUrl,
+    isOwnerWallet,
     isReady: blockingReasons.length === 0,
     modeLabel: hasContractAddress
       ? "Contract Configured / Local Verification"

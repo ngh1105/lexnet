@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useAccount } from "wagmi";
 import {
   ArrowLeft,
   CircleCheck,
@@ -60,6 +61,7 @@ export default function CaseDetailClient({
     useState<GenLayerExecutionRecord | null>(null);
   const [isSubmittingGenLayer, setIsSubmittingGenLayer] = useState(false);
   const [isCheckingGenLayer, setIsCheckingGenLayer] = useState(false);
+  const { address, isConnected } = useAccount();
 
   useEffect(() => {
     const mergedCase =
@@ -129,7 +131,11 @@ export default function CaseDetailClient({
         "content-type": "application/json",
         "x-lexnet-operator-id": "operator-demo",
       },
-      body: JSON.stringify({ caseId: commerceCase.id, walletConnected: true }),
+      body: JSON.stringify({
+        caseId: commerceCase.id,
+        walletConnected: isConnected,
+        connectedWalletAddress: address,
+      }),
     });
     const payload = await response.json();
     setIsSubmittingGenLayer(false);
@@ -154,7 +160,8 @@ export default function CaseDetailClient({
     const response = await fetch(`/api/genlayer/cases/${commerceCase.id}`, {
       headers: {
         "x-lexnet-operator-id": "operator-demo",
-        "x-lexnet-wallet-connected": "true",
+        "x-lexnet-wallet-connected": String(isConnected),
+        ...(address ? { "x-lexnet-wallet-address": address } : {}),
       },
     });
     const payload = await response.json();

@@ -27,6 +27,7 @@ export async function GET(
   const readiness = getLexNetContractReadiness({
     env: process.env,
     walletConnected: request.headers.get("x-lexnet-wallet-connected") === "true",
+    connectedWalletAddress: request.headers.get("x-lexnet-wallet-address") ?? undefined,
   });
 
   if (!readiness.isReady) {

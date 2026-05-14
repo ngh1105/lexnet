@@ -199,6 +199,24 @@ test("getLexNetContractReadiness blocks contract execution without wallet", () =
   assert.deepEqual(readiness.blockingReasons, ["Wallet is not connected."]);
 });
 
+test("getLexNetContractReadiness blocks non-owner wallets", () => {
+  const readiness = getLexNetContractReadiness({
+    env: {
+      NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: "0xabc",
+      NEXT_PUBLIC_GENLAYER_RPC_URL: "https://studio.genlayer.com/api",
+      NEXT_PUBLIC_GENLAYER_NETWORK_LABEL: "Studionet",
+      NEXT_PUBLIC_LEXNET_OWNER_WALLET_ADDRESS: "0x1111111111111111111111111111111111111111",
+    },
+    walletConnected: true,
+    connectedWalletAddress: "0x2222222222222222222222222222222222222222",
+  });
+
+  assert.equal(readiness.isReady, false);
+  assert.deepEqual(readiness.blockingReasons, [
+    "Connect the owner wallet before adding a watched contract.",
+  ]);
+});
+
 test("getLexNetContractReadiness is ready when contract and wallet are available", () => {
   const readiness = getLexNetContractReadiness({
     env: {

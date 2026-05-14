@@ -16,7 +16,11 @@ export async function POST(request: Request) {
     return authorization.response;
   }
 
-  const body = await readJsonBody<{ caseId?: string; walletConnected?: boolean }>(request);
+  const body = await readJsonBody<{
+    caseId?: string;
+    walletConnected?: boolean;
+    connectedWalletAddress?: string;
+  }>(request);
   if (!body || typeof body.caseId !== "string") {
     return jsonError("Case ID is required.");
   }
@@ -29,6 +33,7 @@ export async function POST(request: Request) {
   const readiness = getLexNetContractReadiness({
     env: process.env,
     walletConnected: body.walletConnected === true,
+    connectedWalletAddress: body.connectedWalletAddress,
   });
   const plan = buildVerifyCaseExecutionPlan(commerceCase, readiness);
   if (!plan.enabled) {

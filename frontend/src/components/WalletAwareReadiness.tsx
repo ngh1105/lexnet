@@ -16,8 +16,8 @@ export function WalletAwareDashboardReadiness({
 }: {
   contractEnvironment: LexNetContractEnvironment;
 }) {
-  const { isConnected } = useAccount();
-  const readiness = getReadiness(contractEnvironment, isConnected);
+  const { address, isConnected } = useAccount();
+  const readiness = getReadiness(contractEnvironment, isConnected, address);
 
   return <ContractReadinessPanel readiness={readiness} compact />;
 }
@@ -43,8 +43,8 @@ export function WalletAwareCaseReadiness({
   contractEnvironment: LexNetContractEnvironment;
   onCopy: (message: string) => void;
 }) {
-  const { isConnected } = useAccount();
-  const readiness = getReadiness(contractEnvironment, isConnected);
+  const { address, isConnected } = useAccount();
+  const readiness = getReadiness(contractEnvironment, isConnected, address);
   const preview = buildPreview(commerceCase, evidenceInput, readiness);
 
   return (
@@ -77,14 +77,20 @@ export function WalletUnavailableCaseReadiness({
   );
 }
 
-function getReadiness(contractEnvironment: LexNetContractEnvironment, walletConnected: boolean) {
+function getReadiness(
+  contractEnvironment: LexNetContractEnvironment,
+  walletConnected: boolean,
+  connectedWalletAddress?: string,
+) {
   return getLexNetContractReadiness({
     env: {
       NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: contractEnvironment.contractAddress ?? "",
       NEXT_PUBLIC_GENLAYER_RPC_URL: contractEnvironment.rpcUrl,
       NEXT_PUBLIC_GENLAYER_NETWORK_LABEL: contractEnvironment.networkLabel,
+      NEXT_PUBLIC_LEXNET_OWNER_WALLET_ADDRESS: process.env.NEXT_PUBLIC_LEXNET_OWNER_WALLET_ADDRESS,
     },
     walletConnected,
+    connectedWalletAddress,
   });
 }
 
