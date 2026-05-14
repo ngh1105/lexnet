@@ -202,7 +202,7 @@ export default function TrustPassportsClient({
       <Sidebar />
       <main className="main-shell">
         <div className="content-frame">
-          <header className="topbar">
+          <header className="topbar hero-panel">
             <div>
               <div className="section-label">
                 <IdCard size={14} strokeWidth={1.75} />
@@ -266,7 +266,7 @@ export default function TrustPassportsClient({
             </div>
           ) : null}
 
-          <section className="panel" style={{ marginBottom: 16, display: "grid", gap: 10 }}>
+          <section className="panel hero-panel" style={{ marginBottom: 18, display: "grid", gap: 12 }}>
             <div className="section-label">
               <ShieldCheck size={14} strokeWidth={1.75} />
               Publication Model
@@ -279,7 +279,7 @@ export default function TrustPassportsClient({
             </p>
           </section>
 
-          <section className="metric-grid" style={{ marginBottom: 16 }}>
+          <section className="metric-grid" style={{ marginBottom: 18 }}>
             <PassportMetric
               icon={<ShieldCheck size={18} strokeWidth={1.75} />}
               label="Generated Passports"
@@ -302,13 +302,7 @@ export default function TrustPassportsClient({
             />
           </section>
 
-          <section
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(min(310px, 100%), 1fr))",
-              gap: 14,
-            }}
-          >
+          <section className="surface-grid">
             {filteredPassports.length === 0 ? (
               <div className="panel">
                 <div className="section-label">
@@ -358,7 +352,7 @@ function PassportCard({
   const publicPath = backendPassport ? `/passport/${backendPassport.slug}` : "";
 
   return (
-    <article className="panel" style={{ display: "grid", gap: 16, minWidth: 0, overflow: "hidden" }}>
+    <article className="panel review-panel" style={{ display: "grid", gap: 16, minWidth: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
         <div style={{ minWidth: 0 }}>
           <div className="section-label">{passport.role} passport</div>
@@ -409,10 +403,10 @@ function PassportCard({
         style={{
           display: "grid",
           gap: 10,
-          padding: 12,
-          borderRadius: 8,
+          padding: 14,
+          borderRadius: "var(--radius-md)",
           border: "1px solid rgba(37,99,235,0.18)",
-          background: "var(--blue-soft)",
+          background: "linear-gradient(135deg, rgba(234,241,255,0.95), rgba(255,255,255,0.78))",
           color: "var(--blue)",
           fontSize: 12,
           fontWeight: 800,
