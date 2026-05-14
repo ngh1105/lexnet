@@ -11,7 +11,11 @@ export type PlatformAuditType =
   | "passport.generated"
   | "passport.published"
   | "passport.unpublished"
-  | "backup.exported";
+  | "backup.exported"
+  | "production.auth.accepted"
+  | "production.auth.rejected"
+  | "production.persistence.selected"
+  | "evidence.retention.applied";
 
 export type PlatformEntityType =
   | "case"

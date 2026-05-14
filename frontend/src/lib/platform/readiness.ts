@@ -1,6 +1,10 @@
 import { getLexNetContractReadiness } from "../lexnet-contract";
+import { parseEvidenceRetentionPolicy } from "./evidence-policy";
 import { getPlatformStoreAdapterStatus } from "./persistence-adapter";
-import { isProductionAuthConfigured, type ProductionAuthMode } from "./production-auth";
+import {
+  getProductionAuthConfigurationStatus,
+  type ProductionAuthMode,
+} from "./production-auth";
 
 export type LexNetRuntimeMode = "local-demo" | "pilot" | "production";
 
@@ -71,7 +75,7 @@ export interface PlatformReadinessStatus {
   persistence: PersistenceReadiness;
   evidencePolicy: EvidencePolicyStatus;
   genLayer: GenLayerReadinessStatus;
-  storeMode: "filesystem";
+  storeMode: "filesystem" | "managed";
   persistenceMode: PlatformPersistenceMode;
   productionBlockers: string[];
   blockingReasons: string[];
@@ -89,20 +93,13 @@ export function buildAuthReadiness(env: PlatformReadinessEnv): AuthReadiness {
   const mode = getLexNetRuntimeMode(env);
   const demoPrivateApiEnabled = env.LEXNET_ENABLE_DEMO_PRIVATE_API === "true";
   const demoPrivateApiTokenConfigured = Boolean(env.LEXNET_DEMO_PRIVATE_API_TOKEN);
-  const productionAuthEnforced = isProductionAuthConfigured(env);
-  const productionAuthConfigured = Boolean(env.LEXNET_PRODUCTION_AUTH_PROVIDER) || productionAuthEnforced;
-  const blockingReasons: string[] = [];
+  const authStatus = getProductionAuthConfigurationStatus(env);
+  const productionAuthConfigured = authStatus.providerConfigured || authStatus.modeConfigured || authStatus.secretConfigured;
+  const productionAuthEnforced = authStatus.enforced;
+  const blockingReasons = [...authStatus.blockingReasons];
 
   if (demoPrivateApiEnabled && !demoPrivateApiTokenConfigured) {
-    blockingReasons.push("Demo-private API token is not configured.");
-  }
-
-  if (!productionAuthConfigured) {
-    blockingReasons.push("Production authentication is not configured.");
-  }
-
-  if (mode === "production" && productionAuthConfigured && !productionAuthEnforced) {
-    blockingReasons.push("Production authentication enforcement is not configured.");
+    blockingReasons.unshift("Demo-private API token is not configured.");
   }
 
   return {
@@ -125,11 +122,11 @@ export function buildPersistenceReadiness(env: PlatformReadinessEnv): Persistenc
   const managedPersistenceConfigured = managedDatabaseUrlConfigured || managedPersistenceProviderConfigured;
 
   return {
-    mode: mode === "production"
-      ? managedPersistenceConfigured
-        ? "managed-configured"
-        : "managed-missing"
-      : "filesystem-local",
+    mode: adapterStatus.mode === "managed-configured"
+      ? "managed-configured"
+      : mode === "production"
+        ? "managed-missing"
+        : "filesystem-local",
     filesystemPersistenceAllowed: adapterStatus.mode === "filesystem-local" && mode !== "production",
     managedPersistenceConfigured,
     managedPersistenceEnforced: adapterStatus.managedPersistenceEnforced,
@@ -141,17 +138,13 @@ export function buildPersistenceReadiness(env: PlatformReadinessEnv): Persistenc
 
 export function buildEvidencePolicyStatus(env: PlatformReadinessEnv): EvidencePolicyStatus {
   const mode = getLexNetRuntimeMode(env);
-  const retentionPolicyConfigured = Boolean(env.LEXNET_EVIDENCE_RETENTION_POLICY);
-  const blockingReasons: string[] = [];
-
-  if (mode === "production" && !retentionPolicyConfigured) {
-    blockingReasons.push("Evidence retention policy is not configured.");
-  }
+  const retention = parseEvidenceRetentionPolicy(env.LEXNET_EVIDENCE_RETENTION_POLICY);
+  const blockingReasons = mode === "production" ? retention.blockingReasons : [];
 
   return {
     allowPublicHttpsOnly: true,
     rawEvidenceStorage: "disabled",
-    retentionPolicyConfigured,
+    retentionPolicyConfigured: retention.configured && retention.mode === "metadata-only",
     blockedPrivateNetworkHosts: true,
     blockingReasons,
   };
@@ -208,7 +201,7 @@ export function buildPlatformReadinessStatus(env: PlatformReadinessEnv): Platfor
     persistence,
     evidencePolicy,
     genLayer,
-    storeMode: "filesystem",
+    storeMode: persistence.managedPersistenceEnforced ? "managed" : "filesystem",
     persistenceMode: persistence.mode,
     productionBlockers,
     blockingReasons: [

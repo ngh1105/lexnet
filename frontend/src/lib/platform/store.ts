@@ -22,6 +22,12 @@ export const DEFAULT_PLATFORM_STORE_PATH = join(
   "store.json",
 );
 
+export interface PlatformStoreRepository {
+  read(): Promise<PlatformStore>;
+  write(store: PlatformStore): Promise<void>;
+  mutate(mutate: (store: PlatformStore) => void | Promise<void>): Promise<PlatformStore>;
+}
+
 export function createDefaultPlatformStore(
   now = "2026-05-12T00:00:00.000Z",
 ): PlatformStore {
@@ -125,6 +131,31 @@ export async function mutatePlatformStore(
     () => undefined,
   );
   return queued;
+}
+
+export function createFilesystemPlatformStoreRepository(
+  storePath = DEFAULT_PLATFORM_STORE_PATH,
+): PlatformStoreRepository {
+  return {
+    read: () => readPlatformStore(storePath),
+    write: (store) => writePlatformStore(store, storePath),
+    mutate: (mutate) => mutatePlatformStore(mutate, storePath),
+  };
+}
+
+export function createPlatformStoreRepository(
+  env: Record<string, string | undefined> = process.env,
+  storePath = DEFAULT_PLATFORM_STORE_PATH,
+): PlatformStoreRepository {
+  if (env.LEXNET_RUNTIME_MODE !== "production") {
+    return createFilesystemPlatformStoreRepository(storePath);
+  }
+
+  if (env.LEXNET_MANAGED_PERSISTENCE_PROVIDER === "postgres" && env.LEXNET_MANAGED_DATABASE_URL) {
+    return createFilesystemPlatformStoreRepository(storePath);
+  }
+
+  throw new Error("Managed persistence is required in production.");
 }
 
 export async function appendAuditEvent(

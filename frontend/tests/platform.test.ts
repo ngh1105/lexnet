@@ -56,7 +56,14 @@ import {
   type PlatformReadinessEnv,
 } from "../src/lib/platform/readiness";
 import { getPlatformStoreAdapterStatus } from "../src/lib/platform/persistence-adapter";
-import { evaluateEvidenceUrlPolicy } from "../src/lib/platform/evidence-policy";
+import {
+  evaluateEvidenceUrlPolicy,
+  parseEvidenceRetentionPolicy,
+} from "../src/lib/platform/evidence-policy";
+import {
+  buildPlatformObservabilityStatus,
+  buildProductionAuthAuditEvent,
+} from "../src/lib/platform/observability";
 import { buildPilotSummary } from "../src/lib/platform/pilot-summary";
 import {
   backupPlatformStore,
@@ -169,7 +176,7 @@ test("buildAuthReadiness blocks production mutating routes without provider", ()
   assert.equal(readiness.demoPrivateApiEnabled, true);
   assert.equal(readiness.productionAuthConfigured, false);
   assert.equal(readiness.mutatingRoutesAllowed, false);
-  assert.match(readiness.blockingReasons.join("\n"), /Production authentication is not configured/);
+  assert.match(readiness.blockingReasons.join("\n"), /Production authentication provider is not configured/);
 });
 
 test("buildAuthReadiness allows pilot demo-private mode but reports production auth blocker", () => {
@@ -180,7 +187,7 @@ test("buildAuthReadiness allows pilot demo-private mode but reports production a
 
   assert.equal(readiness.mode, "pilot");
   assert.equal(readiness.mutatingRoutesAllowed, true);
-  assert.match(readiness.blockingReasons.join("\n"), /Production authentication is not configured/);
+  assert.match(readiness.blockingReasons.join("\n"), /Production authentication provider is not configured/);
 });
 
 test("buildAuthReadiness distinguishes configured from enforced production auth", () => {
@@ -195,6 +202,7 @@ test("buildAuthReadiness distinguishes configured from enforced production auth"
 
   const enforced = buildAuthReadiness({
     LEXNET_RUNTIME_MODE: "production",
+    LEXNET_PRODUCTION_AUTH_PROVIDER: "trusted-header",
     LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
     LEXNET_PRODUCTION_AUTH_SECRET: "secret",
   });
@@ -205,19 +213,102 @@ test("buildAuthReadiness distinguishes configured from enforced production auth"
   assert.equal(enforced.mutatingRoutesAllowed, true);
 });
 
+test("production readiness requires trusted-header provider and secret", () => {
+  const status = buildPlatformReadinessStatus({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_PRODUCTION_AUTH_PROVIDER: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_SECRET: "super-secret",
+    LEXNET_MANAGED_PERSISTENCE_PROVIDER: "postgres",
+    LEXNET_MANAGED_DATABASE_URL: "postgres://lexnet.example/db",
+    LEXNET_EVIDENCE_RETENTION_POLICY: "metadata-365d",
+    NEXT_PUBLIC_GENLAYER_RPC_URL: "https://studio.genlayer.com/api",
+    NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: "0xabc",
+  });
+
+  assert.equal(status.auth.productionAuthConfigured, true);
+  assert.equal(status.auth.productionAuthEnforced, true);
+  assert.equal(status.auth.productionAuthMode, "trusted-header");
+  assert.equal(
+    status.auth.blockingReasons.includes("Production authentication provider must be trusted-header."),
+    false,
+  );
+});
+
+test("production readiness blocks unsupported production auth provider", () => {
+  const status = buildPlatformReadinessStatus({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_PRODUCTION_AUTH_PROVIDER: "oauth",
+    LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_SECRET: "super-secret",
+  });
+
+  assert.equal(status.auth.productionAuthConfigured, true);
+  assert.equal(status.auth.productionAuthEnforced, false);
+  assert.ok(status.auth.blockingReasons.includes("Production authentication provider must be trusted-header."));
+});
+
+test("platform store adapter selects managed postgres in production", () => {
+  const status = getPlatformStoreAdapterStatus({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_MANAGED_PERSISTENCE_PROVIDER: "postgres",
+    LEXNET_MANAGED_DATABASE_URL: "postgres://lexnet.example/db",
+  });
+
+  assert.equal(status.mode, "managed-configured");
+  assert.equal(status.canRead, true);
+  assert.equal(status.canMutate, true);
+  assert.equal(status.managedPersistenceConfigured, true);
+  assert.equal(status.managedPersistenceEnforced, true);
+  assert.deepEqual(status.blockingReasons, []);
+});
+
+test("platform store adapter blocks unsupported managed provider", () => {
+  const status = getPlatformStoreAdapterStatus({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_MANAGED_PERSISTENCE_PROVIDER: "sqlite",
+    LEXNET_MANAGED_DATABASE_URL: "file:lexnet.db",
+  });
+
+  assert.equal(status.mode, "managed-missing");
+  assert.equal(status.canRead, false);
+  assert.equal(status.canMutate, false);
+  assert.equal(status.managedPersistenceConfigured, true);
+  assert.equal(status.managedPersistenceEnforced, false);
+  assert.ok(status.blockingReasons.includes("Managed persistence provider must be postgres."));
+});
+
+test("platform readiness reports managed persistence mode in production", () => {
+  const status = buildPlatformReadinessStatus({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_PRODUCTION_AUTH_PROVIDER: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_SECRET: "super-secret",
+    LEXNET_MANAGED_PERSISTENCE_PROVIDER: "postgres",
+    LEXNET_MANAGED_DATABASE_URL: "postgres://lexnet.example/db",
+    LEXNET_EVIDENCE_RETENTION_POLICY: "metadata-365d",
+    NEXT_PUBLIC_GENLAYER_RPC_URL: "https://studio.genlayer.com/api",
+    NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: "0xabc",
+  });
+
+  assert.equal(status.storeMode, "managed");
+  assert.equal(status.persistenceMode, "managed-configured");
+  assert.equal(status.persistence.managedPersistenceEnforced, true);
+});
+
 test("buildPersistenceReadiness requires managed persistence in production", () => {
   const missing = buildPersistenceReadiness({ LEXNET_RUNTIME_MODE: "production" });
   assert.equal(missing.mode, "managed-missing");
   assert.equal(missing.managedPersistenceConfigured, false);
-  assert.match(missing.blockingReasons.join("\n"), /Managed persistence is not configured/);
+  assert.match(missing.blockingReasons.join("\n"), /Managed persistence provider is not configured/);
 
   const configured = buildPersistenceReadiness({
     LEXNET_RUNTIME_MODE: "production",
     LEXNET_MANAGED_PERSISTENCE_PROVIDER: "managed-db",
   });
-  assert.equal(configured.mode, "managed-configured");
+  assert.equal(configured.mode, "managed-missing");
   assert.equal(configured.managedPersistenceConfigured, true);
-  assert.match(configured.blockingReasons.join("\n"), /Managed persistence adapter is not implemented/);
+  assert.match(configured.blockingReasons.join("\n"), /Managed persistence provider must be postgres/);
 });
 
 test("getPlatformStoreAdapterStatus allows filesystem outside production", () => {
@@ -239,17 +330,59 @@ test("getPlatformStoreAdapterStatus blocks production managed adapter until enfo
   });
 
   assert.equal(status.runtimeMode, "production");
-  assert.equal(status.mode, "managed-required");
+  assert.equal(status.mode, "managed-missing");
   assert.equal(status.canRead, false);
   assert.equal(status.canMutate, false);
   assert.equal(status.managedPersistenceConfigured, true);
   assert.equal(status.managedPersistenceEnforced, false);
-  assert.match(status.blockingReasons.join("\n"), /Managed persistence adapter is not implemented/);
+  assert.match(status.blockingReasons.join("\n"), /Managed database URL is not configured/);
+});
+
+test("parseEvidenceRetentionPolicy accepts metadata day policies", () => {
+  const policy = parseEvidenceRetentionPolicy("metadata-365d");
+
+  assert.deepEqual(policy, {
+    configured: true,
+    mode: "metadata-only",
+    retentionDays: 365,
+    blockingReasons: [],
+  });
+});
+
+test("parseEvidenceRetentionPolicy rejects unsupported policies", () => {
+  const policy = parseEvidenceRetentionPolicy("raw-forever");
+
+  assert.equal(policy.configured, true);
+  assert.equal(policy.mode, "invalid");
+  assert.ok(policy.blockingReasons.includes("Evidence retention policy must use metadata-{days}d."));
+});
+
+test("evaluateEvidenceUrlPolicy includes production retention decision", () => {
+  const result = evaluateEvidenceUrlPolicy(["https://merchant.example/evidence.pdf"], {
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_EVIDENCE_RETENTION_POLICY: "metadata-365d",
+  });
+
+  assert.deepEqual(result.acceptedUrls, ["https://merchant.example/evidence.pdf"]);
+  assert.equal(result.retention.configured, true);
+  assert.equal(result.retention.mode, "metadata-only");
+  assert.equal(result.retention.retentionDays, 365);
+  assert.deepEqual(result.retention.blockingReasons, []);
+});
+
+test("evaluateEvidenceUrlPolicy blocks production evidence without retention policy", () => {
+  const result = evaluateEvidenceUrlPolicy(["https://merchant.example/evidence.pdf"], {
+    LEXNET_RUNTIME_MODE: "production",
+  });
+
+  assert.deepEqual(result.acceptedUrls, []);
+  assert.ok(result.blockingReasons.includes("Evidence retention policy is not configured."));
 });
 
 test("evaluateEvidenceUrlPolicy accepts public HTTPS URLs in production", () => {
   const result = evaluateEvidenceUrlPolicy(["https://example.com/proof.pdf"], {
     LEXNET_RUNTIME_MODE: "production",
+    LEXNET_EVIDENCE_RETENTION_POLICY: "metadata-365d",
   });
 
   assert.deepEqual(result.acceptedUrls, ["https://example.com/proof.pdf"]);
@@ -286,7 +419,10 @@ test("evaluateEvidenceUrlPolicy rejects IPv6 private and link-local literals", (
       "https://[febf::1]/proof",
       "https://[2001:db8::1]/proof",
     ],
-    { LEXNET_RUNTIME_MODE: "production" },
+    {
+      LEXNET_RUNTIME_MODE: "production",
+      LEXNET_EVIDENCE_RETENTION_POLICY: "metadata-365d",
+    },
   );
 
   assert.deepEqual(result.acceptedUrls, ["https://[2001:db8::1]/proof"]);
@@ -300,7 +436,10 @@ test("evaluateEvidenceUrlPolicy accepts public hosts that resemble IPv6 private 
       "https://fd-example.com/proof",
       "https://fe80proof.example/proof",
     ],
-    { LEXNET_RUNTIME_MODE: "production" },
+    {
+      LEXNET_RUNTIME_MODE: "production",
+      LEXNET_EVIDENCE_RETENTION_POLICY: "metadata-365d",
+    },
   );
 
   assert.deepEqual(result.acceptedUrls, [
@@ -326,10 +465,10 @@ test("buildPersistenceReadiness distinguishes configured from enforced managed p
     LEXNET_MANAGED_DATABASE_URL: "postgres://user:password@example.com/db",
   });
 
-  assert.equal(readiness.mode, "managed-configured");
+  assert.equal(readiness.mode, "managed-missing");
   assert.equal(readiness.managedPersistenceConfigured, true);
   assert.equal(readiness.managedPersistenceEnforced, false);
-  assert.match(readiness.blockingReasons.join("\n"), /Managed persistence adapter is not implemented/);
+  assert.match(readiness.blockingReasons.join("\n"), /Managed persistence provider is not configured/);
 });
 
 test("buildPersistenceReadiness allows pilot filesystem persistence with warning", () => {
@@ -365,8 +504,8 @@ test("buildPlatformReadinessStatus includes enforcement blockers in production",
   assert.equal(status.auth.productionAuthEnforced, false);
   assert.equal(status.persistence.managedPersistenceConfigured, true);
   assert.equal(status.persistence.managedPersistenceEnforced, false);
-  assert.match(status.productionBlockers.join("\n"), /Production authentication enforcement is not configured/);
-  assert.match(status.productionBlockers.join("\n"), /Managed persistence adapter is not implemented/);
+  assert.match(status.productionBlockers.join("\n"), /Production authentication provider must be trusted-header/);
+  assert.match(status.productionBlockers.join("\n"), /Managed persistence provider is not configured/);
   assert.equal(Object.prototype.hasOwnProperty.call(status.auth, "productionAuthProvider"), false);
   assert.equal(serialized.includes("oauth-provider"), false);
   assert.equal(serialized.includes("password@example.com"), false);
@@ -508,6 +647,53 @@ test("writePlatformStore persists platform data", async () => {
     const reloaded = await readPlatformStore(storePath);
     assert.equal(reloaded.workspaces[0]?.name, "Pilot Workspace");
   });
+});
+
+test("buildPlatformObservabilityStatus redacts production-sensitive data", () => {
+  const store = createDefaultPlatformStore();
+  store.auditEvents.push({
+    id: "audit-1",
+    type: "production.auth.accepted",
+    entityType: "workspace",
+    entityId: "workspace-demo",
+    actorId: "operator-demo",
+    createdAt: "2026-05-14T00:00:00.000Z",
+    detail: "Production mutation authorized.",
+  });
+
+  const status = buildPlatformObservabilityStatus(store, {
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_PRODUCTION_AUTH_PROVIDER: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_SECRET: "super-secret",
+    LEXNET_MANAGED_PERSISTENCE_PROVIDER: "postgres",
+    LEXNET_MANAGED_DATABASE_URL: "postgres://lexnet.example/db",
+    LEXNET_EVIDENCE_RETENTION_POLICY: "metadata-365d",
+  });
+
+  assert.equal(status.runtimeMode, "production");
+  assert.equal(status.auditEventCount, 1);
+  assert.equal(status.latestAuditEventType, "production.auth.accepted");
+  assert.equal("auditEvents" in status, false);
+  assert.equal("operators" in status, false);
+  assert.equal("memberships" in status, false);
+  assert.equal(JSON.stringify(status).includes("super-secret"), false);
+  assert.equal(JSON.stringify(status).includes("postgres://lexnet.example/db"), false);
+});
+
+test("buildProductionAuthAuditEvent records accepted production auth", () => {
+  const event = buildProductionAuthAuditEvent({
+    accepted: true,
+    operatorId: "operator-demo",
+    pathname: "/api/cases",
+    method: "POST",
+    createdAt: "2026-05-14T00:00:00.000Z",
+  });
+
+  assert.equal(event.type, "production.auth.accepted");
+  assert.equal(event.entityType, "workspace");
+  assert.equal(event.actorId, "operator-demo");
+  assert.equal(event.detail, "Production mutation authorized for POST /api/cases.");
 });
 
 test("appendAuditEvent records operational metadata", async () => {
@@ -1117,7 +1303,9 @@ test("buildSecurityStatus reports configured and missing environment settings", 
   assert.deepEqual(security.blockingReasons, [
     "Contract address is not configured.",
     "Wallet is not connected.",
-    "Production authentication is not configured.",
+    "Production authentication provider is not configured.",
+    "Production authentication mode is not configured.",
+    "Production authentication secret is not configured.",
   ]);
 });
 
@@ -1134,7 +1322,7 @@ test("buildSecurityStatus reports demo API and persistence readiness", () => {
   assert.equal(status.demoPrivateApiTokenConfigured, true);
   assert.equal(status.productionAuthConfigured, false);
   assert.equal(status.persistenceMode, "filesystem-local");
-  assert.equal(status.blockingReasons.includes("Production authentication is not configured."), true);
+  assert.equal(status.blockingReasons.includes("Production authentication provider is not configured."), true);
 });
 
 test("buildSecurityStatus reports missing demo API token as a warning reason when demo API is enabled", () => {
@@ -1831,6 +2019,7 @@ test("authorizePlatformMutation accepts production mutation with valid productio
     request,
     {
       LEXNET_RUNTIME_MODE: "production",
+      LEXNET_PRODUCTION_AUTH_PROVIDER: "trusted-header",
       LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
       LEXNET_PRODUCTION_AUTH_SECRET: "production-secret",
     },

@@ -8,7 +8,7 @@ function getAdapterRuntimeMode(env: PlatformReadinessEnv): LexNetRuntimeMode {
   return "local-demo";
 }
 
-export type PlatformStoreAdapterMode = "filesystem-local" | "managed-required";
+export type PlatformStoreAdapterMode = "filesystem-local" | "managed-configured" | "managed-missing";
 
 export interface PlatformStoreAdapterStatus {
   mode: PlatformStoreAdapterMode;
@@ -22,9 +22,10 @@ export interface PlatformStoreAdapterStatus {
 
 export function getPlatformStoreAdapterStatus(env: PlatformReadinessEnv): PlatformStoreAdapterStatus {
   const runtimeMode = getAdapterRuntimeMode(env);
-  const managedPersistenceConfigured = Boolean(
-    env.LEXNET_MANAGED_DATABASE_URL || env.LEXNET_MANAGED_PERSISTENCE_PROVIDER,
-  );
+  const managedProvider = env.LEXNET_MANAGED_PERSISTENCE_PROVIDER;
+  const managedDatabaseUrlConfigured = Boolean(env.LEXNET_MANAGED_DATABASE_URL);
+  const managedPersistenceConfigured = Boolean(managedProvider || env.LEXNET_MANAGED_DATABASE_URL);
+  const managedProviderSupported = managedProvider === "postgres";
 
   if (runtimeMode !== "production") {
     return {
@@ -40,17 +41,26 @@ export function getPlatformStoreAdapterStatus(env: PlatformReadinessEnv): Platfo
     };
   }
 
+  const blockingReasons: string[] = [];
+  if (!managedProvider) {
+    blockingReasons.push("Managed persistence provider is not configured.");
+  } else if (!managedProviderSupported) {
+    blockingReasons.push("Managed persistence provider must be postgres.");
+  }
+
+  if (!managedDatabaseUrlConfigured) {
+    blockingReasons.push("Managed database URL is not configured.");
+  }
+
+  const managedPersistenceEnforced = managedProviderSupported && managedDatabaseUrlConfigured;
+
   return {
-    mode: "managed-required",
+    mode: managedPersistenceEnforced ? "managed-configured" : "managed-missing",
     runtimeMode,
-    canRead: false,
-    canMutate: false,
+    canRead: managedPersistenceEnforced,
+    canMutate: managedPersistenceEnforced,
     managedPersistenceConfigured,
-    managedPersistenceEnforced: false,
-    blockingReasons: [
-      managedPersistenceConfigured
-        ? "Managed persistence adapter is not implemented."
-        : "Managed persistence is not configured.",
-    ],
+    managedPersistenceEnforced,
+    blockingReasons,
   };
 }

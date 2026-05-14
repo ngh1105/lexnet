@@ -1,5 +1,7 @@
 import { jsonError } from "./api";
+import { buildProductionAuthAuditEvent } from "./observability";
 import { buildAuthReadiness, getLexNetRuntimeMode } from "./readiness";
+import { appendAuditEvent } from "./store";
 import {
   resolveProductionAuthContext,
   type ProductionAuthEnv,
@@ -74,6 +76,10 @@ export function authorizeDemoPrivateApi(
   return { authorized: true, operator };
 }
 
+function recordProductionAuthAuditEvent(input: Parameters<typeof buildProductionAuthAuditEvent>[0]): void {
+  void appendAuditEvent(buildProductionAuthAuditEvent(input)).catch(() => undefined);
+}
+
 export async function authorizePlatformMutation(
   request: Request,
   env: DemoPrivateApiEnv,
@@ -87,15 +93,36 @@ export async function authorizePlatformMutation(
       : authorization;
   }
 
+  const { pathname } = new URL(request.url);
   const context = await resolveProductionAuthContext(request, env, nowSeconds);
   if (!context.authorized) {
+    recordProductionAuthAuditEvent({
+      accepted: false,
+      pathname,
+      method: request.method,
+      reason: context.code,
+    });
     return { authorized: false, response: jsonError(context.reason, context.status) };
   }
 
   const operator = store.operators.find((candidate) => candidate.id === context.operatorId);
   if (!operator) {
+    recordProductionAuthAuditEvent({
+      accepted: false,
+      operatorId: context.operatorId,
+      pathname,
+      method: request.method,
+      reason: "operator_not_found",
+    });
     return { authorized: false, response: jsonError("Unauthorized.", 401) };
   }
+
+  recordProductionAuthAuditEvent({
+    accepted: true,
+    operatorId: operator.id,
+    pathname,
+    method: request.method,
+  });
 
   return { authorized: true, operator, authType: "production" };
 }

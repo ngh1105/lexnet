@@ -1,12 +1,23 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 export type ProductionAuthMode = "trusted-header";
+export type ProductionAuthProvider = "trusted-header";
 
 export interface ProductionAuthEnv {
   [key: string]: string | undefined;
+  LEXNET_PRODUCTION_AUTH_PROVIDER?: string;
   LEXNET_PRODUCTION_AUTH_MODE?: string;
   LEXNET_PRODUCTION_AUTH_SECRET?: string;
   LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS?: string;
+}
+
+export interface ProductionAuthConfigurationStatus {
+  providerConfigured: boolean;
+  providerSupported: boolean;
+  secretConfigured: boolean;
+  modeConfigured: boolean;
+  enforced: boolean;
+  blockingReasons: string[];
 }
 
 export interface ProductionAuthSignatureInput {
@@ -146,8 +157,39 @@ export function resetProductionAuthNonceCacheForTests(): void {
   seenNonces.clear();
 }
 
+export function getProductionAuthConfigurationStatus(env: ProductionAuthEnv): ProductionAuthConfigurationStatus {
+  const providerConfigured = Boolean(env.LEXNET_PRODUCTION_AUTH_PROVIDER);
+  const providerSupported = env.LEXNET_PRODUCTION_AUTH_PROVIDER === "trusted-header";
+  const modeConfigured = env.LEXNET_PRODUCTION_AUTH_MODE === "trusted-header";
+  const secretConfigured = Boolean(env.LEXNET_PRODUCTION_AUTH_SECRET);
+  const blockingReasons: string[] = [];
+
+  if (!providerConfigured) {
+    blockingReasons.push("Production authentication provider is not configured.");
+  } else if (!providerSupported) {
+    blockingReasons.push("Production authentication provider must be trusted-header.");
+  }
+
+  if (!modeConfigured) {
+    blockingReasons.push("Production authentication mode is not configured.");
+  }
+
+  if (!secretConfigured) {
+    blockingReasons.push("Production authentication secret is not configured.");
+  }
+
+  return {
+    providerConfigured,
+    providerSupported,
+    secretConfigured,
+    modeConfigured,
+    enforced: providerSupported && modeConfigured && secretConfigured,
+    blockingReasons,
+  };
+}
+
 export function isProductionAuthConfigured(env: ProductionAuthEnv): boolean {
-  return env.LEXNET_PRODUCTION_AUTH_MODE === "trusted-header" && Boolean(env.LEXNET_PRODUCTION_AUTH_SECRET);
+  return getProductionAuthConfigurationStatus(env).enforced;
 }
 
 export async function resolveProductionAuthContext(
