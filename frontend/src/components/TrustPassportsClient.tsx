@@ -202,7 +202,7 @@ export default function TrustPassportsClient({
       <Sidebar />
       <main className="main-shell">
         <div className="content-frame">
-          <header className="topbar">
+          <header className="topbar hero-panel">
             <div>
               <div className="section-label">
                 <IdCard size={14} strokeWidth={1.75} />
@@ -210,7 +210,8 @@ export default function TrustPassportsClient({
               </div>
               <h1 className="topbar-title">Portable Trust History</h1>
               <p className="topbar-subtitle">
-                Buyer and seller summaries derived from verified commerce case history.
+                Operator-managed trust summaries derived from reviewed commerce cases. Published
+                records expose only privacy-safe aggregate signals.
               </p>
             </div>
             <div className="topbar-actions">
@@ -265,7 +266,20 @@ export default function TrustPassportsClient({
             </div>
           ) : null}
 
-          <section className="metric-grid" style={{ marginBottom: 16 }}>
+          <section className="panel hero-panel" style={{ marginBottom: 18, display: "grid", gap: 12 }}>
+            <div className="section-label">
+              <ShieldCheck size={14} strokeWidth={1.75} />
+              Publication Model
+            </div>
+            <p className="muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.7 }}>
+              Backend passport records can be published into public previews. Local demo
+              passports are derived from the pilot case set and need backend generation before
+              publication controls apply. Public previews hide raw parties, evidence, case IDs,
+              audit events, and workspace data.
+            </p>
+          </section>
+
+          <section className="metric-grid" style={{ marginBottom: 18 }}>
             <PassportMetric
               icon={<ShieldCheck size={18} strokeWidth={1.75} />}
               label="Generated Passports"
@@ -288,13 +302,7 @@ export default function TrustPassportsClient({
             />
           </section>
 
-          <section
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(min(310px, 100%), 1fr))",
-              gap: 14,
-            }}
-          >
+          <section className="surface-grid">
             {filteredPassports.length === 0 ? (
               <div className="panel">
                 <div className="section-label">
@@ -344,7 +352,7 @@ function PassportCard({
   const publicPath = backendPassport ? `/passport/${backendPassport.slug}` : "";
 
   return (
-    <article className="panel" style={{ display: "grid", gap: 16, minWidth: 0, overflow: "hidden" }}>
+    <article className="panel review-panel" style={{ display: "grid", gap: 16, minWidth: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
         <div style={{ minWidth: 0 }}>
           <div className="section-label">{passport.role} passport</div>
@@ -395,10 +403,10 @@ function PassportCard({
         style={{
           display: "grid",
           gap: 10,
-          padding: 12,
-          borderRadius: 8,
+          padding: 14,
+          borderRadius: "var(--radius-md)",
           border: "1px solid rgba(37,99,235,0.18)",
-          background: "var(--blue-soft)",
+          background: "linear-gradient(135deg, rgba(234,241,255,0.95), rgba(255,255,255,0.78))",
           color: "var(--blue)",
           fontSize: 12,
           fontWeight: 800,
@@ -428,7 +436,7 @@ function PassportCard({
           </>
         ) : (
           <>
-            <span>Local demo passport. Generate backend records to enable publishing state.</span>
+            <span>Local demo passport derived from case history. Generate backend records before publishing a privacy-safe preview.</span>
           </>
         )}
       </div>

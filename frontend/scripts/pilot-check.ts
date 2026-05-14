@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { dirname, relative } from "node:path";
+import { relative } from "node:path";
 import { pathToFileURL } from "node:url";
 import { execFileSync } from "node:child_process";
 
@@ -127,12 +127,12 @@ async function main() {
   }
 }
 
-function getGitIgnoreOutput(storePath: string): string {
+export function getGitIgnoreOutput(storePath: string): string {
   try {
     return execFileSync(
       "git",
       ["check-ignore", relative(process.cwd(), storePath)],
-      { cwd: dirname(storePath), encoding: "utf8" },
+      { cwd: process.cwd(), encoding: "utf8" },
     );
   } catch (error) {
     const output = error && typeof error === "object" && "stdout" in error

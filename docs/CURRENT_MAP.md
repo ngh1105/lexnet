@@ -1,20 +1,26 @@
 # LexNet Current Project Map
 
-> Last updated: 2026-05-12
+> Last updated: 2026-05-13
 
-## What is LexNet
+## Purpose
 
-LexNet is an AI-verified commerce trust platform. Buyers and sellers create commerce cases, attach delivery evidence, run deterministic/GenLayer-ready verification, receive settlement recommendations, and build portable trust passports.
+LexNet is an AI-verified commerce trust platform for commerce cases, evidence review, settlement recommendations, and privacy-safe trust passports.
 
 The current implementation is recommendation-only. It does not custody funds, execute payouts, or claim fake on-chain settlement.
 
-## Active Source Files
+## Active Areas
 
-### Contract
+- `contracts/lexnet_commerce_core.py` - GenLayer Intelligent Contract boundary for commerce cases, evidence, verification, recommendations, and trust passports.
+- `frontend/src/lib/lexnet-*.ts` - core commerce domain types, pure domain logic, verification adapters, contract readiness, service reads, and client fallback storage.
+- `frontend/src/lib/genlayer-*.ts` - narrow GenLayer SDK/execution adapters. App code should use this boundary instead of SDK internals.
+- `frontend/src/lib/platform/` - filesystem-backed platform store, passports, API helpers, demo auth, readiness, backups, seed data, and pilot summaries.
+- `frontend/src/components/` - dashboard, case detail, intake, passport, contract readiness, wallet status, sidebar, and shared UI components.
+- `frontend/src/app/` - App Router pages and API routes.
+- `frontend/src/providers/` - Web3/RainbowKit provider gate.
+- `frontend/scripts/` - demo seed/reset/dev/backup/restore, GenLayer readiness, pilot check, and pilot prepare scripts.
+- `frontend/tests/` - active domain and platform tests.
 
-- `contracts/lexnet_commerce_core.py` — GenLayer Intelligent Contract boundary for commerce cases, evidence, verification, recommendations, and trust passports. It is recommendation-only and does not custody funds.
-
-### Frontend Domain Logic
+## Frontend Domain Logic
 
 - `frontend/src/lib/lexnet-types.ts` — commerce case, evidence, report, and trust passport type definitions.
 - `frontend/src/lib/lexnet-domain.ts` — pure domain functions for cases, evidence, stats, timeline, and passport scoring.
@@ -25,20 +31,20 @@ The current implementation is recommendation-only. It does not custody funds, ex
 - `frontend/src/lib/lexnet-service.ts` — seed cases, runtime mode, and backend-aware case reads.
 - `frontend/src/lib/lexnet-client-store.ts` — browser localStorage fallback/cache for demo-created cases.
 
-### Platform Backend Layer
+## Platform Backend Layer
 
 - `frontend/src/lib/platform/types.ts` — platform records for workspaces, operators, queue items, published passports, audit events, and summaries.
 - `frontend/src/lib/platform/store.ts` — filesystem JSON store at `.lexnet-data/store.json`, safe read/write/mutate helpers, dashboard data helpers, passport DTO helpers, and audit metadata.
 - `frontend/src/lib/platform/passports.ts` — private passport generation, stable subject keys, public redaction, value banding, and public lookup.
 - `frontend/src/lib/platform/api.ts` — shared JSON responses, request parsing, security status, and lightweight rate limiting.
-- `frontend/src/lib/platform/auth.ts` — demo-private operator authorization helpers. This is not production OAuth.
+- `frontend/src/lib/platform/auth.ts` — demo-private operator authorization helpers and production trusted-header mutation authorization.
 - `frontend/src/lib/platform/production-auth.ts` — production trusted-header HMAC verification for gateway-signed operator context.
 - `frontend/src/lib/platform/persistence-adapter.ts` — persistence adapter status for filesystem versus future managed database backends.
 - `frontend/src/lib/platform/evidence-policy.ts` — evidence URL policy and retention configuration enforcement.
 - `frontend/src/lib/platform/readiness.ts` — runtime mode, auth, persistence, evidence policy, GenLayer readiness, and public-safe security status helpers.
 - `frontend/src/lib/platform/pilot-summary.ts` — pilot/package summary counts using platform store data and readiness helpers.
 
-### Frontend Components
+## Frontend Components
 
 - `frontend/src/components/CommerceDashboardClient.tsx` — command-center dashboard, backend summary, and operator queue panels.
 - `frontend/src/components/CaseDetailClient.tsx` — case detail, evidence, verification, report, and readiness UI.
@@ -54,7 +60,7 @@ The current implementation is recommendation-only. It does not custody funds, ex
 - `frontend/src/components/ui/Panel.tsx` — reusable panel shell UI.
 - `frontend/src/components/ui/StatusChip.tsx` — reusable status chip UI.
 
-### Frontend Shell, Providers, and Tests
+## Frontend Shell, Providers, and Tests
 
 - `frontend/src/app/layout.tsx` — root layout and Web3Provider wiring.
 - `frontend/src/app/globals.css` — application styling.
@@ -89,44 +95,28 @@ The current implementation is recommendation-only. It does not custody funds, ex
 - `/api/passports` — demo-private passport generation and publish/unpublish actions.
 - `/api/passports/public/[slug]` — public privacy-safe passport JSON.
 - `/api/admin/backup` — demo-private backup/export summary.
-- `/api/genlayer/verify-case` — demo-private guarded SDK write endpoint for `verify_case`.
-- `/api/genlayer/cases/[caseId]` — demo-private contract state read-back for verification proof.
+- `/api/genlayer/verify-case` — guarded SDK write endpoint for `verify_case`.
+- `/api/genlayer/cases/[caseId]` — guarded contract state read-back for verification proof.
 - `/api/security/status` — platform/security readiness status.
 
 ## Commands
 
-Core commands, run from the repository/worktree root:
+Run from the repo root:
 
 ```bash
 npm --prefix frontend run dev
 npm --prefix frontend run test:platform
 npm --prefix frontend run test:domain
-npm --prefix frontend exec tsc -- --noEmit
+npm --prefix frontend exec tsc -- -p frontend/tsconfig.json --noEmit
 npm --prefix frontend run build
 ```
 
-Additional active frontend package scripts:
+The demo dev server uses port `3002`.
 
-```bash
-npm --prefix frontend run start
-npm --prefix frontend run demo:seed
-npm --prefix frontend run demo:reset
-npm --prefix frontend run demo:dev
-npm --prefix frontend run demo:backup
-npm --prefix frontend run demo:restore -- <backup-path>
-npm --prefix frontend run demo:genlayer-readiness
-npm --prefix frontend run pilot:check
-npm --prefix frontend run pilot:prepare
-npm --prefix frontend run verify:mvp
-npm --prefix frontend run verify:skeleton
-```
-
-The dev server runs on port `3002`.
-
-## Storage Model
+## Storage And Env
 
 - Backend mode uses `.lexnet-data/store.json` as the filesystem source of truth for persisted platform records.
-- Persisted records include commerce cases, workspaces, operators, memberships, queue items, published passports, and audit events.
+- Persisted records include commerce cases, workspaces, operators, memberships, queue items, published passports, audit events, and GenLayer executions.
 - Browser `localStorage` remains a local demo fallback/cache for client-created cases.
 - Backend-facing helpers preserve seed/demo fallbacks when the filesystem store is missing or invalid.
 - Do not commit `.lexnet-data/`, `.env.local`, generated private keys, or local demo secrets.
@@ -140,6 +130,7 @@ NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS=
 NEXT_PUBLIC_GENLAYER_RPC_URL=https://studio.genlayer.com/api
 NEXT_PUBLIC_GENLAYER_NETWORK_LABEL=Studionet
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
+NEXT_PUBLIC_LEXNET_OWNER_WALLET_ADDRESS=
 ```
 
 Demo-private backend API configuration:
@@ -172,9 +163,12 @@ DRAFT → ACTIVE → EVIDENCE_SUBMITTED → UNDER_AI_REVIEW → VERIFIED
 
 `APPROVE` | `REVISE` | `REJECT` | `SPLIT_RECOMMENDED`
 
-## Deprecated / Do Not Read
+## Read Only By Explicit Request
 
 - `docs/archive/` — old specs and roadmaps.
 - `genlayer-js/` — vendored SDK package source; do not edit directly. Use `frontend/src/lib/genlayer-client.ts` for app integration.
 - `.agent/`, `.shared/` — tooling, not active product code.
+- `.claude/` — agent caches and duplicated worktrees.
+- `docs/superpowers/` — historical agent plans/specs.
+- `frontend/package-lock.json`, `genlayer-js/package-lock.json`, `genlayer-js/*.tgz` — large dependency artifacts.
 - `docs/archive/test_escrow_lifecycle.py` — archived old escrow contract test.

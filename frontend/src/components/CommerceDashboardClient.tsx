@@ -11,6 +11,7 @@ import {
   FileSearch,
   IdCard,
   Inbox,
+  ListChecks,
   Scale,
   Search,
   ShieldCheck,
@@ -118,7 +119,7 @@ export default function CommerceDashboardClient({
       <Sidebar />
       <main className="main-shell">
         <div className="content-frame">
-          <header className="topbar">
+          <header className="topbar hero-panel">
             <div>
               <div className="section-label">
                 <Inbox size={14} strokeWidth={1.75} />
@@ -126,8 +127,8 @@ export default function CommerceDashboardClient({
               </div>
               <h1 className="topbar-title">Evidence Review</h1>
               <p className="topbar-subtitle">
-                Prioritize commerce cases, inspect evidence, and review AI
-                settlement recommendations.
+                Prioritize commerce cases, inspect evidence, and review AI recommendations
+                before an operator decides the next action.
               </p>
             </div>
             <div className="topbar-actions">
@@ -148,10 +149,10 @@ export default function CommerceDashboardClient({
             </div>
           </header>
 
-          <section className="metric-grid" style={{ marginBottom: 16 }}>
+          <section className="metric-grid" style={{ marginBottom: 18 }}>
             <MetricCard
               icon={<ShieldCheck size={18} strokeWidth={1.75} />}
-              label="Protected Value"
+              label="Reviewed Value"
               value={`$${commandMetrics.protectedValue.toLocaleString()}`}
             />
             <MetricCard
@@ -161,7 +162,7 @@ export default function CommerceDashboardClient({
             />
             <MetricCard
               icon={<BadgeCheck size={18} strokeWidth={1.75} />}
-              label="Settlement Ready"
+              label="Recommendation Ready"
               value={commandMetrics.settlementReadyCases.toLocaleString()}
             />
             <MetricCard
@@ -171,18 +172,22 @@ export default function CommerceDashboardClient({
             />
           </section>
 
-          <section className="panel command-strip" style={{ marginBottom: 16 }}>
+          <section className="panel command-strip hero-panel" style={{ marginBottom: 18 }}>
             <div>
               <div className="section-label">
                 <Workflow size={14} strokeWidth={1.75} />
                 AI Commerce Trust Pipeline
               </div>
               <h2 style={{ marginTop: 8, color: "var(--ink)", fontSize: 20, fontWeight: 900 }}>
-                From agreement to portable trust in one review loop
+                Pilot walkthrough: evidence to recommendation to trust signal
               </h2>
+              <p className="muted" style={{ marginTop: 6, fontSize: 13, lineHeight: 1.6 }}>
+                This local pilot shows review recommendations only. LexNet does not custody funds,
+                release payouts, or claim settlement finality in this workflow.
+              </p>
             </div>
             <div className="pipeline-steps">
-              {["Intake", "Evidence", "AI Review", "Settlement", "Passport"].map((step, index) => (
+              {["Intake", "Evidence", "AI Review", "Operator Action", "Passport"].map((step, index) => (
                 <div key={step} className="pipeline-step">
                   <span>{index + 1}</span>
                   {step}
@@ -191,16 +196,17 @@ export default function CommerceDashboardClient({
             </div>
           </section>
 
-          <section className="dashboard-grid">
-            <div className="panel" style={{ padding: 0, overflow: "hidden" }}>
+          <section className="dashboard-grid workspace-shell">
+            <div className="panel review-panel" style={{ padding: 0, overflow: "hidden" }}>
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
                   gap: 12,
-                  padding: 14,
+                  padding: 18,
                   borderBottom: "1px solid var(--border)",
+                  background: "linear-gradient(180deg, rgba(251,250,247,0.92), rgba(255,255,255,0.82))",
                 }}
               >
                 <div>
@@ -239,6 +245,8 @@ export default function CommerceDashboardClient({
                     {filteredCases.map((commerceCase) => {
                       const summary = buildVerificationSummary(commerceCase);
 
+                      const isLocalCase = !commerceCase.id.startsWith("lx-case-demo-");
+
                       return (
                         <tr key={commerceCase.id}>
                           <td>
@@ -246,9 +254,16 @@ export default function CommerceDashboardClient({
                               href={`/cases/${commerceCase.id}`}
                               style={{ textDecoration: "none" }}
                             >
-                              <div className="case-title">{commerceCase.title}</div>
-                              <div className="case-subtitle mono">
-                                {shortId(commerceCase.buyer)} &rarr; {shortId(commerceCase.seller)}
+                              <div className="queue-case-cell">
+                                <div className="case-title">{commerceCase.title}</div>
+                                <div className="queue-case-meta">
+                                  <span className="case-subtitle mono">
+                                    {shortId(commerceCase.buyer)} &rarr; {shortId(commerceCase.seller)}
+                                  </span>
+                                  <span className={`queue-signal-chip${isLocalCase ? " local" : ""}`}>
+                                    {isLocalCase ? "Local" : "Seeded"}
+                                  </span>
+                                </div>
                               </div>
                             </Link>
                           </td>
@@ -259,7 +274,7 @@ export default function CommerceDashboardClient({
                           <td>${commerceCase.amountReference.toLocaleString()}</td>
                           <td>{summary.scoreLabel}</td>
                           <td>
-                            <span style={{ color: "var(--muted)", fontSize: 12 }}>
+                            <span className="queue-next-action">
                               {summary.nextAction}
                             </span>
                           </td>
@@ -271,7 +286,19 @@ export default function CommerceDashboardClient({
               </div>
             </div>
 
-            <aside style={{ display: "grid", gap: 16 }}>
+            <aside className="action-rail">
+              <div className="panel hero-panel" style={{ display: "grid", gap: 12 }}>
+                <div className="section-label">
+                  <ListChecks size={14} strokeWidth={1.75} />
+                  Pilot Operator Brief
+                </div>
+                <div className="inspector-list">
+                  <InspectorRow label="Workflow" value="Recommendation-only review" />
+                  <InspectorRow label="Primary action" value="Review evidence and next step" />
+                  <InspectorRow label="Public output" value="Privacy-safe passport signals" />
+                </div>
+              </div>
+
               <div className="panel" style={{ display: "grid", gap: 12 }}>
                 <div className="section-label">
                   <Activity size={14} strokeWidth={1.75} />

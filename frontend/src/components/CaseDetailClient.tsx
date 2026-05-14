@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useAccount } from "wagmi";
 import {
   ArrowLeft,
   CircleCheck,
@@ -60,6 +61,7 @@ export default function CaseDetailClient({
     useState<GenLayerExecutionRecord | null>(null);
   const [isSubmittingGenLayer, setIsSubmittingGenLayer] = useState(false);
   const [isCheckingGenLayer, setIsCheckingGenLayer] = useState(false);
+  const { address, isConnected } = useAccount();
 
   useEffect(() => {
     const mergedCase =
@@ -113,7 +115,7 @@ export default function CaseDetailClient({
     }
 
     setCommerceCase(updatedCase);
-    setMessage("Local AI verification report generated.");
+    setMessage("Local AI recommendation report generated.");
   }
 
   async function submitGenLayerVerification() {
@@ -129,7 +131,11 @@ export default function CaseDetailClient({
         "content-type": "application/json",
         "x-lexnet-operator-id": "operator-demo",
       },
-      body: JSON.stringify({ caseId: commerceCase.id, walletConnected: true }),
+      body: JSON.stringify({
+        caseId: commerceCase.id,
+        walletConnected: isConnected,
+        connectedWalletAddress: address,
+      }),
     });
     const payload = await response.json();
     setIsSubmittingGenLayer(false);
@@ -154,7 +160,8 @@ export default function CaseDetailClient({
     const response = await fetch(`/api/genlayer/cases/${commerceCase.id}`, {
       headers: {
         "x-lexnet-operator-id": "operator-demo",
-        "x-lexnet-wallet-connected": "true",
+        "x-lexnet-wallet-connected": String(isConnected),
+        ...(address ? { "x-lexnet-wallet-address": address } : {}),
       },
     });
     const payload = await response.json();
@@ -223,7 +230,7 @@ export default function CaseDetailClient({
       <Sidebar />
       <main className="main-shell">
         <div className="content-frame">
-          <header className="topbar">
+          <header className="topbar hero-panel">
             <div>
               <Link href="/" className="btn-quiet" style={{ marginBottom: 8 }}>
                 <ArrowLeft size={15} strokeWidth={1.75} />
@@ -245,12 +252,29 @@ export default function CaseDetailClient({
                 className="btn-primary"
               >
                 <ScanSearch size={15} strokeWidth={1.75} />
-                {isVerifying ? "Verifying Locally" : "Run Local Verification"}
+                {isVerifying ? "Reviewing Locally" : "Run Local Review"}
               </button>
             </div>
           </header>
 
-          <div className="two-column">
+          <section className="panel hero-panel" style={{ marginBottom: 18, display: "grid", gap: 12 }}>
+            <div className="section-label">
+              <ListChecks size={14} strokeWidth={1.75} />
+              Operator Brief
+            </div>
+            <p className="muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.7 }}>
+              This case is part of the local pilot workflow. LexNet can summarize evidence,
+              produce an AI recommendation, and track proof state, but it does not custody
+              funds, execute payouts, or finalize settlement.
+            </p>
+            <div className="inspector-list">
+              <InspectorRow label="Current status" value={commerceCase.status.replaceAll("_", " ")} />
+              <InspectorRow label="Evidence quality" value={evidenceQuality.qualityLabel} />
+              <InspectorRow label="Next operator action" value={summary.nextAction} />
+            </div>
+          </section>
+
+          <div className="two-column workspace-shell">
             <div style={{ display: "grid", gap: 16 }}>
               <Panel title="Agreement" icon={<Scale size={15} strokeWidth={1.75} />}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -361,21 +385,13 @@ export default function CaseDetailClient({
               </Panel>
             </div>
 
-            <aside className="inspector" style={{ display: "grid", gap: 16 }}>
+            <aside className="inspector action-rail">
               <div>
                 <div className="section-label">
                   <Sparkles size={14} strokeWidth={1.75} />
                   AI Verdict
                 </div>
-                <div
-                  style={{
-                    marginTop: 12,
-                    padding: 16,
-                    borderRadius: 8,
-                    background: "var(--surface)",
-                    border: "1px solid var(--border)",
-                  }}
-                >
+                <div className="insight-card" style={{ marginTop: 12 }}>
                   <div style={{ color: "var(--ink)", fontSize: 28, fontWeight: 800 }}>
                     {summary.scoreLabel}
                   </div>
@@ -385,7 +401,7 @@ export default function CaseDetailClient({
                 </div>
               </div>
 
-              <div className="panel" style={{ background: "var(--surface)", display: "grid", gap: 10 }}>
+              <div className="panel review-panel" style={{ display: "grid", gap: 10 }}>
                 <div className="section-label">Verification Report</div>
                 <p className="muted" style={{ margin: 0, fontSize: 12, lineHeight: 1.55 }}>
                   {report?.summary ?? "No verification report has been generated yet."}
@@ -423,14 +439,7 @@ export default function CaseDetailClient({
                 </div>
               </div>
 
-              <div
-                style={{
-                  padding: 14,
-                  borderRadius: 8,
-                  background: "var(--surface)",
-                  border: "1px solid var(--border)",
-                }}
-              >
+              <div className="insight-card">
                 <div className="section-label">
                   <ShieldCheck size={14} strokeWidth={1.75} />
                   Settlement Recommendation
@@ -457,7 +466,7 @@ export default function CaseDetailClient({
                 />
               )}
 
-              <div className="panel" style={{ background: "var(--surface)", display: "grid", gap: 10 }}>
+              <div className="panel review-panel" style={{ display: "grid", gap: 10 }}>
                 <div className="section-label">
                   <ShieldCheck size={14} strokeWidth={1.75} />
                   GenLayer Execution Proof
@@ -510,3 +519,12 @@ export default function CaseDetailClient({
     </div>
   );
 }
+function InspectorRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+

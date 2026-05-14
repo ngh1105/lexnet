@@ -74,9 +74,11 @@ import {
   getLexNetContractReadiness,
 } from "../src/lib/lexnet-contract";
 import { chooseDemoDevPort } from "../scripts/dev-port";
+import { buildDemoDevEnv } from "../scripts/demo-dev";
 import {
   findForbiddenStoreSecretKeys,
   parseRawStoreForSecretScan,
+  getGitIgnoreOutput,
   isPathIgnoredByGitOutput,
   shouldFailPilotCheck,
 } from "../scripts/pilot-check";
@@ -104,6 +106,11 @@ test("package scripts expose demo seed, reset, dev, and pilot commands", () => {
   assert.equal(packageJson.scripts["demo:restore"], "tsx scripts/demo-restore.ts");
   assert.equal(packageJson.scripts["pilot:check"], "tsx scripts/pilot-check.ts");
   assert.equal(packageJson.scripts["pilot:prepare"], "tsx scripts/pilot-prepare.ts");
+});
+
+test("buildDemoDevEnv enables demo-private APIs for pilot walkthroughs", () => {
+  assert.equal(buildDemoDevEnv({}).LEXNET_ENABLE_DEMO_PRIVATE_API, "true");
+  assert.equal(buildDemoDevEnv({ LEXNET_ENABLE_DEMO_PRIVATE_API: "false" }).LEXNET_ENABLE_DEMO_PRIVATE_API, "false");
 });
 
 test("chooseDemoDevPort prefers 3002 when it is available", async () => {
@@ -792,6 +799,10 @@ test("isPathIgnoredByGitOutput recognizes ignored git check output", () => {
   assert.equal(isPathIgnoredByGitOutput(".lexnet-data/store.json\n"), true);
   assert.equal(isPathIgnoredByGitOutput(""), false);
   assert.equal(isPathIgnoredByGitOutput("fatal: not a git repository\n"), false);
+});
+
+test("getGitIgnoreOutput checks the store path from the repository root", () => {
+  assert.equal(isPathIgnoredByGitOutput(getGitIgnoreOutput(".lexnet-data/store.json")), true);
 });
 
 test("pilot prepare refuses production mode", () => {
