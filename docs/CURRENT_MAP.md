@@ -143,12 +143,12 @@ LEXNET_PRODUCTION_AUTH_PROVIDER=trusted-header
 LEXNET_PRODUCTION_AUTH_MODE=trusted-header
 LEXNET_PRODUCTION_AUTH_SECRET=
 LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS=60
+LEXNET_MANAGED_PERSISTENCE_PROVIDER=postgres
 LEXNET_MANAGED_DATABASE_URL=
-LEXNET_MANAGED_PERSISTENCE_PROVIDER=
 LEXNET_EVIDENCE_RETENTION_POLICY=
 ```
 
-Demo-private API calls also require header `x-lexnet-operator-id: operator-demo`. If `LEXNET_DEMO_PRIVATE_API_TOKEN` is set, include `Authorization: Bearer <token>` as well. Production trusted-header mode requires gateway-signed operator headers; do not place real secrets in docs or committed env files. Production mutation routes fail closed unless `LEXNET_PRODUCTION_AUTH_PROVIDER=trusted-header`, `LEXNET_PRODUCTION_AUTH_MODE=trusted-header`, and `LEXNET_PRODUCTION_AUTH_SECRET` are configured together.
+Demo-private API calls also require header `x-lexnet-operator-id: operator-demo`. If `LEXNET_DEMO_PRIVATE_API_TOKEN` is set, include `Authorization: Bearer <token>` as well. Production trusted-header mode requires gateway-signed operator headers; do not place real secrets in docs or committed env files. Production mutation routes fail closed unless `LEXNET_PRODUCTION_AUTH_PROVIDER=trusted-header`, `LEXNET_PRODUCTION_AUTH_MODE=trusted-header`, and `LEXNET_PRODUCTION_AUTH_SECRET` are configured together. Production mode fails closed unless managed persistence is configured with provider `postgres` and a managed database URL. The current sprint introduces the adapter boundary and readiness enforcement; the filesystem pilot store remains the local-demo/pilot implementation.
 
 ## Case State Machine
 

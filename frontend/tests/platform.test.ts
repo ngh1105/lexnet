@@ -241,19 +241,67 @@ test("production readiness blocks unsupported production auth provider", () => {
   assert.ok(status.auth.blockingReasons.includes("Production authentication provider must be trusted-header."));
 });
 
+test("platform store adapter selects managed postgres in production", () => {
+  const status = getPlatformStoreAdapterStatus({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_MANAGED_PERSISTENCE_PROVIDER: "postgres",
+    LEXNET_MANAGED_DATABASE_URL: "postgres://lexnet.example/db",
+  });
+
+  assert.equal(status.mode, "managed-configured");
+  assert.equal(status.canRead, true);
+  assert.equal(status.canMutate, true);
+  assert.equal(status.managedPersistenceConfigured, true);
+  assert.equal(status.managedPersistenceEnforced, true);
+  assert.deepEqual(status.blockingReasons, []);
+});
+
+test("platform store adapter blocks unsupported managed provider", () => {
+  const status = getPlatformStoreAdapterStatus({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_MANAGED_PERSISTENCE_PROVIDER: "sqlite",
+    LEXNET_MANAGED_DATABASE_URL: "file:lexnet.db",
+  });
+
+  assert.equal(status.mode, "managed-missing");
+  assert.equal(status.canRead, false);
+  assert.equal(status.canMutate, false);
+  assert.equal(status.managedPersistenceConfigured, true);
+  assert.equal(status.managedPersistenceEnforced, false);
+  assert.ok(status.blockingReasons.includes("Managed persistence provider must be postgres."));
+});
+
+test("platform readiness reports managed persistence mode in production", () => {
+  const status = buildPlatformReadinessStatus({
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_PRODUCTION_AUTH_PROVIDER: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_MODE: "trusted-header",
+    LEXNET_PRODUCTION_AUTH_SECRET: "super-secret",
+    LEXNET_MANAGED_PERSISTENCE_PROVIDER: "postgres",
+    LEXNET_MANAGED_DATABASE_URL: "postgres://lexnet.example/db",
+    LEXNET_EVIDENCE_RETENTION_POLICY: "metadata-365d",
+    NEXT_PUBLIC_GENLAYER_RPC_URL: "https://studio.genlayer.com/api",
+    NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: "0xabc",
+  });
+
+  assert.equal(status.storeMode, "managed");
+  assert.equal(status.persistenceMode, "managed-configured");
+  assert.equal(status.persistence.managedPersistenceEnforced, true);
+});
+
 test("buildPersistenceReadiness requires managed persistence in production", () => {
   const missing = buildPersistenceReadiness({ LEXNET_RUNTIME_MODE: "production" });
   assert.equal(missing.mode, "managed-missing");
   assert.equal(missing.managedPersistenceConfigured, false);
-  assert.match(missing.blockingReasons.join("\n"), /Managed persistence is not configured/);
+  assert.match(missing.blockingReasons.join("\n"), /Managed persistence provider is not configured/);
 
   const configured = buildPersistenceReadiness({
     LEXNET_RUNTIME_MODE: "production",
     LEXNET_MANAGED_PERSISTENCE_PROVIDER: "managed-db",
   });
-  assert.equal(configured.mode, "managed-configured");
+  assert.equal(configured.mode, "managed-missing");
   assert.equal(configured.managedPersistenceConfigured, true);
-  assert.match(configured.blockingReasons.join("\n"), /Managed persistence adapter is not implemented/);
+  assert.match(configured.blockingReasons.join("\n"), /Managed persistence provider must be postgres/);
 });
 
 test("getPlatformStoreAdapterStatus allows filesystem outside production", () => {
@@ -275,12 +323,12 @@ test("getPlatformStoreAdapterStatus blocks production managed adapter until enfo
   });
 
   assert.equal(status.runtimeMode, "production");
-  assert.equal(status.mode, "managed-required");
+  assert.equal(status.mode, "managed-missing");
   assert.equal(status.canRead, false);
   assert.equal(status.canMutate, false);
   assert.equal(status.managedPersistenceConfigured, true);
   assert.equal(status.managedPersistenceEnforced, false);
-  assert.match(status.blockingReasons.join("\n"), /Managed persistence adapter is not implemented/);
+  assert.match(status.blockingReasons.join("\n"), /Managed database URL is not configured/);
 });
 
 test("evaluateEvidenceUrlPolicy accepts public HTTPS URLs in production", () => {
@@ -362,10 +410,10 @@ test("buildPersistenceReadiness distinguishes configured from enforced managed p
     LEXNET_MANAGED_DATABASE_URL: "postgres://user:password@example.com/db",
   });
 
-  assert.equal(readiness.mode, "managed-configured");
+  assert.equal(readiness.mode, "managed-missing");
   assert.equal(readiness.managedPersistenceConfigured, true);
   assert.equal(readiness.managedPersistenceEnforced, false);
-  assert.match(readiness.blockingReasons.join("\n"), /Managed persistence adapter is not implemented/);
+  assert.match(readiness.blockingReasons.join("\n"), /Managed persistence provider is not configured/);
 });
 
 test("buildPersistenceReadiness allows pilot filesystem persistence with warning", () => {
@@ -402,7 +450,7 @@ test("buildPlatformReadinessStatus includes enforcement blockers in production",
   assert.equal(status.persistence.managedPersistenceConfigured, true);
   assert.equal(status.persistence.managedPersistenceEnforced, false);
   assert.match(status.productionBlockers.join("\n"), /Production authentication provider must be trusted-header/);
-  assert.match(status.productionBlockers.join("\n"), /Managed persistence adapter is not implemented/);
+  assert.match(status.productionBlockers.join("\n"), /Managed persistence provider is not configured/);
   assert.equal(Object.prototype.hasOwnProperty.call(status.auth, "productionAuthProvider"), false);
   assert.equal(serialized.includes("oauth-provider"), false);
   assert.equal(serialized.includes("password@example.com"), false);

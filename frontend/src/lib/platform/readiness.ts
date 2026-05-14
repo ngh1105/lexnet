@@ -74,7 +74,7 @@ export interface PlatformReadinessStatus {
   persistence: PersistenceReadiness;
   evidencePolicy: EvidencePolicyStatus;
   genLayer: GenLayerReadinessStatus;
-  storeMode: "filesystem";
+  storeMode: "filesystem" | "managed";
   persistenceMode: PlatformPersistenceMode;
   productionBlockers: string[];
   blockingReasons: string[];
@@ -121,11 +121,11 @@ export function buildPersistenceReadiness(env: PlatformReadinessEnv): Persistenc
   const managedPersistenceConfigured = managedDatabaseUrlConfigured || managedPersistenceProviderConfigured;
 
   return {
-    mode: mode === "production"
-      ? managedPersistenceConfigured
-        ? "managed-configured"
-        : "managed-missing"
-      : "filesystem-local",
+    mode: adapterStatus.mode === "managed-configured"
+      ? "managed-configured"
+      : mode === "production"
+        ? "managed-missing"
+        : "filesystem-local",
     filesystemPersistenceAllowed: adapterStatus.mode === "filesystem-local" && mode !== "production",
     managedPersistenceConfigured,
     managedPersistenceEnforced: adapterStatus.managedPersistenceEnforced,
@@ -204,7 +204,7 @@ export function buildPlatformReadinessStatus(env: PlatformReadinessEnv): Platfor
     persistence,
     evidencePolicy,
     genLayer,
-    storeMode: "filesystem",
+    storeMode: persistence.managedPersistenceEnforced ? "managed" : "filesystem",
     persistenceMode: persistence.mode,
     productionBlockers,
     blockingReasons: [
