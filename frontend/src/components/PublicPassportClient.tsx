@@ -77,6 +77,10 @@ export default function PublicPassportClient({
             <p className="muted" style={{ marginTop: 8, fontSize: 13, lineHeight: 1.7 }}>
               LexNet publishes aggregate trust passport data only after an operator enables public visibility. Private case parties, raw case evidence, and internal workspace details are not included on this page.
             </p>
+            <p className="muted" style={{ marginTop: 8, fontSize: 13, lineHeight: 1.7 }}>
+              Treat this page as a shareable trust signal, not a payment, custody, or final
+              settlement record.
+            </p>
           </div>
 
           {passport.riskFlags.length > 0 ? (
@@ -95,6 +99,19 @@ export default function PublicPassportClient({
               No active risk flags
             </span>
           )}
+
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {[
+              "No raw evidence",
+              "No private case IDs",
+              "No workspace data",
+              "No payout status",
+            ].map((item) => (
+              <span key={item} className="status-chip info">
+                {item}
+              </span>
+            ))}
+          </div>
 
           <div style={{ color: "var(--muted)", fontSize: 12, fontWeight: 700 }}>
             Last updated {formatDate(passport.updatedAt)} · Passport slug {passport.slug}
