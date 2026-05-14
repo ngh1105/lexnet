@@ -245,6 +245,8 @@ export default function CommerceDashboardClient({
                     {filteredCases.map((commerceCase) => {
                       const summary = buildVerificationSummary(commerceCase);
 
+                      const isLocalCase = !commerceCase.id.startsWith("lx-case-demo-");
+
                       return (
                         <tr key={commerceCase.id}>
                           <td>
@@ -252,9 +254,16 @@ export default function CommerceDashboardClient({
                               href={`/cases/${commerceCase.id}`}
                               style={{ textDecoration: "none" }}
                             >
-                              <div className="case-title">{commerceCase.title}</div>
-                              <div className="case-subtitle mono">
-                                {shortId(commerceCase.buyer)} &rarr; {shortId(commerceCase.seller)}
+                              <div className="queue-case-cell">
+                                <div className="case-title">{commerceCase.title}</div>
+                                <div className="queue-case-meta">
+                                  <span className="case-subtitle mono">
+                                    {shortId(commerceCase.buyer)} &rarr; {shortId(commerceCase.seller)}
+                                  </span>
+                                  <span className={`queue-signal-chip${isLocalCase ? " local" : ""}`}>
+                                    {isLocalCase ? "Local" : "Seeded"}
+                                  </span>
+                                </div>
                               </div>
                             </Link>
                           </td>
@@ -265,7 +274,7 @@ export default function CommerceDashboardClient({
                           <td>${commerceCase.amountReference.toLocaleString()}</td>
                           <td>{summary.scoreLabel}</td>
                           <td>
-                            <span style={{ color: "var(--muted)", fontSize: 12 }}>
+                            <span className="queue-next-action">
                               {summary.nextAction}
                             </span>
                           </td>
