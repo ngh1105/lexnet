@@ -1,53 +1,31 @@
 # LexNet
 
-**Autonomous AI-Driven Arbitration & Escrow Protocol** built on [GenLayer](https://www.genlayer.com/) — the AI-native trust layer for smart contracts.
+LexNet is an AI-verified commerce trust platform for agreements, delivery evidence, verification reports, settlement recommendations, and portable trust passports.
 
-LexNet replaces human arbitrators in freelance and digital-service agreements with a **trustless, on-chain AI arbiter** that evaluates deliverables against client requirements and releases escrow automatically.
+The current MVP is recommendation-only. It does not custody funds, execute payouts, move real value, or claim fake on-chain settlement.
 
----
+## Core Loop
 
-## Features
+Create commerce case → Submit delivery evidence → Run AI verification → Produce settlement recommendation → Update or publish trust passport.
 
-- **AI evaluation** — On-chain LLM reviews submitted work against the client's requirements document
-- **Web data access** — Contract fetches live URLs (deployed sites, repos) for AI review without oracles or API keys
-- **Subjective consensus** — GenLayer validators reach decentralized consensus on approval via the Equivalence Principle
-- **Full lifecycle** — Create → Fund → Submit work → AI evaluates → Funds released to freelancer or refunded to client
+## Current Product Foundation
 
----
+- **Contract boundary:** `contracts/lexnet_commerce_core.py` models the GenLayer commerce verification boundary.
+- **Frontend:** `frontend/src/app/` uses the Next.js App Router.
+- **Domain logic:** `frontend/src/lib/lexnet-*.ts` contains pure commerce, evidence, verification, and passport logic.
+- **Platform backend:** `frontend/src/lib/platform/` persists backend records to `.lexnet-data/store.json` and exposes safe DTO helpers.
+- **API routes:** `frontend/src/app/api/` exposes demo-private workspace/operator/queue/passport/backup routes and public passport/status routes.
+- **UI:** `frontend/src/components/` contains dashboard, case, evidence, verification, wallet, and passport components.
 
-## Architecture
+## Routes
 
-| Component | Description |
-|-----------|-------------|
-| **`contracts/lexnet_escrow.py`** | GenLayer Intelligent Contract (Python/GenVM). Manages escrow state, fees, and AI evaluation flow. |
-| **`frontend/`** | Next.js 16 app with RainbowKit, wagmi, GenLayerJS. Dashboard to create escrows, fund, submit work, view status. |
-| **`genlayer-js/`** | GenLayer JavaScript SDK — wallet connection, contract reads/writes, chain config. |
+- `/` — backend-aware commerce trust dashboard.
+- `/cases/new` — create a commerce case.
+- `/cases/[id]` — review a case, submit evidence, run verification, and view recommendations.
+- `/passports` — view trust passport records and publish/unpublish backend passports.
+- `/passport/[slug]` — public privacy-safe passport page.
 
-**Escrow states:** `CREATED` → `FUNDED` → `WORK_SUBMITTED` → (AI evaluation) → `RESOLVED`
-
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for state machine, data schema, and AI consensus design.
-
----
-
-## Prerequisites
-
-- **Node.js** 18+ (for frontend)
-- **Python** 3.11+ (for contract tooling; contract runs in GenVM)
-- **GenLayer** — localnet/studionet for deployment and testing
-- **MetaMask** (or compatible wallet) with GenLayer network configured
-
----
-
-## Getting Started
-
-### 1. Clone & install
-
-```bash
-git clone https://github.com/ngh1105/lexnet.git
-cd lexnet
-```
-
-### 2. Frontend
+## Setup
 
 ```bash
 cd frontend
@@ -55,56 +33,143 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Connect wallet to your GenLayer RPC (e.g. localnet).
+The development server runs on port `3002`.
 
-### 3. Contract (GenLayer)
+## Verification
 
-Deploy the Intelligent Contract to your GenLayer network using the GenLayer CLI or SDK. Constructor argument: `fee_basis_points` (e.g. `250` = 2.5% protocol fee).
+From the repository/worktree root:
 
-See [GenLayer docs](https://docs.genlayer.com/) for deployment and chain configuration.
-
-### 4. Configure frontend
-
-Point the app to your deployed contract address and GenLayer RPC in `frontend/src/lib/genlayer.ts` (or env) as needed.
-
----
-
-## Project Structure
-
-```
-lexnet/
-├── contracts/
-│   └── lexnet_escrow.py    # GenLayer Intelligent Contract
-├── frontend/               # Next.js + RainbowKit + GenLayerJS
-│   ├── src/
-│   │   ├── app/            # Pages (dashboard, create, escrow detail)
-│   │   ├── components/     # UI (Sidebar, EscrowCard, CreateEscrowModal, …)
-│   │   ├── lib/            # GenLayer client & contract calls
-│   │   └── providers/      # Web3Provider
-│   └── package.json
-├── genlayer-js/            # GenLayer JavaScript SDK (dependency)
-├── ARCHITECTURE.md         # Escrow lifecycle, schema, AI consensus
-├── test-api.js             # API/test utilities
-└── README.md
+```bash
+npm --prefix frontend run test:platform
+npm --prefix frontend run test:domain
+npm --prefix frontend exec tsc -- --noEmit
+npm --prefix frontend run build
 ```
 
----
+`npm run test:domain` runs `tests/*.test.ts`, so it includes platform tests as well as domain tests.
 
-## Tech Stack
+## Demo Seed
 
-- **Contract:** Python (GenLayer/GenVM), `gl.nondet` for AI & web access
-- **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS, Framer Motion, Phosphor Icons
-- **Web3:** RainbowKit, wagmi, viem, GenLayerJS
+From the repository/worktree root:
 
----
+```bash
+npm --prefix frontend run demo:seed
+npm --prefix frontend run demo:reset
+```
 
-## Design principle
+`demo:seed` writes deterministic full command-center demo data to `.lexnet-data/store.json`, including cases, evidence, local verification reports, queue items, operators, passports, and audit events.
 
-> **"The contract evaluates. The protocol arbitrates."**
+`demo:reset` removes only `.lexnet-data/store.json`.
 
-The contract is responsible for escrow lifecycle and producing a deterministic verdict (`is_approved`). The GenLayer protocol handles multi-validator consensus, challenge window, and slashing — no custom appeal/jury logic in the contract.
+Seeded verification reports are local recommendations only. They do not claim funds moved or that an on-chain settlement succeeded.
 
----
+Do not commit `.lexnet-data/`.
+
+## Recommended Demo Workflow
+
+From the repository/worktree root:
+
+```bash
+npm --prefix frontend run demo:seed
+npm --prefix frontend run demo:dev
+```
+
+Open the URL printed by `demo:dev`. It prefers `http://localhost:3002` and falls back to `http://localhost:3003` if another checkout is already using port `3002`.
+
+After the demo:
+
+```bash
+npm --prefix frontend run demo:backup
+npm --prefix frontend run demo:reset
+```
+
+Use `demo:backup` before resetting when you want to keep a local snapshot of `.lexnet-data/store.json`. Backups remain local under `.lexnet-data/` and must not be committed.
+
+## Pilot Readiness Workflow
+
+For a controlled local pilot package:
+
+```bash
+npm --prefix frontend run pilot:prepare
+npm --prefix frontend run pilot:check
+```
+
+`pilot:prepare` resets and reseeds local `.lexnet-data/store.json` with deterministic pilot/demo records and refuses to run in `LEXNET_RUNTIME_MODE=production`.
+
+`pilot:check` reports runtime mode, auth readiness, persistence readiness, evidence policy readiness, GenLayer state verification readiness, local store counts, and forbidden secret-like keys. It fails only for production-mode blockers or forbidden secret-like keys.
+
+See `docs/PILOT_RUNBOOK.md` for the full operator runbook.
+
+## Environment Variables
+
+Public frontend configuration:
+
+```bash
+NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS=
+NEXT_PUBLIC_GENLAYER_RPC_URL=https://studio.genlayer.com/api
+NEXT_PUBLIC_GENLAYER_NETWORK_LABEL=Studionet
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
+```
+
+Demo-private and production boundary configuration:
+
+```bash
+LEXNET_ENABLE_DEMO_PRIVATE_API=true
+LEXNET_DEMO_PRIVATE_API_TOKEN=
+LEXNET_PRODUCTION_AUTH_MODE=off
+LEXNET_PRODUCTION_AUTH_SECRET=
+LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS=60
+```
+
+Demo-private API requests also require:
+
+```http
+x-lexnet-operator-id: operator-demo
+```
+
+If `LEXNET_DEMO_PRIVATE_API_TOKEN` is set, demo-private API requests must also include `Authorization: Bearer <token>`. Leave it blank for local-only demos.
+
+`LEXNET_PRODUCTION_AUTH_MODE` is `off` outside production and `trusted-header` when an upstream gateway signs production mutations. In trusted-header mode, `LEXNET_PRODUCTION_AUTH_SECRET` must be a strong random secret, for example `openssl rand -hex 32`, and must never be empty in production. `LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS` controls the allowed timestamp drift for signed headers; the default is 60 seconds.
+
+Do not commit `.env.local` or private keys.
+
+## Local Data
+
+Backend platform data is stored locally at:
+
+```text
+.lexnet-data/store.json
+```
+
+This file is local demo/runtime state and should not be committed. It can contain persisted cases, workspace/operator records, review queue items, published passport records, and audit events.
+
+Browser localStorage remains a local fallback/cache for client-created demo cases.
+
+## Public Passport Publishing
+
+Operators can generate backend passport records from persisted verified commerce history, publish or unpublish a passport, and share `/passport/[slug]`.
+
+The public passport page is privacy-safe. It exposes redacted subject data and aggregate trust metrics only. It does not expose raw parties, evidence URLs, case IDs, audit events, operator records, workspace membership data, or unpublished passports.
+
+## GenLayer SDK Boundary
+
+LexNet uses `genlayer-js` only behind the local `genlayer-client` adapter. The guarded `verify_case` path may submit a real SDK call when contract address, RPC URL, wallet/operator readiness, and demo-private authorization all pass.
+
+A GenLayer transaction hash is submission evidence only. LexNet marks a GenLayer verification as contract-state verified only after reading `get_case(case_id)` and finding a `verification_report` in the contract state.
+
+Local verification remains the fallback. The UI must not claim settlement completion, fund movement, or on-chain finality unless a real SDK result and later contract-state verification prove it.
+
+## Production Boundary
+
+Current hardening status:
+
+- Demo-private APIs can require both `x-lexnet-operator-id: operator-demo` and an optional `Authorization: Bearer <token>` header.
+- Production mode now requires enforced production auth, such as the trusted-header HMAC boundary; provider/env naming alone is not enough.
+- Filesystem persistence is local demo/pilot infrastructure, not a managed production database.
+- Backup/restore commands are local operational tools, not a managed disaster recovery system.
+- The guarded GenLayer SDK path can submit `verify_case` through `genlayer-js` only when readiness checks pass, and it does not claim settlement finality.
+
+Before production use, LexNet still needs a real managed DB adapter, deployment observability, managed backups, audited GenLayer transaction execution/state verification, and security review. Payment custody or settlement transfer paths remain out of scope until explicitly designed and audited.
 
 ## License
 

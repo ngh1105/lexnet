@@ -1,0 +1,41 @@
+name: LexNet CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS: ${{ secrets.NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS || '' }}
+      NEXT_PUBLIC_GENLAYER_RPC_URL: https://studio.genlayer.com/api
+      NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Type check
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Domain tests
+        working-directory: frontend
+        run: npm run test:domain
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build

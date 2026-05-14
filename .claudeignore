@@ -1,0 +1,36 @@
+# Vendored SDK - not active source, except tracked lockfile
+genlayer-js/.github/
+genlayer-js/src/
+genlayer-js/tests/
+genlayer-js/*.js
+genlayer-js/*.cjs
+genlayer-js/*.json
+!genlayer-js/package-lock.json
+genlayer-js/*.md
+
+# Claude worktrees/cache - duplicated repo snapshots
+.claude/
+
+# Root Git metadata
+.git/
+
+# Archived docs - stale, out of date
+docs/archive/
+
+# Historical agent plans/specs - stale, out of date
+docs/superpowers/plans/2026-05-12-*.md
+docs/superpowers/specs/2026-05-12-*.md
+
+# Agent tooling - not project code
+.agent/
+.shared/
+
+# Dependencies
+frontend/node_modules/
+genlayer-js/node_modules/
+
+# Large generated dependency artifacts
+genlayer-js/*.tgz
+
+# Build artifacts
+frontend/.next/

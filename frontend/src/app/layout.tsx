@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import "./globals.css";
-import { Web3Provider } from "@/providers/Web3Provider";
 import { Inter } from "next/font/google";
+import { Web3Provider } from "@/providers/Web3Provider";
+import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "LexNet Escrow — AI-Powered Arbitration Protocol",
+  title: "LexNet Commerce Trust",
   description:
-    "Autonomous AI-driven escrow on GenLayer. Trustless freelance agreements arbitrated by on-chain AI consensus.",
+    "AI-verified commerce trust cases, evidence review, settlement recommendations, and portable trust history.",
 };
 
 export default function RootLayout({
@@ -19,16 +19,16 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={inter.className}>
-        <div style={{
-          minHeight: "100vh",
-          background: "radial-gradient(ellipse at top, #0B162C 0%, #030712 100%)",
-          color: "#E2E8F0",
-          display: "flex",
-          flexDirection: "column",
-        }}>
-          <Web3Provider>
-            {children}
-          </Web3Provider>
+        <div
+          style={{
+            minHeight: "100vh",
+            background: "#f7f5f0",
+            color: "#111827",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <Web3Provider>{children}</Web3Provider>
         </div>
       </body>
     </html>

@@ -1,0 +1,10 @@
+services:
+  lexnet:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS=${NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS:-}
+      - NEXT_PUBLIC_GENLAYER_RPC_URL=${NEXT_PUBLIC_GENLAYER_RPC_URL:-https://studio.genlayer.com/api}
