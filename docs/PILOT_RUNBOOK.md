@@ -14,7 +14,7 @@ npm --prefix frontend run pilot:prepare
 npm --prefix frontend run demo:dev
 ```
 
-The dev server prefers `http://localhost:3002` and falls back to `http://localhost:3003` when using `demo:dev`.
+The dev server prefers `http://localhost:3002` and falls back to `http://localhost:3003` when using `demo:dev`. The `demo:dev` command enables demo-private API routes by default for the local pilot walkthrough.
 
 ## Environment Checklist
 
