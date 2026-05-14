@@ -56,7 +56,10 @@ import {
   type PlatformReadinessEnv,
 } from "../src/lib/platform/readiness";
 import { getPlatformStoreAdapterStatus } from "../src/lib/platform/persistence-adapter";
-import { evaluateEvidenceUrlPolicy } from "../src/lib/platform/evidence-policy";
+import {
+  evaluateEvidenceUrlPolicy,
+  parseEvidenceRetentionPolicy,
+} from "../src/lib/platform/evidence-policy";
 import {
   buildPlatformObservabilityStatus,
   buildProductionAuthAuditEvent,
@@ -335,9 +338,51 @@ test("getPlatformStoreAdapterStatus blocks production managed adapter until enfo
   assert.match(status.blockingReasons.join("\n"), /Managed database URL is not configured/);
 });
 
+test("parseEvidenceRetentionPolicy accepts metadata day policies", () => {
+  const policy = parseEvidenceRetentionPolicy("metadata-365d");
+
+  assert.deepEqual(policy, {
+    configured: true,
+    mode: "metadata-only",
+    retentionDays: 365,
+    blockingReasons: [],
+  });
+});
+
+test("parseEvidenceRetentionPolicy rejects unsupported policies", () => {
+  const policy = parseEvidenceRetentionPolicy("raw-forever");
+
+  assert.equal(policy.configured, true);
+  assert.equal(policy.mode, "invalid");
+  assert.ok(policy.blockingReasons.includes("Evidence retention policy must use metadata-{days}d."));
+});
+
+test("evaluateEvidenceUrlPolicy includes production retention decision", () => {
+  const result = evaluateEvidenceUrlPolicy(["https://merchant.example/evidence.pdf"], {
+    LEXNET_RUNTIME_MODE: "production",
+    LEXNET_EVIDENCE_RETENTION_POLICY: "metadata-365d",
+  });
+
+  assert.deepEqual(result.acceptedUrls, ["https://merchant.example/evidence.pdf"]);
+  assert.equal(result.retention.configured, true);
+  assert.equal(result.retention.mode, "metadata-only");
+  assert.equal(result.retention.retentionDays, 365);
+  assert.deepEqual(result.retention.blockingReasons, []);
+});
+
+test("evaluateEvidenceUrlPolicy blocks production evidence without retention policy", () => {
+  const result = evaluateEvidenceUrlPolicy(["https://merchant.example/evidence.pdf"], {
+    LEXNET_RUNTIME_MODE: "production",
+  });
+
+  assert.deepEqual(result.acceptedUrls, []);
+  assert.ok(result.blockingReasons.includes("Evidence retention policy is not configured."));
+});
+
 test("evaluateEvidenceUrlPolicy accepts public HTTPS URLs in production", () => {
   const result = evaluateEvidenceUrlPolicy(["https://example.com/proof.pdf"], {
     LEXNET_RUNTIME_MODE: "production",
+    LEXNET_EVIDENCE_RETENTION_POLICY: "metadata-365d",
   });
 
   assert.deepEqual(result.acceptedUrls, ["https://example.com/proof.pdf"]);
@@ -374,7 +419,10 @@ test("evaluateEvidenceUrlPolicy rejects IPv6 private and link-local literals", (
       "https://[febf::1]/proof",
       "https://[2001:db8::1]/proof",
     ],
-    { LEXNET_RUNTIME_MODE: "production" },
+    {
+      LEXNET_RUNTIME_MODE: "production",
+      LEXNET_EVIDENCE_RETENTION_POLICY: "metadata-365d",
+    },
   );
 
   assert.deepEqual(result.acceptedUrls, ["https://[2001:db8::1]/proof"]);
@@ -388,7 +436,10 @@ test("evaluateEvidenceUrlPolicy accepts public hosts that resemble IPv6 private 
       "https://fd-example.com/proof",
       "https://fe80proof.example/proof",
     ],
-    { LEXNET_RUNTIME_MODE: "production" },
+    {
+      LEXNET_RUNTIME_MODE: "production",
+      LEXNET_EVIDENCE_RETENTION_POLICY: "metadata-365d",
+    },
   );
 
   assert.deepEqual(result.acceptedUrls, [

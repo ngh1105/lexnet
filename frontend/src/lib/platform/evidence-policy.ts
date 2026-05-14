@@ -1,9 +1,57 @@
 import { getLexNetRuntimeMode, type PlatformReadinessEnv } from "./readiness";
 
+export type EvidenceRetentionMode = "metadata-only" | "invalid";
+
+export interface EvidenceRetentionPolicyStatus {
+  configured: boolean;
+  mode: EvidenceRetentionMode;
+  retentionDays: number | null;
+  blockingReasons: string[];
+}
+
 export interface EvidenceUrlPolicyResult {
   acceptedUrls: string[];
   rejectedUrls: Array<{ url: string; reason: string }>;
+  retention: EvidenceRetentionPolicyStatus;
   blockingReasons: string[];
+}
+
+export function parseEvidenceRetentionPolicy(policy: string | undefined): EvidenceRetentionPolicyStatus {
+  if (!policy) {
+    return {
+      configured: false,
+      mode: "invalid",
+      retentionDays: null,
+      blockingReasons: ["Evidence retention policy is not configured."],
+    };
+  }
+
+  const match = /^metadata-(\d+)d$/.exec(policy);
+  if (!match) {
+    return {
+      configured: true,
+      mode: "invalid",
+      retentionDays: null,
+      blockingReasons: ["Evidence retention policy must use metadata-{days}d."],
+    };
+  }
+
+  const retentionDays = Number(match[1]);
+  if (!Number.isSafeInteger(retentionDays) || retentionDays < 1 || retentionDays > 3650) {
+    return {
+      configured: true,
+      mode: "invalid",
+      retentionDays: null,
+      blockingReasons: ["Evidence retention policy must retain metadata for 1 to 3650 days."],
+    };
+  }
+
+  return {
+    configured: true,
+    mode: "metadata-only",
+    retentionDays,
+    blockingReasons: [],
+  };
 }
 
 export function evaluateEvidenceUrlPolicy(
@@ -11,6 +59,8 @@ export function evaluateEvidenceUrlPolicy(
   env: PlatformReadinessEnv = {},
 ): EvidenceUrlPolicyResult {
   const mode = getLexNetRuntimeMode(env);
+  const retention = parseEvidenceRetentionPolicy(env.LEXNET_EVIDENCE_RETENTION_POLICY);
+  const retentionBlockingReasons = mode === "production" ? retention.blockingReasons : [];
   const acceptedUrls: string[] = [];
   const rejectedUrls: Array<{ url: string; reason: string }> = [];
   const seen = new Set<string>();
@@ -32,9 +82,13 @@ export function evaluateEvidenceUrlPolicy(
   }
 
   return {
-    acceptedUrls,
+    acceptedUrls: mode === "production" && retentionBlockingReasons.length > 0 ? [] : acceptedUrls,
     rejectedUrls,
-    blockingReasons: rejectedUrls.map(({ url, reason }) => `${url}: ${reason}`),
+    retention,
+    blockingReasons: [
+      ...rejectedUrls.map(({ url, reason }) => `${url}: ${reason}`),
+      ...retentionBlockingReasons,
+    ],
   };
 }
 

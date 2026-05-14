@@ -1,4 +1,5 @@
 import { getLexNetContractReadiness } from "../lexnet-contract";
+import { parseEvidenceRetentionPolicy } from "./evidence-policy";
 import { getPlatformStoreAdapterStatus } from "./persistence-adapter";
 import {
   getProductionAuthConfigurationStatus,
@@ -137,17 +138,13 @@ export function buildPersistenceReadiness(env: PlatformReadinessEnv): Persistenc
 
 export function buildEvidencePolicyStatus(env: PlatformReadinessEnv): EvidencePolicyStatus {
   const mode = getLexNetRuntimeMode(env);
-  const retentionPolicyConfigured = Boolean(env.LEXNET_EVIDENCE_RETENTION_POLICY);
-  const blockingReasons: string[] = [];
-
-  if (mode === "production" && !retentionPolicyConfigured) {
-    blockingReasons.push("Evidence retention policy is not configured.");
-  }
+  const retention = parseEvidenceRetentionPolicy(env.LEXNET_EVIDENCE_RETENTION_POLICY);
+  const blockingReasons = mode === "production" ? retention.blockingReasons : [];
 
   return {
     allowPublicHttpsOnly: true,
     rawEvidenceStorage: "disabled",
-    retentionPolicyConfigured,
+    retentionPolicyConfigured: retention.configured && retention.mode === "metadata-only",
     blockedPrivateNetworkHosts: true,
     blockingReasons,
   };
