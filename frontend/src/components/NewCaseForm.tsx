@@ -15,6 +15,11 @@ export default function NewCaseForm({ seedCases }: { seedCases: CommerceCase[] }
   const [acceptanceCriteria, setAcceptanceCriteria] = useState("");
   const [amountReference, setAmountReference] = useState("0");
   const [error, setError] = useState("");
+  const intakeStats = [
+    { label: "Seed cases", value: seedCases.length.toLocaleString() },
+    { label: "Flow", value: "Local pilot" },
+    { label: "Output", value: "Review-ready case" },
+  ];
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,8 +65,8 @@ export default function NewCaseForm({ seedCases }: { seedCases: CommerceCase[] }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="panel" style={{ padding: 0, overflow: "hidden" }}>
-      <div style={{ padding: 18, borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
+    <form onSubmit={handleSubmit} className="panel review-panel" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="hero-panel" style={{ padding: 22, borderBottom: "1px solid var(--border)" }}>
         <div className="section-label">
           <FilePlus2 size={14} strokeWidth={1.75} />
           Case Intake
@@ -69,10 +74,18 @@ export default function NewCaseForm({ seedCases }: { seedCases: CommerceCase[] }
         <div style={{ marginTop: 8, color: "var(--muted)", fontSize: 13, lineHeight: 1.55 }}>
           Create a local commerce case that matches the audit workflow and can later wire to GenLayer writes.
         </div>
+        <div className="surface-grid" style={{ marginTop: 16 }}>
+          {intakeStats.map((item) => (
+            <div key={item.label} className="insight-card">
+              <span className="section-label">{item.label}</span>
+              <strong style={{ color: "var(--ink)", fontSize: 18 }}>{item.value}</strong>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div style={{ padding: 18, display: "grid", gap: 14 }}>
-        <FormSection title="Parties" icon={<Scale size={14} strokeWidth={1.75} />}>
+        <FormSection title="Parties" step="1" icon={<Scale size={14} strokeWidth={1.75} />}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <Field label="Case title">
               <input
@@ -110,7 +123,7 @@ export default function NewCaseForm({ seedCases }: { seedCases: CommerceCase[] }
           </div>
         </FormSection>
 
-        <FormSection title="Agreement" icon={<ShieldCheck size={14} strokeWidth={1.75} />}>
+        <FormSection title="Agreement" step="2" icon={<ShieldCheck size={14} strokeWidth={1.75} />}>
           <Field label="Agreement text">
             <textarea
               className="lexnet-input"
@@ -122,7 +135,7 @@ export default function NewCaseForm({ seedCases }: { seedCases: CommerceCase[] }
           </Field>
         </FormSection>
 
-        <FormSection title="Acceptance Criteria" icon={<TriangleAlert size={14} strokeWidth={1.75} />}>
+        <FormSection title="Acceptance Criteria" step="3" icon={<TriangleAlert size={14} strokeWidth={1.75} />}>
           <Field label="One criterion per line">
             <textarea
               className="lexnet-input"
@@ -164,17 +177,22 @@ export default function NewCaseForm({ seedCases }: { seedCases: CommerceCase[] }
 function FormSection({
   title,
   icon,
+  step,
   children,
 }: {
   title: string;
   icon: ReactNode;
+  step: string;
   children: ReactNode;
 }) {
   return (
     <section className="form-section">
-      <div className="section-label">
-        {icon}
-        {title}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div className="section-label">
+          {icon}
+          {title}
+        </div>
+        <span className="step-marker">{step}</span>
       </div>
       {children}
     </section>
