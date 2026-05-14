@@ -39,13 +39,13 @@ Pilot mode may use filesystem persistence and demo-private auth. Production mode
 ```bash
 npm --prefix frontend run pilot:prepare
 npm --prefix frontend run demo:backup
-npm --prefix frontend run demo:restore -- <backup-path>
+npm --prefix frontend run demo:restore -- <printed-backup-path>
 npm --prefix frontend run demo:reset
 ```
 
 `pilot:prepare` resets and reseeds `.lexnet-data/store.json`. It refuses to run when `LEXNET_RUNTIME_MODE=production`.
 
-Use `demo:backup` before destructive resets when you need a local snapshot. Backups remain local under `.lexnet-data/` and must not be committed.
+Use `demo:backup` before destructive resets when you need a local snapshot. Restore with the exact timestamped path printed by `demo:backup`. Backups remain local under `.lexnet-data/` and must not be committed.
 
 ## GenLayer Proof Workflow
 

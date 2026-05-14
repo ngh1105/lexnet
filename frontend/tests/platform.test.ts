@@ -65,6 +65,7 @@ import { chooseDemoDevPort } from "../scripts/dev-port";
 import {
   findForbiddenStoreSecretKeys,
   parseRawStoreForSecretScan,
+  getGitIgnoreOutput,
   isPathIgnoredByGitOutput,
   shouldFailPilotCheck,
 } from "../scripts/pilot-check";
@@ -650,6 +651,10 @@ test("isPathIgnoredByGitOutput recognizes ignored git check output", () => {
   assert.equal(isPathIgnoredByGitOutput(".lexnet-data/store.json\n"), true);
   assert.equal(isPathIgnoredByGitOutput(""), false);
   assert.equal(isPathIgnoredByGitOutput("fatal: not a git repository\n"), false);
+});
+
+test("getGitIgnoreOutput checks the store path from the repository root", () => {
+  assert.equal(isPathIgnoredByGitOutput(getGitIgnoreOutput(".lexnet-data/store.json")), true);
 });
 
 test("pilot prepare refuses production mode", () => {
