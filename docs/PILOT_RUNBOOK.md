@@ -1,10 +1,10 @@
-# LexNet Pilot Runbook
+# LexNet Demo Runbook
 
-LexNet pilot mode is for controlled operator demos and early pilot workflows. It keeps local filesystem persistence and demo-private authorization, while reporting the production blockers that must be resolved before real commerce use.
+LexNet demo mode is for controlled operator demos and hackathon walkthroughs. It keeps local filesystem persistence and demo-private authorization while reporting the production blockers that must be resolved before real commerce use.
 
-LexNet is recommendation-only in local demo and pilot operation. It provides no custody, no payouts, no real value movement, and no settlement finality from local verification or GenLayer submission alone.
+LexNet is recommendation-only in local demo operation. It provides no custody, no payouts, no real value movement, and no settlement finality from local verification or GenLayer submission alone.
 
-## Local Pilot Setup
+## Local Demo Setup
 
 From the repository or worktree root:
 
@@ -14,16 +14,18 @@ npm --prefix frontend run pilot:prepare
 npm --prefix frontend run demo:dev
 ```
 
-The dev server prefers `http://localhost:3002` and falls back to `http://localhost:3003` when using `demo:dev`. The `demo:dev` command enables demo-private API routes by default for the local pilot walkthrough.
+The dev server prefers `http://localhost:3002` and falls back to `http://localhost:3003` when using `demo:dev`. The `demo:dev` command enables demo-private API routes by default for the local walkthrough.
+
+The `pilot:*` script names are compatibility commands kept for the existing readiness test suite.
 
 ## Environment Checklist
 
 ```bash
-LEXNET_RUNTIME_MODE=pilot
+LEXNET_RUNTIME_MODE=local-demo
 LEXNET_ENABLE_DEMO_PRIVATE_API=true
 LEXNET_DEMO_PRIVATE_API_TOKEN=
-LEXNET_PRODUCTION_AUTH_PROVIDER= # descriptive only; does not authorize production mutations
-LEXNET_PRODUCTION_AUTH_MODE=off # use trusted-header for production/staging gateway enforcement
+LEXNET_PRODUCTION_AUTH_PROVIDER=
+LEXNET_PRODUCTION_AUTH_MODE=off
 LEXNET_PRODUCTION_AUTH_SECRET=
 LEXNET_PRODUCTION_AUTH_CLOCK_SKEW_SECONDS=60
 LEXNET_MANAGED_DATABASE_URL=
@@ -33,9 +35,10 @@ NEXT_PUBLIC_LEXNET_CONTRACT_ADDRESS=
 NEXT_PUBLIC_GENLAYER_RPC_URL=https://studio.genlayer.com/api
 NEXT_PUBLIC_GENLAYER_NETWORK_LABEL=Studionet
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
+NEXT_PUBLIC_LEXNET_OWNER_WALLET_ADDRESS=
 ```
 
-Pilot mode may use filesystem persistence and demo-private auth. Production mode must configure enforced production auth, managed persistence, and evidence retention policy before mutating routes are allowed.
+Local demo mode may use filesystem persistence and demo-private auth. Production mode must configure enforced production auth, managed persistence, and evidence retention policy before mutating routes are allowed.
 
 ## Seed, Reset, Backup, and Restore
 
@@ -54,7 +57,7 @@ Use `demo:backup` before destructive resets when you need a local snapshot. Rest
 
 Future staging gateways can use trusted-header mode by deriving operator context at the edge and signing the request method, pathname, raw query string, operator id, timestamp, nonce, and request body SHA-256 with HMAC. LexNet verifies the signature, rejects replayed nonces within the clock-skew window, and checks timestamp drift before accepting production mutations. Keep the signing secret only in the gateway/app environment; do not commit it or include real values in runbooks.
 
-Phase E hardens the production backbone for auth/readiness/policy checks. It is not a deploy, payment, custody, payout, or settlement-transfer milestone.
+This hardens the production backbone for auth/readiness/policy checks. It is not a deploy, payment, custody, payout, or settlement-transfer milestone.
 
 ## GenLayer Proof Workflow
 
@@ -75,9 +78,10 @@ npm --prefix frontend run test:platform
 npm --prefix frontend run test:domain
 npm --prefix frontend exec tsc -- --noEmit
 npm --prefix frontend run build
+npm --prefix frontend audit --omit=dev
 ```
 
-`pilot:check` exits non-zero for production-mode blockers or forbidden secret-like keys in the local store. Local-demo and pilot readiness warnings do not fail the command.
+`pilot:check` exits non-zero for production-mode blockers or forbidden secret-like keys in the local store. Local-demo readiness warnings do not fail the command.
 
 ## Known Production Blockers
 

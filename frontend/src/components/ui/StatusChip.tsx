@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck, Clock3, TriangleAlert } from "lucide-react";
+import { CircleAlert, CircleCheck, Clock3, TriangleAlert } from "@/components/icons";
 import type { CommerceCaseStatus } from "@/lib/lexnet-types";
 
 const statusMeta: Record<CommerceCaseStatus, { label: string; className: string; icon: typeof CircleCheck }> = {

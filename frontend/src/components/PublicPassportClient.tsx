@@ -4,7 +4,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   TrendingUp,
-} from "lucide-react";
+} from "@/components/icons";
 import type { PublicPassportView } from "@/lib/platform/types";
 
 const trustColors: Record<string, string> = {

@@ -1,7 +1,7 @@
 "use client";
 
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { WalletCards } from "lucide-react";
+import { WalletCards } from "@/components/icons";
 import { isWalletConnectConfigured } from "@/providers/Web3Provider";
 
 export default function WalletConnectStatus() {

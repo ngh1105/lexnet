@@ -6,6 +6,7 @@ import {
   applyVerificationReport,
   buildCaseTimeline,
   buildCommandCenterMetrics,
+  buildCommandCenterSignals,
   buildCommerceCaseStats,
   buildEvidencePack,
   buildEvidenceQualitySummary,
@@ -26,6 +27,7 @@ import {
   getLexNetContractReadiness,
 } from "../src/lib/lexnet-contract";
 import type { CommerceCase, VerificationReport } from "../src/lib/lexnet-types";
+import type { DashboardQueueItem, PlatformSummary } from "../src/lib/platform/types";
 
 const reviewedReport: VerificationReport = {
   verdict: "APPROVE",
@@ -547,6 +549,49 @@ test("buildCommandCenterMetrics summarizes demo operating metrics", () => {
   assert.equal(metrics.aiReviewedCases, 1);
   assert.equal(metrics.passportsIssued, 4);
   assert.equal(metrics.evidenceItems, 3);
+});
+
+test("buildCommandCenterSignals combines real case, queue, and platform counts", () => {
+  const platformSummary: PlatformSummary = {
+    workspaceCount: 1,
+    operatorCount: 2,
+    queueCount: 4,
+    caseCount: seedCases.length,
+    publishedPassportCount: 6,
+    auditEventCount: 19,
+  };
+  const queueItems: DashboardQueueItem[] = [
+    {
+      id: "q1",
+      caseId: "case-reviewed",
+      status: "completed",
+      priority: "normal",
+      createdAt: "2026-05-12T08:00:00.000Z",
+      updatedAt: "2026-05-12T09:00:00.000Z",
+    },
+    {
+      id: "q2",
+      caseId: "case-active",
+      status: "blocked",
+      priority: "high",
+      createdAt: "2026-05-12T10:00:00.000Z",
+      updatedAt: "2026-05-12T11:00:00.000Z",
+    },
+  ];
+
+  const signals = buildCommandCenterSignals(seedCases, {
+    platformSummary,
+    queueItems,
+  });
+
+  assert.equal(signals.activeCases, 1);
+  assert.equal(signals.evidenceItems, 3);
+  assert.equal(signals.reviewedCases, 1);
+  assert.equal(signals.queueCount, 4);
+  assert.equal(signals.blockedQueueItems, 1);
+  assert.equal(signals.publishedPassportCount, 6);
+  assert.equal(signals.auditEventCount, 19);
+  assert.equal(signals.readinessPercent, 83);
 });
 
 test("buildHighPriorityReviews returns review cards with reasons", () => {

@@ -2,7 +2,7 @@
 
 import { FormEvent, ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, FilePlus2, ShieldCheck, Scale, TriangleAlert } from "lucide-react";
+import { ArrowRight, FilePlus2, ShieldCheck, Scale, TriangleAlert } from "@/components/icons";
 import { createStoredCommerceCase } from "@/lib/lexnet-client-store";
 import type { CommerceCase } from "@/lib/lexnet-types";
 
@@ -17,7 +17,7 @@ export default function NewCaseForm({ seedCases }: { seedCases: CommerceCase[] }
   const [error, setError] = useState("");
   const intakeStats = [
     { label: "Seed cases", value: seedCases.length.toLocaleString() },
-    { label: "Flow", value: "Local pilot" },
+    { label: "Flow", value: "Command center" },
     { label: "Output", value: "Review-ready case" },
   ];
 

@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   Sparkles,
   TriangleAlert,
-} from "lucide-react";
+} from "@/components/icons";
 import {
   WalletAwareCaseReadiness,
   WalletUnavailableCaseReadiness,
@@ -263,7 +263,7 @@ export default function CaseDetailClient({
               Operator Brief
             </div>
             <p className="muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.7 }}>
-              This case is part of the local pilot workflow. LexNet can summarize evidence,
+              This case is part of the local command-center workflow. LexNet can summarize evidence,
               produce an AI recommendation, and track proof state, but it does not custody
               funds, execute payouts, or finalize settlement.
             </p>

@@ -108,6 +108,17 @@ export interface CommandCenterMetrics {
   evidenceItems: number;
 }
 
+export interface CommandCenterSignals {
+  activeCases: number;
+  evidenceItems: number;
+  reviewedCases: number;
+  queueCount: number;
+  blockedQueueItems: number;
+  publishedPassportCount: number;
+  auditEventCount: number;
+  readinessPercent: number;
+}
+
 export interface HighPriorityReview {
   caseId: string;
   title: string;

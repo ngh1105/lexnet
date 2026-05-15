@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LexNet Frontend
 
-## Getting Started
+Next.js App Router frontend for the LexNet commerce trust demo. It covers case intake, evidence review, AI verification recommendations, operator queueing, GenLayer proof boundaries, platform readiness, and privacy-safe public trust passports.
 
-First, run the development server:
+LexNet is recommendation-only in this MVP. It does not custody funds, execute payouts, move real value, or claim settlement finality from local verification or GenLayer submission alone.
+
+## Run Locally
 
 ```bash
+npm install
+npm run demo:seed
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3002`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+For the packaged demo flow, run:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run demo:seed
+npm run demo:dev
+```
 
-## Learn More
+`demo:dev` prefers port `3002` and falls back to `3003` when another checkout is already running.
 
-To learn more about Next.js, take a look at the following resources:
+## Main Routes
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `/` - command-center dashboard.
+- `/cases/new` - create a commerce case.
+- `/cases/[id]` - evidence, verification, recommendation, and GenLayer proof view.
+- `/passports` - operator trust passport records and publish/unpublish controls.
+- `/passport/[slug]` - public privacy-safe passport.
+- `/platform` - redacted readiness and observability view.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Verification
 
-## Deploy on Vercel
+```bash
+npm run test:domain
+npm run test:platform
+npm run build
+npm run pilot:check
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Or run the combined MVP check:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run verify:mvp
+```
+
+## Environment
+
+Copy `.env.example` to `.env.local` for local configuration. Keep `.env.local`, generated private keys, and `.lexnet-data/` out of git.
+
+The demo-private APIs require `x-lexnet-operator-id: operator-demo`. If `LEXNET_DEMO_PRIVATE_API_TOKEN` is set, include `Authorization: Bearer <token>` as well.
+
+## GenLayer Boundary
+
+`genlayer-js` is used through the local adapter only. A transaction hash is treated as submission evidence; LexNet marks a case contract-state verified only after reading contract state and finding the expected verification report.

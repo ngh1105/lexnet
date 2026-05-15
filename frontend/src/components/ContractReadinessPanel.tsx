@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, RadioTower, WalletCards } from "lucide-react";
+import { AlertTriangle, CheckCircle2, RadioTower, WalletCards } from "@/components/icons";
 import type { LexNetContractReadiness } from "@/lib/lexnet-contract";
 
 export default function ContractReadinessPanel({
