@@ -85,20 +85,28 @@ npm --prefix frontend run demo:reset
 
 Use `demo:backup` before resetting when you want to keep a local snapshot of `.lexnet-data/store.json`. Backups remain local under `.lexnet-data/` and must not be committed.
 
-## Pilot Readiness Workflow
+## Demo Readiness Workflow
 
-For a controlled local pilot package:
+For a controlled local demo package:
 
 ```bash
 npm --prefix frontend run pilot:prepare
 npm --prefix frontend run pilot:check
 ```
 
-`pilot:prepare` resets and reseeds local `.lexnet-data/store.json` with deterministic pilot/demo records and refuses to run in `LEXNET_RUNTIME_MODE=production`.
+`pilot:prepare` resets and reseeds local `.lexnet-data/store.json` with deterministic demo records and refuses to run in `LEXNET_RUNTIME_MODE=production`. The script name is kept for compatibility with the existing readiness test suite.
 
 `pilot:check` reports runtime mode, auth readiness, persistence readiness, evidence policy readiness, GenLayer state verification readiness, local store counts, and forbidden secret-like keys. It fails only for production-mode blockers or forbidden secret-like keys.
 
-See `docs/PILOT_RUNBOOK.md` for the full operator runbook.
+See `docs/PILOT_RUNBOOK.md` for the full local demo runbook.
+
+## Hackathon Submission Notes
+
+- Run `npm --prefix frontend run demo:seed` and `npm --prefix frontend run demo:dev`, then open the printed local URL.
+- The demo story is case intake, evidence review, local AI recommendation, guarded GenLayer submission/read-back, operator queue, and privacy-safe trust passport publishing.
+- Generated GenLayer demo accounts live only in ignored local data files. Do not commit `.lexnet-data/`, `.env.local`, generated private keys, or demo secrets.
+- LexNet is not production custody, payment release, or dispute-finality infrastructure. It demonstrates a verification and recommendation workflow with explicit proof boundaries.
+- `npm audit --omit=dev` is expected to report zero known production vulnerabilities after the current lockfile patch. Re-run it before submission because wallet/SDK transitive packages can change quickly.
 
 ## Environment Variables
 
@@ -165,7 +173,7 @@ Current hardening status:
 
 - Demo-private APIs can require both `x-lexnet-operator-id: operator-demo` and an optional `Authorization: Bearer <token>` header.
 - Production mode now requires enforced production auth, such as the trusted-header HMAC boundary; provider/env naming alone is not enough.
-- Filesystem persistence is local demo/pilot infrastructure, not a managed production database.
+- Filesystem persistence is local demo infrastructure, not a managed production database.
 - Backup/restore commands are local operational tools, not a managed disaster recovery system.
 - The guarded GenLayer SDK path can submit `verify_case` through `genlayer-js` only when readiness checks pass, and it does not claim settlement finality.
 

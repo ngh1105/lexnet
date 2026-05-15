@@ -8,7 +8,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   TrendingUp,
-} from "lucide-react";
+} from "@/components/icons";
 import Sidebar from "@/components/Sidebar";
 import { getMergedCommerceCases } from "@/lib/lexnet-client-store";
 import { buildSubjectKey } from "@/lib/platform/passports";
@@ -273,7 +273,7 @@ export default function TrustPassportsClient({
             </div>
             <p className="muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.7 }}>
               Backend passport records can be published into public previews. Local demo
-              passports are derived from the pilot case set and need backend generation before
+              passports are derived from the command-center case set and need backend generation before
               publication controls apply. Public previews hide raw parties, evidence, case IDs,
               audit events, and workspace data.
             </p>

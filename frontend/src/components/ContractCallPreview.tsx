@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, LockKeyhole, RadioTower } from "lucide-react";
+import { Copy, LockKeyhole, RadioTower } from "@/components/icons";
 import type { LexNetContractCallPreview } from "@/lib/lexnet-contract";
 
 export default function ContractCallPreview({

@@ -9,12 +9,13 @@ import {
   Scale,
   ShieldCheck,
   Zap,
-} from "lucide-react";
+} from "@/components/icons";
 
 const navItems = [
   { href: "/", icon: Inbox, label: "Cases" },
   { href: "/cases/new", icon: FilePlus2, label: "New Case" },
   { href: "/passports", icon: IdCard, label: "Passports" },
+  { href: "/platform", icon: ShieldCheck, label: "Platform" },
 ];
 
 export default function Sidebar() {
@@ -40,7 +41,7 @@ export default function Sidebar() {
           </div>
         </Link>
         <div className="sidebar-pilot-badge">
-          <span>Phase F Pilot</span>
+          <span>Live Workspace</span>
           <ShieldCheck size={14} strokeWidth={1.75} />
         </div>
       </div>
@@ -68,9 +69,9 @@ export default function Sidebar() {
         <div className="sidebar-status-card">
           <Zap size={16} color="#5eead4" fill="#5eead4" strokeWidth={1.75} />
           <div>
-            <div className="sidebar-status-title">Local MVP</div>
+            <div className="sidebar-status-title">Command Center</div>
             <div className="sidebar-status-copy">
-              Recommendation-only pilot. No custody or payout execution.
+              Recommendation-only review. No custody or payout execution.
             </div>
           </div>
         </div>

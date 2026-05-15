@@ -6,6 +6,7 @@ import type {
   CommerceCase,
   CommerceCaseStats,
   CommandCenterMetrics,
+  CommandCenterSignals,
   CreateCommerceCaseInput,
   CreateCommerceCaseOptions,
   EvidenceItem,
@@ -21,6 +22,7 @@ import type {
   VerificationSummary,
   VerificationVerdict,
 } from "./lexnet-types";
+import type { DashboardQueueItem, PlatformSummary } from "./platform/types";
 
 const MIN_AGREEMENT_TEXT_LENGTH = 40;
 const MAX_EVIDENCE_URLS = 8;
@@ -231,6 +233,46 @@ export function buildCommandCenterMetrics(cases: CommerceCase[]): CommandCenterM
     settlementReadyCases: cases.filter((commerceCase) => SETTLEMENT_READY_STATUSES.has(commerceCase.status)).length,
     passportsIssued: passports.length,
     evidenceItems: cases.reduce((sum, commerceCase) => sum + commerceCase.evidence.length, 0),
+  };
+}
+
+export function buildCommandCenterSignals(
+  cases: CommerceCase[],
+  options: {
+    platformSummary?: PlatformSummary;
+    queueItems?: DashboardQueueItem[];
+  } = {},
+): CommandCenterSignals {
+  const metrics = buildCommandCenterMetrics(cases);
+  const activeCases = cases.filter((commerceCase) =>
+    ["ACTIVE", "EVIDENCE_SUBMITTED", "UNDER_AI_REVIEW"].includes(commerceCase.status),
+  ).length;
+  const queueItems = options.queueItems ?? [];
+  const queueCount = options.platformSummary?.queueCount ?? queueItems.length;
+  const blockedQueueItems = queueItems.filter((item) => item.status === "blocked").length;
+  const publishedPassportCount =
+    options.platformSummary?.publishedPassportCount ?? buildTrustPassports(cases).length;
+  const auditEventCount = options.platformSummary?.auditEventCount ?? 0;
+  const readinessParts = [
+    cases.length > 0,
+    metrics.evidenceItems > 0,
+    metrics.aiReviewedCases > 0,
+    publishedPassportCount > 0,
+    auditEventCount > 0,
+    queueCount > 0 && blockedQueueItems === 0,
+  ];
+
+  return {
+    activeCases,
+    evidenceItems: metrics.evidenceItems,
+    reviewedCases: metrics.aiReviewedCases,
+    queueCount,
+    blockedQueueItems,
+    publishedPassportCount,
+    auditEventCount,
+    readinessPercent: Math.round(
+      (readinessParts.filter(Boolean).length / readinessParts.length) * 100,
+    ),
   };
 }
 

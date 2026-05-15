@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, FilePlus2, LayoutPanelLeft, ShieldCheck } from "lucide-react";
+import { ArrowLeft, FilePlus2, LayoutPanelLeft, ShieldCheck } from "@/components/icons";
 import Sidebar from "@/components/Sidebar";
 import NewCaseForm from "@/components/NewCaseForm";
 import { getAllCommerceCases } from "@/lib/lexnet-service";

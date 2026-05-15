@@ -759,6 +759,41 @@ textarea {
   z-index: 1;
 }
 
+.platform-control-page .platform-hero {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(244, 244, 245, 0.92)),
+    var(--surface);
+}
+
+.platform-control-page .platform-hero::before {
+  background-image: linear-gradient(rgba(17, 24, 39, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(17, 24, 39, 0.045) 1px, transparent 1px);
+}
+
+.platform-control-page .panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(250, 250, 250, 0.94)),
+    var(--surface);
+  border-color: rgba(17, 24, 39, 0.12);
+}
+
+.platform-control-page .metric-card::after {
+  background: linear-gradient(90deg, rgba(17, 24, 39, 0.72), rgba(113, 113, 122, 0.38));
+}
+
+.platform-control-page .metric-icon.success,
+.platform-control-page .metric-icon.warning,
+.platform-control-page .metric-icon.info {
+  background: #f4f4f5;
+  color: #18181b;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+}
+
+.platform-control-page .status-chip.info {
+  border-color: rgba(17, 24, 39, 0.14);
+  background: #f4f4f5;
+  color: #18181b;
+}
+
 .surface-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
@@ -1035,4 +1070,547 @@ textarea {
   .topbar-actions .btn-ghost {
     width: 100%;
   }
+}
+
+.command-center-page .content-frame {
+  display: grid;
+  gap: 18px;
+}
+
+.command-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  border: 1px solid rgba(212, 203, 188, 0.9);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(251, 250, 247, 0.82));
+  box-shadow: var(--shadow-md);
+}
+
+.command-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: min(100%, 360px);
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--muted);
+}
+
+.command-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 13px 0;
+}
+
+.command-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.command-hero {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 16px;
+}
+
+.command-hero-main,
+.command-radar-panel,
+.command-metric-card,
+.command-case-panel,
+.command-rail-card,
+.command-activity-card {
+  border: 1px solid rgba(212, 203, 188, 0.88);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(249, 247, 242, 0.94)),
+    var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.command-hero-main {
+  position: relative;
+  overflow: hidden;
+  padding: 28px;
+  min-height: 290px;
+}
+
+.command-hero-main::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(15, 118, 110, 0.17), transparent 28rem),
+    radial-gradient(circle at 88% 20%, rgba(37, 99, 235, 0.12), transparent 20rem);
+  pointer-events: none;
+}
+
+.command-hero-main > * {
+  position: relative;
+  z-index: 1;
+}
+
+.command-hero-main h1 {
+  margin: 12px 0 10px;
+  max-width: 760px;
+  font-size: clamp(34px, 4.4vw, 56px);
+  line-height: 0.95;
+}
+
+.command-hero-main p,
+.command-radar-panel p,
+.command-rail-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.command-signal-strip,
+.command-metric-grid,
+.command-inspector-grid,
+.command-coverage-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.command-signal-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 22px;
+}
+
+.command-signal-card,
+.command-metric-card {
+  padding: 14px 15px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(212, 203, 188, 0.76);
+}
+
+.command-signal-card span,
+.command-metric-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.command-signal-card strong,
+.command-metric-card strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--ink);
+  font-size: 26px;
+  font-weight: 950;
+}
+
+.command-metric-card small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.command-radar-panel {
+  padding: 22px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.command-radar-panel h2,
+.command-panel-head h2,
+.command-inspector-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.command-pulse-wrap {
+  display: grid;
+  place-items: center;
+  width: 168px;
+  height: 168px;
+  margin-top: 8px;
+  border-radius: 50%;
+  background: rgba(15, 118, 110, 0.06);
+  position: relative;
+}
+
+.command-pulse-ring {
+  position: absolute;
+  inset: 14px;
+  border: 1px solid rgba(15, 118, 110, 0.18);
+  border-radius: 50%;
+  animation: commandPulse 2.2s ease-in-out infinite;
+}
+
+.command-pulse-core {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.16), rgba(37, 99, 235, 0.1));
+  border: 1px solid rgba(15, 118, 110, 0.22);
+}
+
+.command-pulse-core strong {
+  font-size: 28px;
+  font-weight: 950;
+}
+
+.command-pulse-core span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.command-metric-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.command-metric-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-height: 120px;
+}
+
+.command-metric-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(15, 118, 110, 0.08);
+  color: var(--teal);
+  flex-shrink: 0;
+}
+
+.command-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: 16px;
+}
+
+.command-case-panel,
+.command-rail-card,
+.command-activity-card {
+  padding: 18px;
+}
+
+.command-panel-head,
+.command-panel-head.compact {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.command-panel-head.compact {
+  margin-bottom: 12px;
+}
+
+.command-panel-head h2 {
+  margin-top: 6px;
+  font-size: 18px;
+}
+
+.command-table-wrap {
+  overflow: auto;
+}
+
+.command-table {
+  min-width: 820px;
+}
+
+.command-case-link {
+  display: grid;
+  gap: 3px;
+  text-decoration: none;
+}
+
+.command-case-link span {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.command-case-link small,
+.command-muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.command-side-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.command-queue-list,
+.command-review-list {
+  display: grid;
+  gap: 10px;
+}
+
+.command-queue-item,
+.command-review-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px 13px;
+  border: 1px solid rgba(212, 203, 188, 0.82);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  text-decoration: none;
+}
+
+.command-review-item strong,
+.command-queue-item strong,
+.command-inspector-title {
+  color: var(--ink);
+}
+
+.command-review-item span,
+.command-queue-item span,
+.command-review-item small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.command-risk-list {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 14px;
+}
+
+.command-coverage-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.command-activity-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.command-queue-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.command-queue-badge.blocked {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.command-queue-badge.high {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+@keyframes commandPulse {
+  0%, 100% { transform: scale(1); opacity: 0.78; }
+  50% { transform: scale(1.05); opacity: 0.48; }
+}
+
+@media (max-width: 1180px) {
+  .command-hero,
+  .command-workspace,
+  .command-activity-row {
+    grid-template-columns: 1fr;
+  }
+
+  .command-signal-strip,
+  .command-metric-grid,
+  .command-coverage-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .command-topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .command-actions {
+    justify-content: flex-start;
+  }
+
+  .command-signal-strip,
+  .command-metric-grid,
+  .command-coverage-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .command-search {
+    min-width: 0;
+  }
+}
+
+/* Command-center visual skin override: keeps real data wiring, restores Open Design look. */
+.command-center-page {
+  --bg: #07110f;
+  --surface: #0e1b19;
+  --surface-subtle: #12231f;
+  --surface-muted: rgba(236, 247, 244, 0.08);
+  --ink: #ecf7f4;
+  --ink-soft: #c6d9d4;
+  --muted: #8aa39d;
+  --border: rgba(231, 246, 241, 0.12);
+  --border-strong: rgba(231, 246, 241, 0.22);
+  --teal: #36e0a4;
+  --teal-strong: #9fffe1;
+  --teal-soft: rgba(54, 224, 164, 0.12);
+  --blue: #8bc5ff;
+  --amber: #ffbd5a;
+  --amber-soft: rgba(255, 189, 90, 0.12);
+  --red: #ff6b6b;
+  --red-soft: rgba(255, 107, 107, 0.12);
+  --green: #38f2b0;
+  --green-soft: rgba(56, 242, 176, 0.12);
+  background:
+    radial-gradient(circle at 20% -10%, rgba(54, 224, 164, 0.16), transparent 28rem),
+    radial-gradient(circle at 80% 0%, rgba(139, 197, 255, 0.15), transparent 26rem),
+    linear-gradient(135deg, #07110f, #0b1419 56%, #10110f);
+  color: var(--ink);
+}
+
+.command-center-page .main-shell {
+  background: transparent;
+}
+
+.command-center-page .sidebar-shell {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(54, 224, 164, 0.18), transparent 18rem),
+    linear-gradient(180deg, rgba(5, 12, 11, 0.96), rgba(21, 22, 24, 0.98));
+  border-right-color: rgba(231, 246, 241, 0.1);
+}
+
+.command-center-page .command-topbar,
+.command-center-page .command-hero-main,
+.command-center-page .command-radar-panel,
+.command-center-page .command-metric-card,
+.command-center-page .command-case-panel,
+.command-center-page .command-rail-card,
+.command-center-page .command-activity-card {
+  border-color: rgba(231, 246, 241, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+}
+
+.command-center-page .command-hero-main::before {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(54, 224, 164, 0.18), transparent 28rem),
+    radial-gradient(circle at 88% 20%, rgba(139, 197, 255, 0.14), transparent 20rem);
+}
+
+.command-center-page .command-search,
+.command-center-page .command-signal-card,
+.command-center-page .command-queue-item,
+.command-center-page .command-review-item {
+  border-color: rgba(231, 246, 241, 0.12);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.command-center-page .command-search input,
+.command-center-page .command-case-link span,
+.command-center-page .command-review-item strong,
+.command-center-page .command-queue-item strong,
+.command-center-page .command-inspector-title,
+.command-center-page .command-radar-panel h2,
+.command-center-page .command-panel-head h2,
+.command-center-page .command-signal-card strong,
+.command-center-page .command-metric-card strong,
+.command-center-page .queue-table td,
+.command-center-page .queue-table th {
+  color: var(--ink);
+}
+
+.command-center-page .command-hero-main p,
+.command-center-page .command-radar-panel p,
+.command-center-page .command-rail-card p,
+.command-center-page .command-case-link small,
+.command-center-page .command-review-item span,
+.command-center-page .command-queue-item span,
+.command-center-page .command-review-item small,
+.command-center-page .command-muted,
+.command-center-page .command-signal-card span,
+.command-center-page .command-metric-card span,
+.command-center-page .command-metric-card small {
+  color: var(--muted);
+}
+
+.command-center-page .command-metric-icon,
+.command-center-page .command-pulse-core {
+  background: rgba(54, 224, 164, 0.1);
+  border-color: rgba(54, 224, 164, 0.22);
+  color: var(--teal);
+}
+
+.command-center-page .command-pulse-wrap {
+  background: rgba(54, 224, 164, 0.07);
+}
+
+.command-center-page .command-pulse-ring {
+  border-color: rgba(54, 224, 164, 0.28);
+}
+
+.command-center-page .queue-table tr:hover td {
+  background: rgba(54, 224, 164, 0.045);
+}
+
+.command-center-page .status-chip.info,
+.command-center-page .status-chip.success,
+.command-center-page .btn-secondary {
+  border-color: rgba(231, 246, 241, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+}
+
+.command-center-page .btn-primary {
+  background: linear-gradient(135deg, #36e0a4, #9fffe1);
+  color: #06110f;
+  box-shadow: 0 14px 36px rgba(54, 224, 164, 0.22);
+}
+
+.command-center-page .segmented {
+  background: rgba(255, 255, 255, 0.055);
+  border-color: rgba(231, 246, 241, 0.12);
+}
+
+.command-center-page .segmented button {
+  color: var(--muted);
+}
+
+.command-center-page .segmented button.active {
+  background: rgba(54, 224, 164, 0.16);
+  color: var(--ink);
 }

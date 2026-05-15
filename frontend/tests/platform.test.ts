@@ -716,6 +716,38 @@ test("appendAuditEvent records operational metadata", async () => {
   });
 });
 
+test("readPlatformStore accepts all declared platform audit event types", async () => {
+  await withTempStore(async (storePath) => {
+    const store = createDefaultPlatformStore();
+    store.auditEvents.push(
+      {
+        id: "audit-production-persistence",
+        type: "production.persistence.selected",
+        actorId: "operator-demo",
+        entityType: "workspace",
+        entityId: "workspace-demo",
+        detail: "Managed persistence selected.",
+        createdAt: "2026-05-14T00:00:00.000Z",
+      },
+      {
+        id: "audit-evidence-retention",
+        type: "evidence.retention.applied",
+        actorId: "operator-demo",
+        entityType: "workspace",
+        entityId: "workspace-demo",
+        detail: "Evidence retention policy applied.",
+        createdAt: "2026-05-14T00:01:00.000Z",
+      },
+    );
+
+    await writePlatformStore(store, storePath);
+    const reloaded = await readPlatformStore(storePath);
+
+    assert.equal(reloaded.auditEvents.some((event) => event.type === "production.persistence.selected"), true);
+    assert.equal(reloaded.auditEvents.some((event) => event.type === "evidence.retention.applied"), true);
+  });
+});
+
 test("getDashboardPlatformData returns seed cases and no backend data when store is corrupt", async () => {
   await withTempStore(async (storePath) => {
     await writeFile(storePath, "{ invalid json", "utf8");
@@ -908,7 +940,7 @@ test("buildDemoPlatformStore creates a full command-center demo store", () => {
 
   assert.equal(store.version, 1);
   assert.equal(store.workspaces.length, 1);
-  assert.equal(store.workspaces[0]?.name, "LexNet Pilot Command Center");
+  assert.equal(store.workspaces[0]?.name, "LexNet Command Center");
   assert.equal(store.operators.length >= 2, true);
   assert.equal(store.operators.some((operator) => operator.id === "operator-demo"), true);
   assert.equal(store.memberships.length >= 2, true);

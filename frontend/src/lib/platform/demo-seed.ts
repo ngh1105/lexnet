@@ -38,8 +38,8 @@ export function buildDemoPlatformStore(): PlatformStore {
     workspaces: [
       {
         id: WORKSPACE_ID,
-        name: "LexNet Pilot Command Center",
-        slug: "pilot-command-center",
+        name: "LexNet Command Center",
+        slug: "command-center",
         createdAt: "2026-05-12T08:00:00.000Z",
         updatedAt: NOW,
       },
@@ -55,7 +55,7 @@ export function buildDemoPlatformStore(): PlatformStore {
       },
       {
         id: "operator-analyst",
-        name: "Pilot Analyst",
+        name: "Trust Analyst",
         walletAddress: "0x00000000000000000000000000000000000000A1",
         email: "analyst@lexnet.local",
         createdAt: "2026-05-12T08:10:00.000Z",

@@ -558,6 +558,10 @@ function isPlatformAuditEvent(value: unknown): boolean {
       "passport.published",
       "passport.unpublished",
       "backup.exported",
+      "production.auth.accepted",
+      "production.auth.rejected",
+      "production.persistence.selected",
+      "evidence.retention.applied",
     ].includes(String(value.type)) &&
     isString(value.actorId) &&
     ["case", "evidence", "report", "passport", "workspace", "backup"].includes(String(value.entityType)) &&
