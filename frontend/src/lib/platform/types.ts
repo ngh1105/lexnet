@@ -119,7 +119,7 @@ export type GenLayerExecutionStatus =
 export interface GenLayerExecutionRecord {
   id: string;
   caseId: string;
-  method: "verify_case";
+  method: "verify_case" | "create_case";
   status: GenLayerExecutionStatus;
   transactionHash?: string;
   contractAddress: string;
