@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAccount } from "wagmi";
 import {
@@ -35,6 +35,7 @@ import {
   buildVerificationSummary,
 } from "@/lib/lexnet-domain";
 import { buildGenLayerExecutionViewModel } from "@/lib/genlayer-execution";
+import { pollGenLayerProof } from "@/lib/genlayer-proof-poll";
 import { buildVerifyCaseRequest } from "@/lib/genlayer-verify-request";
 import {
   getLexNetContractReadiness,
@@ -62,7 +63,16 @@ export default function CaseDetailClient({
     useState<GenLayerExecutionRecord | null>(null);
   const [isSubmittingGenLayer, setIsSubmittingGenLayer] = useState(false);
   const [isCheckingGenLayer, setIsCheckingGenLayer] = useState(false);
+  const [isPollingProof, setIsPollingProof] = useState(false);
+  const pollAbortRef = useRef<AbortController | null>(null);
   const { address, isConnected } = useAccount();
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      pollAbortRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     const mergedCase =
@@ -147,6 +157,31 @@ export default function CaseDetailClient({
             ? `Verification submitted. Transaction: ${txHash}`
             : "GenLayer verification submitted. Contract state proof is pending.",
         );
+
+        // Start polling for proof read-back
+        pollAbortRef.current?.abort();
+        const controller = new AbortController();
+        pollAbortRef.current = controller;
+        setIsPollingProof(true);
+        setMessage("Verifying on Studionet...");
+
+        pollGenLayerProof({
+          caseId: commerceCase.id,
+          fetcher: fetch,
+          intervalMs: 5000,
+          maxAttempts: 6,
+          signal: controller.signal,
+        }).then((pollResult) => {
+          setIsPollingProof(false);
+          if (pollResult.verified) {
+            setMessage("Verification complete");
+            if (pollResult.lastResponse && (pollResult.lastResponse as { execution?: GenLayerExecutionRecord }).execution) {
+              setGenLayerExecution((pollResult.lastResponse as { execution: GenLayerExecutionRecord }).execution);
+            }
+          } else if (!controller.signal.aborted) {
+            setMessage("Proof not yet available — use Check contract state to retry.");
+          }
+        });
       } else {
         setMessage(payload.error ?? "GenLayer verification submission failed.");
       }
@@ -488,10 +523,10 @@ export default function CaseDetailClient({
                   <button
                     type="button"
                     className="btn-secondary"
-                    disabled={!genLayerView.canSubmit || isSubmittingGenLayer}
+                    disabled={!genLayerView.canSubmit || isSubmittingGenLayer || isPollingProof}
                     onClick={submitGenLayerVerification}
                   >
-                    {isSubmittingGenLayer ? "Submitting" : "Submit verify_case"}
+                    {isPollingProof ? "Verifying on Studionet..." : isSubmittingGenLayer ? "Submitting" : "Submit verify_case"}
                   </button>
                   <button
                     type="button"
