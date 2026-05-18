@@ -8,7 +8,8 @@ import {
 } from "./production-auth";
 import type { PlatformOperator, PlatformStore } from "./types";
 
-export const DEMO_OPERATOR_ID = "operator-demo";
+import { DEMO_OPERATOR_ID } from "./constants";
+export { DEMO_OPERATOR_ID } from "./constants";
 
 type DemoPrivateApiEnv = ProductionAuthEnv & {
   [key: string]: string | undefined;
