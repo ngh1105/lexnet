@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       blockingReasons: [],
     });
 
-    return jsonOk({ status: "submitted", proofPending: true, execution, result });
+    return jsonOk({ status: "submitted", proofPending: true, execution });
   } catch (error) {
     const submittedAt = new Date().toISOString();
     const execution = await appendGenLayerExecution({

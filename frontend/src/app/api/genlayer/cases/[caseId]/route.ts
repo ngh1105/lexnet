@@ -49,7 +49,7 @@ export async function GET(
       contractAddress: readiness.contractAddress ?? "",
       caseId,
     });
-    const proof = classifyGenLayerCaseProof(result.parsedCase);
+    const proof = classifyGenLayerCaseProof(result.parsedCase, caseId);
     const execution = await updateLatestGenLayerExecutionProof(caseId, {
       status: proof.status,
       checkedAt,
@@ -62,9 +62,9 @@ export async function GET(
     return jsonOk({
       caseId,
       status: proof.status,
+      proofPending: proof.status !== "state_verified",
       stateVerified: proof.status === "state_verified",
       execution,
-      result,
     });
   } catch (error) {
     const execution = await updateLatestGenLayerExecutionProof(caseId, {

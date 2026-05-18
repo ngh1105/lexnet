@@ -314,7 +314,7 @@ export function buildCaseTimeline(commerceCase: CommerceCase): CaseTimelineItem[
     },
     {
       label: "AI verification",
-      detail: hasReport ? `${commerceCase.verificationReport?.score}/100 confidence score` : "Run local verification or GenLayer preview",
+      detail: hasReport ? `${commerceCase.verificationReport?.score}/100 confidence score` : "Run StudioNet workspace verification or GenLayer preview",
       status: hasReport ? "complete" : hasEvidence ? "active" : "blocked",
     },
     {

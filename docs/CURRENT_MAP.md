@@ -1,6 +1,6 @@
 # LexNet Current Project Map
 
-> Last updated: 2026-05-15
+> Last updated: 2026-05-17
 
 ## Purpose
 
@@ -13,7 +13,7 @@ The current implementation is recommendation-only. It does not custody funds, ex
 - `contracts/lexnet_commerce_core.py` - GenLayer Intelligent Contract boundary for commerce cases, evidence, verification, recommendations, and trust passports.
 - `frontend/src/lib/lexnet-*.ts` - core commerce domain types, pure domain logic, verification adapters, contract readiness, service reads, and client fallback storage.
 - `frontend/src/lib/genlayer-*.ts` - narrow GenLayer SDK/execution adapters. App code should use this boundary instead of SDK internals.
-- `frontend/src/lib/platform/` - filesystem-backed platform store, passports, API helpers, demo auth, readiness, backups, seed data, and demo package summaries.
+- `frontend/src/lib/platform/` - filesystem-backed platform store, passports, API helpers, demo/production auth, readiness, observability, evidence policy, backups, seed data, and demo package summaries.
 - `frontend/src/components/` - dashboard, case detail, intake, passport, contract readiness, wallet status, sidebar, icons, and shared UI components.
 - `frontend/src/app/` - App Router pages and API routes.
 - `frontend/src/providers/` - Web3/RainbowKit provider gate.
@@ -40,8 +40,11 @@ The current implementation is recommendation-only. It does not custody funds, ex
 - `frontend/src/lib/platform/auth.ts` - demo-private operator authorization helpers and production trusted-header mutation authorization.
 - `frontend/src/lib/platform/production-auth.ts` - production trusted-header HMAC verification for gateway-signed operator context.
 - `frontend/src/lib/platform/persistence-adapter.ts` - persistence adapter status for filesystem versus future managed database backends.
+- `frontend/src/lib/platform/observability.ts` - redacted platform observability counters and production auth audit event builders.
 - `frontend/src/lib/platform/evidence-policy.ts` - evidence URL policy and retention configuration enforcement.
+- `frontend/src/lib/platform/passport-copy.ts` - shared trust passport publication copy.
 - `frontend/src/lib/platform/readiness.ts` - runtime mode, auth, persistence, evidence policy, GenLayer readiness, and public-safe security status helpers.
+- `frontend/src/lib/platform/demo-seed.ts` - deterministic demo data for the platform store.
 - `frontend/src/lib/platform/pilot-summary.ts` - demo package summary counts using platform store data and readiness helpers.
 
 ## Frontend Components
@@ -100,7 +103,8 @@ The current implementation is recommendation-only. It does not custody funds, ex
 - `/api/admin/backup` - demo-private backup/export summary.
 - `/api/genlayer/verify-case` - guarded SDK write endpoint for `verify_case`.
 - `/api/genlayer/cases/[caseId]` - guarded contract state read-back for verification proof.
-- `/api/security/status` - platform/security readiness status.
+- `/api/security/status` - public platform/security readiness status.
+- `/api/platform/status` - public redacted readiness and observability status.
 
 ## Commands
 

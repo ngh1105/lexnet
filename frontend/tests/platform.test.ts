@@ -24,6 +24,7 @@ import {
   buildSubjectKey,
   findPublicPassport,
 } from "../src/lib/platform/passports";
+import { getPassportPublicationCopy } from "../src/lib/platform/passport-copy";
 import {
   buildDemoPlatformStore,
   getDemoSeedPublicPassportSlugs,
@@ -113,6 +114,21 @@ test("package scripts expose demo seed, reset, dev, and pilot commands", () => {
   assert.equal(packageJson.scripts["demo:restore"], "tsx scripts/demo-restore.ts");
   assert.equal(packageJson.scripts["pilot:check"], "tsx scripts/pilot-check.ts");
   assert.equal(packageJson.scripts["pilot:prepare"], "tsx scripts/pilot-prepare.ts");
+});
+
+test("getPassportPublicationCopy returns workspace draft passport copy", () => {
+  assert.deepEqual(getPassportPublicationCopy(), {
+    publicationModelCopy:
+      "Draft passports are calculated from reviewed case history. Create publish records to enable privacy-safe public previews.",
+    publishButtonLabel: "Create publish records",
+    draftPassportNote:
+      "No publish record yet. Create a publish record to enable the public preview.",
+  });
+});
+
+test("passports page stays dynamic because it reads runtime platform store data", async () => {
+  const pageSource = await readFile(join(process.cwd(), "src/app/passports/page.tsx"), "utf8");
+  assert.match(pageSource, /export const dynamic = ["']force-dynamic["']/);
 });
 
 test("buildDemoDevEnv enables demo-private APIs for pilot walkthroughs", () => {
@@ -966,6 +982,8 @@ test("buildDemoPlatformStore creates a full command-center demo store", () => {
     store.cases.every((commerceCase) => commerceCase.verificationReport?.source !== "genlayer-contract"),
     true,
   );
+  const serializedAuditDetails = JSON.stringify(store.auditEvents.map((event) => event.detail));
+  assert.equal(/local demo|demo passport|demo case|demo evidence/i.test(serializedAuditDetails), false);
 });
 
 test("buildDemoPlatformStore publishes deterministic public passports", () => {
@@ -1365,7 +1383,7 @@ test("buildSecurityStatus reports missing demo API token as a warning reason whe
 
   assert.equal(status.demoPrivateApiEnabled, true);
   assert.equal(status.demoPrivateApiTokenConfigured, false);
-  assert.equal(status.blockingReasons.includes("Demo-private API token is not configured."), true);
+  assert.equal(status.blockingReasons.includes("Workspace API token is not configured."), true);
 });
 
 test("buildGenLayerVerifyCaseRequest maps LexNet verify_case payload for genlayer-js", () => {
@@ -1448,7 +1466,7 @@ test("classifyGenLayerCaseProof requires a verification report before state_veri
     classifyGenLayerCaseProof({
       id: "lx-case-demo-settlement",
       status: "VERIFIED",
-      verification_report: { verdict: "APPROVE" },
+      verification_report: { verdict: "APPROVE", score: 85 },
     }).status,
     "state_verified",
   );

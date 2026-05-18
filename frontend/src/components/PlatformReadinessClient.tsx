@@ -27,7 +27,7 @@ export default function PlatformReadinessClient({
     ? productionReady
       ? "Production checks clear"
       : `${readiness.productionBlockers.length} production blockers`
-    : "Local demo checks only";
+    : "StudioNet workspace checks";
   const readinessTone = isProductionMode && !productionReady ? "warning" : isProductionMode ? "success" : "info";
 
   return (
@@ -91,7 +91,7 @@ export default function PlatformReadinessClient({
                   ["Configured", readiness.auth.productionAuthConfigured],
                   ["Enforced", readiness.auth.productionAuthEnforced],
                   ["Mode", readiness.auth.productionAuthMode ?? "Not enforced"],
-                  ["Demo API enabled", readiness.auth.demoPrivateApiEnabled],
+                  ["Workspace API enabled", readiness.auth.demoPrivateApiEnabled],
                   ["Mutating routes", readiness.auth.mutatingRoutesAllowed ? "Allowed" : "Blocked"],
                 ]}
                 blockingReasons={readiness.auth.blockingReasons}

@@ -11,6 +11,7 @@ import {
 } from "@/components/icons";
 import Sidebar from "@/components/Sidebar";
 import { getMergedCommerceCases } from "@/lib/lexnet-client-store";
+import { getPassportPublicationCopy } from "@/lib/platform/passport-copy";
 import { buildSubjectKey } from "@/lib/platform/passports";
 import {
   buildPassportScoreBreakdown,
@@ -24,6 +25,8 @@ type PassportActionState = {
   status: "idle" | "loading" | "error" | "success";
   message: string;
 };
+
+const passportCopy = getPassportPublicationCopy();
 
 const trustColors: Record<string, string> = {
   Established: "var(--green)",
@@ -53,8 +56,36 @@ export default function TrustPassportsClient({
   }, [seedCases]);
 
   useEffect(() => {
-    void refreshBackendPassports({ silent: true });
-  }, []);
+    if (initialBackendPassports.length !== 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function refreshInitialBackendPassports() {
+      try {
+        const response = await fetch("/api/passports", {
+          headers: { "x-lexnet-operator-id": "operator-demo" },
+        });
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json()) as { passports?: SafePassportRecord[] };
+        if (!cancelled) {
+          setBackendPassports(Array.isArray(payload.passports) ? payload.passports : []);
+        }
+      } catch {
+        return;
+      }
+    }
+
+    void refreshInitialBackendPassports();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialBackendPassports.length]);
 
   const passports = useMemo(() => buildTrustPassports(cases), [cases]);
   const backendBySubjectKey = useMemo(() => {
@@ -92,36 +123,6 @@ export default function TrustPassportsClient({
     });
   }, [backendBySubjectKey, filter, passports, search]);
 
-  async function refreshBackendPassports({ silent = false } = {}) {
-    try {
-      const response = await fetch("/api/passports", {
-        headers: { "x-lexnet-operator-id": "operator-demo" },
-      });
-      if (!response.ok) {
-        if (!silent) {
-          setActionState({
-            status: "error",
-            message: "Backend passport API is not enabled for this demo session.",
-          });
-        }
-        return;
-      }
-
-      const payload = (await response.json()) as { passports?: SafePassportRecord[] };
-      setBackendPassports(Array.isArray(payload.passports) ? payload.passports : []);
-      if (!silent) {
-        setActionState({ status: "success", message: "Backend passports refreshed." });
-      }
-    } catch {
-      if (!silent) {
-        setActionState({
-          status: "error",
-          message: "Could not reach the backend passport API.",
-        });
-      }
-    }
-  }
-
   async function generateBackendPassports() {
     setActionState({ status: "loading", message: "Generating backend passports..." });
     try {
@@ -132,7 +133,7 @@ export default function TrustPassportsClient({
       if (!response.ok) {
         setActionState({
           status: "error",
-          message: "Backend generation is unavailable. Enable LEXNET_ENABLE_DEMO_PRIVATE_API=true to use it.",
+          message: "Passport record creation is unavailable in this workspace.",
         });
         return;
       }
@@ -172,7 +173,7 @@ export default function TrustPassportsClient({
       if (!response.ok) {
         setActionState({
           status: "error",
-          message: "Publishing is unavailable. Enable LEXNET_ENABLE_DEMO_PRIVATE_API=true to use it.",
+          message: "Passport publishing is unavailable in this workspace.",
         });
         return;
       }
@@ -198,7 +199,7 @@ export default function TrustPassportsClient({
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell passports-workflow-page">
       <Sidebar />
       <main className="main-shell">
         <div className="content-frame">
@@ -221,7 +222,7 @@ export default function TrustPassportsClient({
                 onClick={generateBackendPassports}
                 disabled={actionState.status === "loading"}
               >
-                Generate backend records
+                {passportCopy.publishButtonLabel}
               </button>
               <label className="search-box">
                 <Search size={15} strokeWidth={1.75} />
@@ -272,10 +273,7 @@ export default function TrustPassportsClient({
               Publication Model
             </div>
             <p className="muted" style={{ margin: 0, fontSize: 13, lineHeight: 1.7 }}>
-              Backend passport records can be published into public previews. Local demo
-              passports are derived from the command-center case set and need backend generation before
-              publication controls apply. Public previews hide raw parties, evidence, case IDs,
-              audit events, and workspace data.
+              {passportCopy.publicationModelCopy}
             </p>
           </section>
 
@@ -352,11 +350,12 @@ function PassportCard({
   const publicPath = backendPassport ? `/passport/${backendPassport.slug}` : "";
 
   return (
-    <article className="panel review-panel" style={{ display: "grid", gap: 16, minWidth: 0, overflow: "hidden" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+    <article className="panel review-panel passport-card">
+      <div className="passport-card-header">
         <div style={{ minWidth: 0 }}>
           <div className="section-label">{passport.role} passport</div>
           <h2
+            className="passport-party-title mono"
             style={{
               marginTop: 8,
               color: "var(--ink)",
@@ -384,7 +383,7 @@ function PassportCard({
         </span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+      <div className="passport-card-stats">
         <PassportMetric label="Verified" value={`${passport.verifiedCases}/${passport.totalCases}`} icon={<ShieldCheck size={15} strokeWidth={1.75} />} />
         <PassportMetric label="Avg Score" value={`${passport.averageScore}/100`} icon={<TrendingUp size={15} strokeWidth={1.75} />} />
         <PassportMetric label="Value" value={`$${passport.totalReferencedValue.toLocaleString()}`} />
@@ -399,19 +398,7 @@ function PassportCard({
         <BreakdownRow label="Risk Penalty" value={breakdown.riskPenalty} inverted />
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gap: 10,
-          padding: 14,
-          borderRadius: "var(--radius-md)",
-          border: "1px solid rgba(37,99,235,0.18)",
-          background: "linear-gradient(135deg, rgba(234,241,255,0.95), rgba(255,255,255,0.78))",
-          color: "var(--blue)",
-          fontSize: 12,
-          fontWeight: 800,
-        }}
-      >
+      <div className="passport-card-note">
         {backendPassport ? (
           <>
             <div>
@@ -435,9 +422,7 @@ function PassportCard({
             </button>
           </>
         ) : (
-          <>
-            <span>Local demo passport derived from case history. Generate backend records before publishing a privacy-safe preview.</span>
-          </>
+          <span>{passportCopy.draftPassportNote}</span>
         )}
       </div>
 
@@ -473,8 +458,8 @@ function BreakdownRow({
   const barColor = inverted ? "var(--red)" : "var(--teal)";
 
   return (
-    <div style={{ display: "grid", gap: 5 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, color: "var(--muted)", fontSize: 11, fontWeight: 800 }}>
+    <div className="passport-breakdown-row">
+      <div className="passport-breakdown-meta" style={{ color: "var(--muted)", fontSize: 11, fontWeight: 800 }}>
         <span>{label}</span>
         <span>{value}/100</span>
       </div>

@@ -99,7 +99,7 @@ export default function CommerceDashboardClient({
   }, [cases, filter, search]);
 
   const selectedCase = filteredCases[0] ?? cases[0] ?? null;
-  const runtimeLabel = runtimeMode === "contract-configured" ? "Contract Configured" : "Local Verification";
+  const runtimeLabel = runtimeMode === "contract-configured" ? "StudioNet Contract Ready" : "StudioNet Workspace";
   const storeMode = platformSummary ? "platform store online" : "seed fallback";
   const contractStateReady = Boolean(contractEnvironment.rpcUrl && contractEnvironment.contractAddress);
 
