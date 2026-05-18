@@ -35,6 +35,7 @@ import {
   buildVerificationSummary,
 } from "@/lib/lexnet-domain";
 import { buildGenLayerExecutionViewModel } from "@/lib/genlayer-execution";
+import { buildVerifyCaseRequest } from "@/lib/genlayer-verify-request";
 import {
   getLexNetContractReadiness,
   type LexNetContractEnvironment,
@@ -125,29 +126,32 @@ export default function CaseDetailClient({
 
     setMessage("");
     setIsSubmittingGenLayer(true);
-    const response = await fetch("/api/genlayer/verify-case", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-lexnet-operator-id": "operator-demo",
-      },
-      body: JSON.stringify({
-        caseId: commerceCase.id,
-        walletConnected: isConnected,
-        connectedWalletAddress: address,
-      }),
+
+    const requestInit = buildVerifyCaseRequest({
+      caseId: commerceCase.id,
+      walletConnected: isConnected,
+      connectedWalletAddress: address,
+      demoToken: process.env.NEXT_PUBLIC_LEXNET_DEMO_PRIVATE_API_TOKEN,
     });
+
+    const response = await fetch("/api/genlayer/verify-case", requestInit);
     const payload = await response.json();
     setIsSubmittingGenLayer(false);
 
     if (payload.execution) {
       setGenLayerExecution(payload.execution);
     }
-    setMessage(
-      response.ok
-        ? "GenLayer verification submitted. Contract state proof is pending."
-        : payload.error ?? "GenLayer verification submission failed.",
-    );
+
+    if (response.ok) {
+      const txHash = payload.result?.transactionHash;
+      setMessage(
+        txHash
+          ? `Verification submitted. Transaction: ${txHash}`
+          : "GenLayer verification submitted. Contract state proof is pending.",
+      );
+    } else {
+      setMessage(payload.error ?? "GenLayer verification submission failed.");
+    }
   }
 
   async function checkGenLayerState() {
