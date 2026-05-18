@@ -36,13 +36,24 @@ import {
 } from "@/lib/lexnet-domain";
 import { buildGenLayerExecutionViewModel } from "@/lib/genlayer-execution";
 import { pollGenLayerProof } from "@/lib/genlayer-proof-poll";
-import { buildVerifyCaseRequest } from "@/lib/genlayer-verify-request";
+import { buildSubmitEvidenceRequest, buildVerifyCaseRequest } from "@/lib/genlayer-verify-request";
 import {
   getLexNetContractReadiness,
   type LexNetContractEnvironment,
 } from "@/lib/lexnet-contract";
 import type { CommerceCase } from "@/lib/lexnet-types";
 import type { GenLayerExecutionRecord } from "@/lib/platform/types";
+
+function hasExecutionRecord(
+  value: unknown,
+): value is { execution: GenLayerExecutionRecord } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "execution" in value &&
+    Boolean((value as { execution?: unknown }).execution)
+  );
+}
 
 export default function CaseDetailClient({
   caseId,
@@ -108,19 +119,16 @@ export default function CaseDetailClient({
     setMessage(`Added ${updatedCase.evidence.length} evidence item(s).`);
 
     // Fire-and-forget: submit evidence to GenLayer contract
-    fetch("/api/genlayer/submit-evidence", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-lexnet-operator-id": "operator-demo",
-      },
-      body: JSON.stringify({
+    fetch(
+      "/api/genlayer/submit-evidence",
+      buildSubmitEvidenceRequest({
         caseId,
         evidenceUrls: urls,
         walletConnected: isConnected,
         connectedWalletAddress: address,
+        demoToken: process.env.NEXT_PUBLIC_LEXNET_DEMO_PRIVATE_API_TOKEN,
       }),
-    }).catch((err) => {
+    ).catch((err) => {
       console.log("submit_evidence contract call failed:", err);
     });
   }
@@ -192,8 +200,8 @@ export default function CaseDetailClient({
           setIsPollingProof(false);
           if (pollResult.verified) {
             setMessage("Verification complete");
-            if (pollResult.lastResponse && (pollResult.lastResponse as { execution?: GenLayerExecutionRecord }).execution) {
-              setGenLayerExecution((pollResult.lastResponse as { execution: GenLayerExecutionRecord }).execution);
+            if (hasExecutionRecord(pollResult.lastResponse)) {
+              setGenLayerExecution(pollResult.lastResponse.execution);
             }
           } else if (!controller.signal.aborted) {
             setMessage("Proof not yet available — use Check contract state to retry.");

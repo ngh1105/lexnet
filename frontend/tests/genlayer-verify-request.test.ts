@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildVerifyCaseRequest } from "../src/lib/genlayer-verify-request";
+import {
+  buildSubmitEvidenceRequest,
+  buildVerifyCaseRequest,
+} from "../src/lib/genlayer-verify-request";
 
 test("buildVerifyCaseRequest produces correct POST body shape", () => {
   const result = buildVerifyCaseRequest({
@@ -48,4 +51,36 @@ test("buildVerifyCaseRequest omits Authorization header when demoToken is empty"
   });
 
   assert.equal(result.headers["authorization"], undefined);
+});
+
+test("buildSubmitEvidenceRequest includes Authorization when demoToken is provided", () => {
+  const init = buildSubmitEvidenceRequest({
+    caseId: "case-1",
+    evidenceUrls: ["https://example.com/doc.pdf"],
+    walletConnected: true,
+    connectedWalletAddress: "0xabc",
+    demoToken: "secret",
+  });
+  const headers = init.headers as Record<string, string>;
+  assert.equal(headers["Authorization"], "Bearer secret");
+  assert.equal(headers["x-lexnet-operator-id"], "operator-demo");
+  const body = JSON.parse(init.body as string);
+  assert.deepEqual(body, {
+    caseId: "case-1",
+    evidenceUrls: ["https://example.com/doc.pdf"],
+    walletConnected: true,
+    connectedWalletAddress: "0xabc",
+  });
+});
+
+test("buildSubmitEvidenceRequest omits Authorization when demoToken is empty", () => {
+  const init = buildSubmitEvidenceRequest({
+    caseId: "case-2",
+    evidenceUrls: [],
+    walletConnected: false,
+  });
+  const headers = init.headers as Record<string, string>;
+  assert.equal(headers["Authorization"], undefined);
+  const body = JSON.parse(init.body as string);
+  assert.equal(body.connectedWalletAddress, null);
 });
