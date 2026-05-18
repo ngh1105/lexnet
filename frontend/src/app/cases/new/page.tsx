@@ -10,7 +10,7 @@ export default async function NewCommerceCasePage() {
   const seedCases = await getAllCommerceCases();
 
   return (
-    <div className="app-shell">
+    <div className="app-shell command-center-page">
       <Sidebar />
       <main className="main-shell">
         <div className="content-frame">

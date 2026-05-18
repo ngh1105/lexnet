@@ -198,7 +198,7 @@ export default function TrustPassportsClient({
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell command-center-page">
       <Sidebar />
       <main className="main-shell">
         <div className="content-frame">

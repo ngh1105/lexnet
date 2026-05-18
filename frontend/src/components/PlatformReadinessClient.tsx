@@ -31,7 +31,7 @@ export default function PlatformReadinessClient({
   const readinessTone = isProductionMode && !productionReady ? "warning" : isProductionMode ? "success" : "info";
 
   return (
-    <div className="app-shell platform-control-page">
+    <div className="app-shell platform-control-page command-center-page">
       <Sidebar />
       <main className="main-shell">
         <div className="content-frame">
