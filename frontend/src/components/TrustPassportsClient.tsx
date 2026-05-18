@@ -362,11 +362,8 @@ function PassportCard({
               color: "var(--ink)",
               fontSize: 16,
               fontWeight: 800,
-              display: "block",
-              maxWidth: "100%",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              wordBreak: "break-all",
+              lineHeight: 1.3,
             }}
           >
             {passport.party}
@@ -418,7 +415,15 @@ function PassportCard({
               Backend record: {backendPassport.published ? "Published" : "Unpublished"} · {backendPassport.redactedSubject}
             </div>
             {backendPassport.published ? (
-              <a href={publicPath} style={{ color: "inherit", textDecoration: "underline" }}>
+              <a
+                href={publicPath}
+                style={{
+                  color: "inherit",
+                  textDecoration: "underline",
+                  wordBreak: "break-all",
+                  display: "block",
+                }}
+              >
                 Public preview: {publicPath}
               </a>
             ) : (
@@ -514,9 +519,8 @@ function PassportMetric({
           color: "var(--ink)",
           fontSize: 13,
           fontWeight: 800,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
+          wordBreak: "break-word",
+          lineHeight: 1.3,
         }}
       >
         {value}

@@ -80,7 +80,7 @@ export default function PlatformReadinessClient({
             />
           </section>
 
-          <section className="dashboard-grid workspace-shell">
+          <section className="readiness-grid">
             <div style={{ display: "grid", gap: 18 }}>
               <ReadinessSection
                 icon={<ShieldCheck size={14} strokeWidth={1.75} />}

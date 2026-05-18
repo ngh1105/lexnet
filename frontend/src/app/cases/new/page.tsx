@@ -34,7 +34,16 @@ export default async function NewCommerceCasePage() {
           <section className="two-column">
             <NewCaseForm seedCases={seedCases} />
 
-            <aside className="inspector" style={{ display: "grid", gap: 16 }}>
+            <aside
+              className="inspector"
+              style={{
+                display: "grid",
+                gap: 16,
+                position: "sticky",
+                top: 22,
+                alignSelf: "start",
+              }}
+            >
               <div>
                 <div className="section-label">
                   <ShieldCheck size={14} strokeWidth={1.75} />
