@@ -106,6 +106,7 @@ export function buildGenLayerCreateCaseRequest(
     contractAddress: input.contractAddress,
     method: "create_case",
     args: [
+      input.caseId,
       input.title,
       input.seller,
       input.agreementText,

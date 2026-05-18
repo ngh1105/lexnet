@@ -78,7 +78,7 @@ export default function NewCaseForm({ seedCases }: { seedCases: CommerceCase[] }
         connectedWalletAddress,
       }),
     }).catch((err) => {
-      console.error("[LexNet] create_case contract write failed:", err);
+      console.log("[LexNet] create_case contract write failed:", err);
     });
 
     router.push(`/cases/${commerceCase.id}`);

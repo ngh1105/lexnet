@@ -21,11 +21,12 @@ test("buildGenLayerCreateCaseRequest produces correct args", () => {
 
   assert.equal(request.contractAddress, "0xabc123");
   assert.equal(request.method, "create_case");
-  assert.equal(request.args[0], "Widget delivery");
-  assert.equal(request.args[1], "0xseller");
-  assert.equal(request.args[2], "Seller must deliver 10 widgets by end of month per PO-123.");
-  assert.equal(request.args[3], JSON.stringify(["Tracking shows delivered", "Receipt matches order"]));
-  assert.equal(request.args[4], "500");
+  assert.equal(request.args[0], "lx-1");
+  assert.equal(request.args[1], "Widget delivery");
+  assert.equal(request.args[2], "0xseller");
+  assert.equal(request.args[3], "Seller must deliver 10 widgets by end of month per PO-123.");
+  assert.equal(request.args[4], JSON.stringify(["Tracking shows delivered", "Receipt matches order"]));
+  assert.equal(request.args[5], "500");
 });
 
 test("buildGenLayerCreateCaseRequest with empty acceptanceCriteria produces '[]'", () => {
@@ -40,7 +41,7 @@ test("buildGenLayerCreateCaseRequest with empty acceptanceCriteria produces '[]'
   };
 
   const request = buildGenLayerCreateCaseRequest(input);
-  assert.equal(request.args[3], "[]");
+  assert.equal(request.args[4], "[]");
 });
 
 test("buildGenLayerCreateCaseRequest rounds amountReference", () => {
@@ -55,5 +56,5 @@ test("buildGenLayerCreateCaseRequest rounds amountReference", () => {
   };
 
   const request = buildGenLayerCreateCaseRequest(input);
-  assert.equal(request.args[4], "100");
+  assert.equal(request.args[5], "100");
 });
