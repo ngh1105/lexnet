@@ -36,7 +36,7 @@ test("buildVerifyCaseRequest includes Authorization header when demoToken is set
   const body = JSON.parse(result.body);
   assert.equal(body.caseId, "case-456");
   assert.equal(body.walletConnected, false);
-  assert.equal(body.connectedWalletAddress, undefined);
+  assert.equal(body.connectedWalletAddress, null);
 });
 
 test("buildVerifyCaseRequest omits Authorization header when demoToken is empty", () => {

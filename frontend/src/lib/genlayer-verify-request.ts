@@ -31,7 +31,7 @@ export function buildVerifyCaseRequest(input: VerifyCaseRequestInput): VerifyCas
     body: JSON.stringify({
       caseId: input.caseId,
       walletConnected: input.walletConnected,
-      connectedWalletAddress: input.connectedWalletAddress,
+      connectedWalletAddress: input.connectedWalletAddress ?? null,
     }),
   };
 }

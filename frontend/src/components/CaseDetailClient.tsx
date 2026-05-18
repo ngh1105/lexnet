@@ -134,23 +134,26 @@ export default function CaseDetailClient({
       demoToken: process.env.NEXT_PUBLIC_LEXNET_DEMO_PRIVATE_API_TOKEN,
     });
 
-    const response = await fetch("/api/genlayer/verify-case", requestInit);
-    const payload = await response.json();
-    setIsSubmittingGenLayer(false);
-
-    if (payload.execution) {
-      setGenLayerExecution(payload.execution);
-    }
-
-    if (response.ok) {
-      const txHash = payload.result?.transactionHash;
-      setMessage(
-        txHash
-          ? `Verification submitted. Transaction: ${txHash}`
-          : "GenLayer verification submitted. Contract state proof is pending.",
-      );
-    } else {
-      setMessage(payload.error ?? "GenLayer verification submission failed.");
+    try {
+      const response = await fetch("/api/genlayer/verify-case", requestInit);
+      const payload = await response.json();
+      if (payload.execution) {
+        setGenLayerExecution(payload.execution);
+      }
+      if (response.ok) {
+        const txHash = payload.result?.transactionHash;
+        setMessage(
+          txHash
+            ? `Verification submitted. Transaction: ${txHash}`
+            : "GenLayer verification submitted. Contract state proof is pending.",
+        );
+      } else {
+        setMessage(payload.error ?? "GenLayer verification submission failed.");
+      }
+    } catch {
+      setMessage("Network error — please try again.");
+    } finally {
+      setIsSubmittingGenLayer(false);
     }
   }
 
