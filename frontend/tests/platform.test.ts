@@ -2126,3 +2126,62 @@ test("authorizeDemoPrivateApi rejects mismatched bearer token when demo API toke
 
   assert.equal(result.authorized, false);
 });
+
+// --- /api/admin/backup route hardening tests ---
+
+import { GET, POST } from "../src/app/api/admin/backup/route";
+
+test("/api/admin/backup GET returns 405 Method Not Allowed", async () => {
+  const request = new Request("https://lexnet.local/api/admin/backup", {
+    method: "GET",
+    headers: { "x-lexnet-operator-id": "operator-demo" },
+  });
+
+  const response = await GET(request);
+
+  assert.equal(response.status, 405);
+  const body = await response.json();
+  assert.equal(body.error, "Method Not Allowed");
+});
+
+test("/api/admin/backup POST without auth returns 401 or 403", async () => {
+  const request = new Request("https://lexnet.local/api/admin/backup", {
+    method: "POST",
+  });
+
+  const response = await POST(request);
+
+  assert.ok(response.status === 401 || response.status === 403 || response.status === 404);
+});
+
+test("/api/admin/backup POST with demo auth returns redacted summary without raw data", async () => {
+  const prev = process.env.LEXNET_ENABLE_DEMO_PRIVATE_API;
+  process.env.LEXNET_ENABLE_DEMO_PRIVATE_API = "true";
+  try {
+    const request = new Request("https://lexnet.local/api/admin/backup", {
+      method: "POST",
+      headers: { "x-lexnet-operator-id": "operator-demo" },
+    });
+
+    const response = await POST(request);
+
+    assert.equal(response.status, 200);
+    const body = await response.json();
+
+    // Should have summary counts
+    assert.equal(typeof body.summary.caseCount, "number");
+    assert.equal(typeof body.summary.operatorCount, "number");
+    assert.equal(typeof body.summary.publishedPassportCount, "number");
+    assert.equal(typeof body.summary.auditEventCount, "number");
+
+    // Should NOT have raw data arrays
+    assert.equal(body.backup, undefined);
+    assert.equal(body.cases, undefined);
+    assert.equal(body.passports, undefined);
+    assert.equal(body.auditEvents, undefined);
+    assert.equal(body.operators, undefined);
+  } finally {
+    if (prev === undefined) delete process.env.LEXNET_ENABLE_DEMO_PRIVATE_API;
+    else process.env.LEXNET_ENABLE_DEMO_PRIVATE_API = prev;
+  }
+});
