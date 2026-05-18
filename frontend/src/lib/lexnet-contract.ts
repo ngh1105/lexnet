@@ -139,8 +139,8 @@ export function getLexNetContractReadiness(
     isOwnerWallet,
     isReady: blockingReasons.length === 0,
     modeLabel: hasContractAddress
-      ? "Contract Configured / Local Verification"
-      : "Local Verification",
+      ? "StudioNet Contract Ready / Workspace Verification"
+      : "StudioNet Workspace Verification",
     blockingReasons,
   };
 }

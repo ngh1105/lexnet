@@ -99,7 +99,7 @@ export function buildAuthReadiness(env: PlatformReadinessEnv): AuthReadiness {
   const blockingReasons = [...authStatus.blockingReasons];
 
   if (demoPrivateApiEnabled && !demoPrivateApiTokenConfigured) {
-    blockingReasons.unshift("Demo-private API token is not configured.");
+    blockingReasons.unshift("Workspace API token is not configured.");
   }
 
   return {

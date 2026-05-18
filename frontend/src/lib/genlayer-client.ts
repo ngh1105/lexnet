@@ -36,12 +36,10 @@ interface GenLayerReadContractRequest {
 export interface GenLayerExecutionResult {
   transactionHash?: string;
   status?: string;
-  raw: unknown;
 }
 
 export interface GenLayerCaseReadResult {
   caseId: string;
-  raw: unknown;
   parsedCase: Record<string, unknown> | null;
 }
 
@@ -110,17 +108,27 @@ export function parseGenLayerCase(raw: unknown): Record<string, unknown> | null 
     : null;
 }
 
-export function classifyGenLayerCaseProof(parsedCase: Record<string, unknown> | null): {
+const GENLAYER_VERDICTS = new Set(["APPROVE", "REVISE", "REJECT", "SPLIT_RECOMMENDED"]);
+
+export function classifyGenLayerCaseProof(
+  parsedCase: Record<string, unknown> | null,
+  expectedCaseId?: string,
+): {
   status: "confirmed" | "state_verified";
   contractCaseStatus?: string;
   verificationReport?: unknown;
 } {
   const verificationReport = parsedCase?.verification_report;
+  const caseIdMatches =
+    expectedCaseId === undefined || parsedCase?.id === expectedCaseId;
+  const hasValidReport =
+    caseIdMatches && isValidGenLayerVerificationReport(verificationReport);
+
   return {
-    status: verificationReport ? "state_verified" : "confirmed",
+    status: hasValidReport ? "state_verified" : "confirmed",
     contractCaseStatus:
       typeof parsedCase?.status === "string" ? parsedCase.status : undefined,
-    verificationReport,
+    verificationReport: hasValidReport ? verificationReport : undefined,
   };
 }
 
@@ -170,7 +178,6 @@ export function createGenLayerClientAdapter({
 
       return {
         caseId: input.caseId,
-        raw,
         parsedCase: parseGenLayerCase(raw),
       };
     },
@@ -192,9 +199,24 @@ function normalizeExecutionResult(raw: unknown): GenLayerExecutionResult {
             ? record.hash
             : undefined,
       status: typeof record.status === "string" ? record.status : undefined,
-      raw,
     };
   }
 
-  return { raw };
+  return {};
+}
+
+function isValidGenLayerVerificationReport(report: unknown): boolean {
+  if (!report || typeof report !== "object" || Array.isArray(report)) {
+    return false;
+  }
+
+  const record = report as Record<string, unknown>;
+  return (
+    typeof record.verdict === "string" &&
+    GENLAYER_VERDICTS.has(record.verdict) &&
+    typeof record.score === "number" &&
+    Number.isFinite(record.score) &&
+    record.score >= 0 &&
+    record.score <= 100
+  );
 }

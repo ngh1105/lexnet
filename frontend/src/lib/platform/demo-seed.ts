@@ -292,7 +292,7 @@ function buildAuditEvents(
       actorId: "operator-demo",
       entityType: "case",
       entityId: commerceCase.id,
-      detail: `Created demo case ${commerceCase.id}`,
+      detail: `Created workspace case ${commerceCase.id}`,
       createdAt,
     });
 
@@ -303,7 +303,7 @@ function buildAuditEvents(
         actorId: "operator-analyst",
         entityType: "evidence",
         entityId: commerceCase.id,
-        detail: `Registered ${commerceCase.evidence.length} public demo evidence item(s)`,
+        detail: `Registered ${commerceCase.evidence.length} public workspace evidence item(s)`,
         createdAt,
       });
     }
@@ -315,7 +315,7 @@ function buildAuditEvents(
         actorId: "operator-demo",
         entityType: "report",
         entityId: commerceCase.id,
-        detail: "Generated local demo verification report",
+        detail: "Generated workspace verification report",
         createdAt,
       });
     }
@@ -328,7 +328,7 @@ function buildAuditEvents(
       actorId: "operator-demo",
       entityType: "passport",
       entityId: passport.id,
-      detail: `Generated demo ${passport.role} passport`,
+      detail: `Generated workspace ${passport.role} passport`,
       createdAt: NOW,
     });
 
@@ -339,7 +339,7 @@ function buildAuditEvents(
         actorId: "operator-demo",
         entityType: "passport",
         entityId: passport.id,
-        detail: `Published demo ${passport.role} passport`,
+        detail: `Published workspace ${passport.role} passport`,
         createdAt: passport.publishedAt,
       });
     }
