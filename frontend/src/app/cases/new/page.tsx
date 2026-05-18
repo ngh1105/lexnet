@@ -4,6 +4,8 @@ import Sidebar from "@/components/Sidebar";
 import NewCaseForm from "@/components/NewCaseForm";
 import { getAllCommerceCases } from "@/lib/lexnet-service";
 
+export const dynamic = "force-dynamic";
+
 export default async function NewCommerceCasePage() {
   const seedCases = await getAllCommerceCases();
 
