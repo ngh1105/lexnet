@@ -56,6 +56,15 @@ export default function TrustPassportsClient({
     void refreshBackendPassports({ silent: true });
   }, []);
 
+  useEffect(() => {
+    if (actionState.status === "success" || actionState.status === "error") {
+      const timer = setTimeout(() => {
+        setActionState({ status: "idle", message: "" });
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [actionState.status]);
+
   const passports = useMemo(() => buildTrustPassports(cases), [cases]);
   const backendBySubjectKey = useMemo(() => {
     return new Map(
@@ -251,18 +260,19 @@ export default function TrustPassportsClient({
           </header>
 
           {actionState.message ? (
-            <div
-              className="panel"
-              style={{
-                marginBottom: 16,
-                borderColor:
-                  actionState.status === "error" ? "rgba(220,38,38,0.28)" : "var(--border)",
-                color: actionState.status === "error" ? "var(--red)" : "var(--muted)",
-                fontSize: 13,
-                fontWeight: 800,
-              }}
-            >
-              {actionState.message}
+            <div className="toast-stack">
+              <div
+                className={`toast ${
+                  actionState.status === "error"
+                    ? "error"
+                    : actionState.status === "loading"
+                      ? "loading"
+                      : "success"
+                }`}
+              >
+                <span className="toast-dot" />
+                <span>{actionState.message}</span>
+              </div>
             </div>
           ) : null}
 
@@ -304,14 +314,23 @@ export default function TrustPassportsClient({
 
           <section className="surface-grid">
             {filteredPassports.length === 0 ? (
-              <div className="panel">
-                <div className="section-label">
-                  <IdCard size={14} strokeWidth={1.75} />
-                  Trust Passport
+              <div className="empty-state">
+                <div className="empty-state-icon">
+                  <IdCard size={24} strokeWidth={1.75} />
                 </div>
-                <p className="muted" style={{ marginTop: 10, fontSize: 13 }}>
-                  No passport history yet for the current filters.
+                <h3>No passports match these filters</h3>
+                <p>
+                  Adjust filters or search, or generate backend records to bring
+                  more parties into the trust history.
                 </p>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={generateBackendPassports}
+                  disabled={actionState.status === "loading"}
+                >
+                  Generate backend records
+                </button>
               </div>
             ) : (
               filteredPassports.map((passport) => {
@@ -436,12 +455,16 @@ function PassportCard({
 
       {passport.riskFlags.length > 0 ? (
         <div style={{ display: "grid", gap: 8 }}>
-          {passport.riskFlags.map((flag) => (
-            <div key={flag} className="risk-chip">
-              <ShieldAlert size={14} strokeWidth={1.75} />
-              {flag}
-            </div>
-          ))}
+          {passport.riskFlags.map((flag) => {
+            const isHigh =
+              /missing-evidence|no-evidence|payout|fraud|dispute/i.test(flag);
+            return (
+              <div key={flag} className={`risk-chip${isHigh ? " danger" : ""}`}>
+                <ShieldAlert size={14} strokeWidth={1.75} />
+                {flag}
+              </div>
+            );
+          })}
         </div>
       ) : (
         <span className="status-chip success">
