@@ -22,7 +22,7 @@ export default function ContractReadinessPanel({
             GenLayer Readiness
           </div>
           <p className="muted" style={{ marginTop: 8, fontSize: 13, lineHeight: 1.55 }}>
-            Local verification remains the active demo path. Contract execution is guarded until every readiness check passes.
+            StudioNet workspace verification remains the active guarded path. Contract execution is guarded until every readiness check passes.
           </p>
         </div>
         <span className={`status-chip ${statusClass}`}>{readiness.modeLabel}</span>

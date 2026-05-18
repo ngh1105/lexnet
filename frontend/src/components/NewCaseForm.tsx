@@ -72,7 +72,7 @@ export default function NewCaseForm({ seedCases }: { seedCases: CommerceCase[] }
           Case Intake
         </div>
         <div style={{ marginTop: 8, color: "var(--muted)", fontSize: 13, lineHeight: 1.55 }}>
-          Create a local commerce case that matches the audit workflow and can later wire to GenLayer writes.
+          Create a workspace commerce case that matches the audit workflow and can later wire to GenLayer writes.
         </div>
         <div className="surface-grid" style={{ marginTop: 16 }}>
           {intakeStats.map((item) => (

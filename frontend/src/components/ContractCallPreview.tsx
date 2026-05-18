@@ -19,7 +19,7 @@ export default function ContractCallPreview({
     }
 
     await navigator.clipboard.writeText(payloadText);
-    onCopy?.(`${preview.method} payload copied for script-driven GenLayer demo.`);
+    onCopy?.(`${preview.method} payload copied for script-driven GenLayer preview.`);
   }
 
   return (
@@ -74,7 +74,7 @@ export default function ContractCallPreview({
 
       <div className="risk-chip" style={{ width: "fit-content" }}>
         <LockKeyhole size={14} strokeWidth={1.75} />
-        UI direct writes stay guarded; local verification remains the fallback.
+        UI direct writes stay guarded; StudioNet workspace verification remains the fallback.
       </div>
     </div>
   );
