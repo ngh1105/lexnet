@@ -155,8 +155,15 @@ async function main() {
       continue;
     }
 
-    const txHash = typeof createTx === "object" && createTx ? (createTx.transactionHash ?? createTx.hash) : undefined;
-    console.log(`  tx: ${txHash ?? "(no hash returned)"}`);
+    const txHash =
+      typeof createTx === "string"
+        ? createTx
+        : typeof createTx === "object" && createTx
+          ? ((createTx as Record<string, unknown>).transactionHash as string | undefined) ??
+            ((createTx as Record<string, unknown>).hash as string | undefined) ??
+            JSON.stringify(createTx)
+          : String(createTx);
+    console.log(`  tx: ${txHash}`);
 
     if (!seed.evidenceUrls.length) {
       continue;
