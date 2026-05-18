@@ -3,6 +3,16 @@ export interface GenLayerVerifyCaseInput {
   caseId: string;
 }
 
+export interface GenLayerCreateCaseInput {
+  contractAddress: string;
+  caseId: string;
+  title: string;
+  seller: string;
+  agreementText: string;
+  acceptanceCriteria: string[];
+  amountReference: number;
+}
+
 export interface GenLayerReadCaseInput {
   contractAddress: string;
   caseId: string;
@@ -14,6 +24,12 @@ export interface GenLayerContractRequest {
   args: string[];
 }
 
+export interface GenLayerCreateCaseRequest {
+  contractAddress: string;
+  method: "create_case";
+  args: string[];
+}
+
 export interface GenLayerGetCaseRequest {
   contractAddress: string;
   method: "get_case";
@@ -22,7 +38,7 @@ export interface GenLayerGetCaseRequest {
 
 interface GenLayerWriteContractRequest {
   address: `0x${string}`;
-  functionName: "verify_case";
+  functionName: "verify_case" | "create_case";
   args: string[];
   value: bigint;
 }
@@ -62,6 +78,7 @@ export interface GenLayerClientAdapterOptions {
 }
 
 export interface GenLayerClientAdapter {
+  createCase(input: GenLayerCreateCaseInput): Promise<GenLayerExecutionResult>;
   verifyCase(input: GenLayerVerifyCaseInput): Promise<GenLayerExecutionResult>;
   readCase(input: GenLayerReadCaseInput): Promise<GenLayerCaseReadResult>;
 }
@@ -79,6 +96,22 @@ export function buildGenLayerVerifyCaseRequest({
     contractAddress,
     method,
     args: [payload.case_id],
+  };
+}
+
+export function buildGenLayerCreateCaseRequest(
+  input: GenLayerCreateCaseInput,
+): GenLayerCreateCaseRequest {
+  return {
+    contractAddress: input.contractAddress,
+    method: "create_case",
+    args: [
+      input.title,
+      input.seller,
+      input.agreementText,
+      JSON.stringify(input.acceptanceCriteria),
+      String(Math.round(input.amountReference)),
+    ],
   };
 }
 
@@ -136,6 +169,22 @@ export function createGenLayerClientAdapter({
   const client = createClient({ endpoint: rpcUrl });
 
   return {
+    async createCase(input) {
+      const request = buildGenLayerCreateCaseRequest(input);
+      const execute = client.writeContract ?? client.callContract;
+      if (!execute) {
+        throw new Error("genlayer-js contract execution method is unavailable.");
+      }
+
+      return normalizeExecutionResult(
+        await execute({
+          address: request.contractAddress as `0x${string}`,
+          functionName: request.method,
+          args: request.args,
+          value: 0n,
+        }),
+      );
+    },
     async verifyCase(input) {
       const request = buildGenLayerVerifyCaseRequest({
         contractAddress: input.contractAddress,

@@ -2,12 +2,14 @@
 
 import { FormEvent, ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAccount } from "wagmi";
 import { ArrowRight, FilePlus2, ShieldCheck, Scale, TriangleAlert } from "@/components/icons";
 import { createStoredCommerceCase } from "@/lib/lexnet-client-store";
 import type { CommerceCase } from "@/lib/lexnet-types";
 
 export default function NewCaseForm({ seedCases }: { seedCases: CommerceCase[] }) {
   const router = useRouter();
+  const { address: connectedWalletAddress, isConnected: walletConnected } = useAccount();
   const [title, setTitle] = useState("");
   const [buyer, setBuyer] = useState("");
   const [seller, setSeller] = useState("");
@@ -60,6 +62,24 @@ export default function NewCaseForm({ seedCases }: { seedCases: CommerceCase[] }
         amountReference: amount,
       }
     );
+
+    // Fire-and-forget: submit to GenLayer contract
+    fetch("/api/genlayer/create-case", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        caseId: commerceCase.id,
+        title: commerceCase.title,
+        seller: commerceCase.seller,
+        agreementText: commerceCase.agreementText,
+        acceptanceCriteria: commerceCase.acceptanceCriteria,
+        amountReference: commerceCase.amountReference,
+        walletConnected,
+        connectedWalletAddress,
+      }),
+    }).catch((err) => {
+      console.error("[LexNet] create_case contract write failed:", err);
+    });
 
     router.push(`/cases/${commerceCase.id}`);
   }
