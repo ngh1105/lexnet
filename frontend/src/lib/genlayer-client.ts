@@ -195,38 +195,33 @@ export function createGenLayerClientAdapter({
 
   const client = createClient({ endpoint: rpcUrl });
 
+  async function executeWrite(
+    contractAddress: string,
+    functionName: "verify_case" | "create_case" | "submit_evidence",
+    args: string[],
+  ): Promise<GenLayerExecutionResult> {
+    const execute = client.writeContract ?? client.callContract;
+    if (!execute) {
+      throw new Error("genlayer-js contract execution method is unavailable.");
+    }
+    return normalizeExecutionResult(
+      await execute({
+        address: contractAddress as `0x${string}`,
+        functionName,
+        args,
+        value: 0n,
+      }),
+    );
+  }
+
   return {
     async createCase(input) {
       const request = buildGenLayerCreateCaseRequest(input);
-      const execute = client.writeContract ?? client.callContract;
-      if (!execute) {
-        throw new Error("genlayer-js contract execution method is unavailable.");
-      }
-
-      return normalizeExecutionResult(
-        await execute({
-          address: request.contractAddress as `0x${string}`,
-          functionName: request.method,
-          args: request.args,
-          value: 0n,
-        }),
-      );
+      return executeWrite(request.contractAddress, request.method, request.args);
     },
     async submitEvidence(input) {
       const request = buildGenLayerSubmitEvidenceRequest(input);
-      const execute = client.writeContract ?? client.callContract;
-      if (!execute) {
-        throw new Error("genlayer-js contract execution method is unavailable.");
-      }
-
-      return normalizeExecutionResult(
-        await execute({
-          address: request.contractAddress as `0x${string}`,
-          functionName: request.method,
-          args: request.args,
-          value: 0n,
-        }),
-      );
+      return executeWrite(request.contractAddress, request.method, request.args);
     },
     async verifyCase(input) {
       const request = buildGenLayerVerifyCaseRequest({
@@ -234,19 +229,7 @@ export function createGenLayerClientAdapter({
         method: "verify_case",
         payload: { case_id: input.caseId },
       });
-      const execute = client.writeContract ?? client.callContract;
-      if (!execute) {
-        throw new Error("genlayer-js contract execution method is unavailable.");
-      }
-
-      return normalizeExecutionResult(
-        await execute({
-          address: request.contractAddress as `0x${string}`,
-          functionName: request.method,
-          args: request.args,
-          value: 0n,
-        }),
-      );
+      return executeWrite(request.contractAddress, request.method, request.args);
     },
     async readCase(input) {
       if (!client.readContract) {
