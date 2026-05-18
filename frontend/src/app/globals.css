@@ -2021,3 +2021,107 @@ textarea {
   background: linear-gradient(90deg, rgba(54, 224, 164, 0.6), rgba(139, 197, 255, 0.5));
   opacity: 0.7;
 }
+
+/* Mobile sidebar drawer */
+.sidebar-mobile-toggle {
+  display: none;
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 70;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(231, 246, 241, 0.18);
+  background: rgba(20, 28, 26, 0.92);
+  color: #ecf7f4;
+  cursor: pointer;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42);
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-mobile-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  background: rgba(5, 10, 9, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+@media (max-width: 860px) {
+  .sidebar-mobile-toggle {
+    display: inline-flex;
+  }
+
+  .sidebar-shell {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: min(280px, 84vw);
+    max-height: 100vh;
+    z-index: 66;
+    transform: translateX(-105%);
+    transition: transform 0.22s ease;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 0;
+  }
+
+  .sidebar-shell.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-mobile-overlay.open {
+    display: block;
+  }
+
+  .main-shell {
+    padding-top: 64px;
+  }
+}
+
+/* Loading skeleton */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.09) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Typography polish — intermediate sizing */
+.command-center-page .panel h2,
+.command-center-page .panel h3,
+.command-center-page .review-panel h2 {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.command-center-page .topbar-subtitle {
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 720px;
+}
+
+/* Status chip with leading dot — opt-in via .with-dot */
+.status-chip.with-dot::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
+  margin-right: 2px;
+}
