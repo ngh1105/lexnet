@@ -35,3 +35,31 @@ export function buildVerifyCaseRequest(input: VerifyCaseRequestInput): VerifyCas
     }),
   };
 }
+
+export interface SubmitEvidenceRequestInput {
+  caseId: string;
+  evidenceUrls: string[];
+  walletConnected: boolean;
+  connectedWalletAddress?: string;
+  demoToken?: string;
+}
+
+export function buildSubmitEvidenceRequest(input: SubmitEvidenceRequestInput): RequestInit {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    "x-lexnet-operator-id": "operator-demo",
+  };
+  if (input.demoToken) {
+    headers["Authorization"] = `Bearer ${input.demoToken}`;
+  }
+  return {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      caseId: input.caseId,
+      evidenceUrls: input.evidenceUrls,
+      walletConnected: input.walletConnected,
+      connectedWalletAddress: input.connectedWalletAddress ?? null,
+    }),
+  };
+}
