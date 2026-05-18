@@ -23,3 +23,7 @@ out/
 
 # LexNet demo data
 .lexnet-data/
+
+# Test artifacts / screenshots
+.playwright-mcp/
+frontend/output/
