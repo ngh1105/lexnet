@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const contractAddress = readiness.contractAddress!;
+  const contractAddress = readiness.contractAddress ?? "";
 
   try {
     const sdk = await loadGenLayerSdk();
