@@ -211,5 +211,61 @@ describe("evaluateRouteAccess", () => {
       );
       assert.deepEqual(result, { action: "allow" });
     });
+
+    test("denies malformed signature (not hex)", () => {
+      const result = evaluateRouteAccess(
+        buildInput({
+          env: prodEnv,
+          headers: {
+            ...validProdHeaders,
+            "x-lexnet-production-auth-signature": "zzzzzz1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+          },
+          pathname: "/",
+        }),
+      );
+      assert.deepEqual(result, { action: "deny", status: 401 });
+    });
+
+    test("denies malformed signature (wrong length)", () => {
+      const result = evaluateRouteAccess(
+        buildInput({
+          env: prodEnv,
+          headers: {
+            ...validProdHeaders,
+            "x-lexnet-production-auth-signature": "abcdef12",
+          },
+          pathname: "/",
+        }),
+      );
+      assert.deepEqual(result, { action: "deny", status: 401 });
+    });
+
+    test("denies non-integer timestamp", () => {
+      const result = evaluateRouteAccess(
+        buildInput({
+          env: prodEnv,
+          headers: {
+            ...validProdHeaders,
+            "x-lexnet-production-auth-timestamp": "not-a-number",
+          },
+          pathname: "/",
+        }),
+      );
+      assert.deepEqual(result, { action: "deny", status: 401 });
+    });
+
+    test("denies float timestamp", () => {
+      const result = evaluateRouteAccess(
+        buildInput({
+          env: prodEnv,
+          headers: {
+            ...validProdHeaders,
+            "x-lexnet-production-auth-timestamp": "1700000000.5",
+          },
+          pathname: "/",
+        }),
+      );
+      assert.deepEqual(result, { action: "deny", status: 401 });
+    });
   });
 });

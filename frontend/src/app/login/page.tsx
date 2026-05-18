@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DEMO_OPERATOR_ID } from "@/lib/platform/constants";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -14,7 +15,7 @@ export default function LoginPage() {
       const response = await fetch("/api/auth/demo-login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ operatorId: "operator-demo" }),
+        body: JSON.stringify({ operatorId: DEMO_OPERATOR_ID }),
       });
 
       if (!response.ok) {

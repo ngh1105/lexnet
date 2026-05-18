@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { evaluateRouteAccess, type RouteAccessEnv, type RouteAccessHeaders } from "./lib/platform/route-access";
+import { DEMO_OPERATOR_IDS } from "./lib/platform/constants";
 
 function getEnv(): RouteAccessEnv {
   return {
@@ -11,14 +12,6 @@ function getEnv(): RouteAccessEnv {
     LEXNET_PRODUCTION_AUTH_SECRET: process.env.LEXNET_PRODUCTION_AUTH_SECRET,
   };
 }
-
-/**
- * Known operator IDs for demo mode.
- * In a full implementation this would be loaded from the store,
- * but middleware runs on the edge and cannot access filesystem.
- * The default demo operator is always "operator-demo".
- */
-const DEMO_OPERATOR_IDS = ["operator-demo"];
 
 function extractHeaders(request: NextRequest): RouteAccessHeaders {
   return {

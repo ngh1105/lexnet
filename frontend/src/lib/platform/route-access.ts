@@ -135,20 +135,23 @@ function evaluateDemoAuth(input: RouteAccessInput): RouteAccessDecision {
 function evaluateProductionAuth(input: RouteAccessInput): RouteAccessDecision {
   const { headers } = input;
 
-  // In production mode, we check for the presence of production auth headers.
+  // In production mode, we check for the presence and basic format of production auth headers.
   // The actual HMAC verification is done by the middleware layer (requires crypto).
-  // Here we only check that the required headers are present.
-  const hasSignature = Boolean(headers["x-lexnet-production-auth-signature"]);
-  const hasOperatorId = Boolean(headers["x-lexnet-production-operator-id"]);
-  const hasTimestamp = Boolean(headers["x-lexnet-production-auth-timestamp"]);
-  const hasNonce = Boolean(headers["x-lexnet-production-auth-nonce"]);
+  const signature = headers["x-lexnet-production-auth-signature"] ?? "";
+  const operatorId = headers["x-lexnet-production-operator-id"] ?? "";
+  const timestamp = headers["x-lexnet-production-auth-timestamp"] ?? "";
+  const nonce = headers["x-lexnet-production-auth-nonce"] ?? "";
 
-  if (hasSignature && hasOperatorId && hasTimestamp && hasNonce) {
-    // Headers present — allow through to the route handler which does full HMAC verification.
-    return { action: "allow" };
+  if (!signature || !operatorId || !timestamp || !nonce) {
+    return { action: "deny", status: 401 };
   }
-
-  return { action: "deny", status: 401 };
+  if (!/^[a-f0-9]{64}$/i.test(signature)) {
+    return { action: "deny", status: 401 };
+  }
+  if (!Number.isInteger(Number(timestamp))) {
+    return { action: "deny", status: 401 };
+  }
+  return { action: "allow" };
 }
 
 export function evaluateRouteAccess(input: RouteAccessInput): RouteAccessDecision {
@@ -179,6 +182,6 @@ export function evaluateRouteAccess(input: RouteAccessInput): RouteAccessDecisio
     return evaluateProductionAuth(input);
   }
 
-  // Fallback: allow (should not reach here)
-  return { action: "allow" };
+  // Fallback: fail closed (should not reach here)
+  return { action: "deny", status: 401 };
 }

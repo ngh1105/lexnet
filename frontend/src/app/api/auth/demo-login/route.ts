@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const DEMO_OPERATOR_IDS = ["operator-demo"];
+import { DEMO_OPERATOR_IDS } from "@/lib/platform/constants";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   let body: { operatorId?: string };
@@ -20,6 +20,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const response = NextResponse.json({ ok: true, operatorId });
 
+  // Demo-only: cookie is unsigned. Production paths use trusted-header HMAC.
   response.cookies.set("lexnet-operator", operatorId, {
     path: "/",
     httpOnly: true,
