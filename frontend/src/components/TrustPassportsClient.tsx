@@ -371,22 +371,11 @@ function PassportCard({
   const publicPath = backendPassport ? `/passport/${backendPassport.slug}` : "";
 
   return (
-    <article className="panel review-panel" style={{ display: "grid", gap: 16, minWidth: 0, overflow: "hidden" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+    <article className="panel review-panel passport-card">
+      <div className="passport-card-header">
         <div style={{ minWidth: 0 }}>
           <div className="section-label">{passport.role} passport</div>
-          <h2
-            style={{
-              marginTop: 8,
-              color: "var(--ink)",
-              fontSize: 16,
-              fontWeight: 800,
-              wordBreak: "break-all",
-              lineHeight: 1.3,
-            }}
-          >
-            {passport.party}
-          </h2>
+          <h2 className="passport-card-name">{passport.party}</h2>
         </div>
         <span
           className="status-chip"
@@ -400,79 +389,88 @@ function PassportCard({
         </span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
-        <PassportMetric label="Verified" value={`${passport.verifiedCases}/${passport.totalCases}`} icon={<ShieldCheck size={15} strokeWidth={1.75} />} />
-        <PassportMetric label="Avg Score" value={`${passport.averageScore}/100`} icon={<TrendingUp size={15} strokeWidth={1.75} />} />
-        <PassportMetric label="Value" value={`$${passport.totalReferencedValue.toLocaleString()}`} />
-        <PassportMetric label="Last Activity" value={passport.lastActivityAt.slice(0, 10)} />
+      <div className="passport-stats">
+        <PassportStat label="Verified" value={`${passport.verifiedCases}/${passport.totalCases}`} icon={<ShieldCheck size={13} strokeWidth={1.75} />} />
+        <PassportStat label="Avg Score" value={`${passport.averageScore}/100`} icon={<TrendingUp size={13} strokeWidth={1.75} />} />
+        <PassportStat label="Value" value={`$${passport.totalReferencedValue.toLocaleString()}`} />
+        <PassportStat label="Last Activity" value={passport.lastActivityAt.slice(0, 10)} />
       </div>
 
-      <div style={{ display: "grid", gap: 8 }}>
-        <div className="section-label">Score Breakdown</div>
-        <BreakdownRow label="Verification Rate" value={breakdown.verificationRate} />
+      <div className="passport-breakdown">
+        <div className="section-label" style={{ marginBottom: 4 }}>Score Breakdown</div>
+        <BreakdownRow label="Verification" value={breakdown.verificationRate} />
         <BreakdownRow label="Score Strength" value={breakdown.scoreStrength} />
         <BreakdownRow label="Value Weight" value={breakdown.valueWeight} />
         <BreakdownRow label="Risk Penalty" value={breakdown.riskPenalty} inverted />
       </div>
 
-      <div className="passport-backend-card">
+      <div className="passport-backend-strip">
         {backendPassport ? (
           <>
-            <div>
-              Backend record: {backendPassport.published ? "Published" : "Unpublished"} · {backendPassport.redactedSubject}
+            <div className="passport-backend-strip-row">
+              <span>
+                {backendPassport.published ? "Published" : "Unpublished"} · {backendPassport.redactedSubject}
+              </span>
+              <button
+                type="button"
+                className="passport-mini-button"
+                disabled={actionDisabled}
+                onClick={() => onTogglePublication(backendPassport.slug, !backendPassport.published)}
+              >
+                {backendPassport.published ? "Unpublish" : "Publish"}
+              </button>
             </div>
             {backendPassport.published ? (
-              <a
-                href={publicPath}
-                style={{
-                  color: "inherit",
-                  textDecoration: "underline",
-                  wordBreak: "break-all",
-                  display: "block",
-                }}
-              >
-                Public preview: {publicPath}
-              </a>
+              <a href={publicPath}>{publicPath}</a>
             ) : (
-              <span>Publish to create a public preview link.</span>
+              <span style={{ fontSize: 11 }}>Publish to expose a public preview link.</span>
             )}
-            <button
-              type="button"
-              className="primary-button"
-              style={{ width: "fit-content", padding: "8px 10px", fontSize: 12 }}
-              disabled={actionDisabled}
-              onClick={() => onTogglePublication(backendPassport.slug, !backendPassport.published)}
-            >
-              {backendPassport.published ? "Unpublish" : "Publish"}
-            </button>
           </>
         ) : (
-          <>
-            <span>Local demo passport derived from case history. Generate backend records before publishing a privacy-safe preview.</span>
-          </>
+          <span>Local preview only. Generate backend records to publish a privacy-safe link.</span>
         )}
       </div>
 
       {passport.riskFlags.length > 0 ? (
-        <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: "grid", gap: 6 }}>
           {passport.riskFlags.map((flag) => {
             const isHigh =
               /missing-evidence|no-evidence|payout|fraud|dispute/i.test(flag);
             return (
               <div key={flag} className={`risk-chip${isHigh ? " danger" : ""}`}>
-                <ShieldAlert size={14} strokeWidth={1.75} />
+                <ShieldAlert size={13} strokeWidth={1.75} />
                 {flag}
               </div>
             );
           })}
         </div>
       ) : (
-        <span className="status-chip success">
-          <ShieldCheck size={13} strokeWidth={1.75} />
+        <span className="status-chip success" style={{ width: "fit-content" }}>
+          <ShieldCheck size={12} strokeWidth={1.75} />
           No active risk flags
         </span>
       )}
     </article>
+  );
+}
+
+function PassportStat({
+  icon,
+  label,
+  value,
+}: {
+  icon?: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="passport-stat">
+      <div className="passport-stat-label">
+        {icon}
+        {label}
+      </div>
+      <div className="passport-stat-value">{value}</div>
+    </div>
   );
 }
 
@@ -486,16 +484,15 @@ function BreakdownRow({
   inverted?: boolean;
 }) {
   const width = `${Math.max(0, Math.min(value, 100))}%`;
-  const barColor = inverted ? "var(--red)" : "var(--teal)";
 
   return (
-    <div style={{ display: "grid", gap: 5 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, color: "var(--muted)", fontSize: 11, fontWeight: 800 }}>
-        <span>{label}</span>
-        <span>{value}/100</span>
-      </div>
-      <div style={{ height: 7, borderRadius: 999, background: "var(--surface-subtle)", border: "1px solid var(--border)", overflow: "hidden" }}>
-        <span style={{ display: "block", width, height: "100%", background: barColor }} />
+    <div className="passport-breakdown-row">
+      <span className="passport-breakdown-label">{label}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className={`passport-breakdown-bar${inverted ? " danger" : ""}`}>
+          <span style={{ width }} />
+        </div>
+        <span style={{ color: "var(--muted)", fontSize: 11, fontWeight: 800, minWidth: 32, textAlign: "right" }}>{value}</span>
       </div>
     </div>
   );

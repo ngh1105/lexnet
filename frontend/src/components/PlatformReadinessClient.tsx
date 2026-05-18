@@ -210,31 +210,31 @@ function ReadinessSection({
   blockingReasons: string[];
 }) {
   return (
-    <section className="panel" style={{ display: "grid", gap: 14 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+    <section className="panel" style={{ display: "grid", gap: 12 }}>
+      <div className="readiness-section-head">
         <div className="section-label">
           {icon}
           {title}
         </div>
         <span className={`status-chip ${statusTone}`}>{statusLabel}</span>
       </div>
-      <div className="inspector-list">
+      <div className="readiness-rows">
         {rows.map(([label, value]) => (
-          <ReadinessRow key={label} label={label} value={formatValue(value)} />
+          <ReadinessRow key={label} label={label} value={value} />
         ))}
       </div>
       {blockingReasons.length > 0 ? (
-        <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: "grid", gap: 6 }}>
           {blockingReasons.map((reason) => (
             <span key={reason} className="risk-chip">
-              <TriangleAlert size={14} strokeWidth={1.75} />
+              <TriangleAlert size={13} strokeWidth={1.75} />
               {reason}
             </span>
           ))}
         </div>
       ) : (
         <span className="status-chip success" style={{ width: "fit-content" }}>
-          <CircleCheck size={13} strokeWidth={1.75} />
+          <CircleCheck size={12} strokeWidth={1.75} />
           No blockers
         </span>
       )}
@@ -242,23 +242,14 @@ function ReadinessSection({
   );
 }
 
-function ReadinessRow({ label, value }: { label: string; value: string }) {
+function ReadinessRow({ label, value }: { label: string; value: string | boolean }) {
+  const valueClass =
+    typeof value === "boolean" ? (value ? "true" : "false") : "";
+  const display = formatValue(value);
   return (
-    <div className="inspector-row">
-      <span style={{ color: "var(--muted)", fontSize: 12, fontWeight: 700 }}>{label}</span>
-      <span
-        style={{
-          minWidth: 0,
-          color: "var(--ink)",
-          fontSize: 12,
-          fontWeight: 800,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {value}
-      </span>
+    <div className="readiness-row">
+      <span className="readiness-row-label">{label}</span>
+      <span className={`readiness-row-value ${valueClass}`}>{display}</span>
     </div>
   );
 }

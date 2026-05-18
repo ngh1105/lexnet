@@ -403,10 +403,11 @@ textarea {
 
 .metric-value {
   color: var(--ink);
-  font-size: clamp(28px, 4vw, 38px);
+  font-size: clamp(22px, 3.2vw, 30px);
   font-weight: 900;
-  letter-spacing: -0.04em;
-  line-height: 1;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  word-break: break-word;
 }
 
 .segmented {
@@ -2114,14 +2115,223 @@ textarea {
   max-width: 720px;
 }
 
-/* Status chip with leading dot — opt-in via .with-dot */
-.status-chip.with-dot::before {
-  content: "";
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.7;
-  margin-right: 2px;
+/* Passport card refined — less dense, clearer hierarchy */
+.passport-card {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.passport-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.passport-card-name {
+  margin: 6px 0 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  word-break: break-all;
+}
+
+.passport-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.passport-stat {
+  display: grid;
+  gap: 3px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-subtle);
+  min-width: 0;
+}
+
+.passport-stat-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.passport-stat-value {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+  word-break: break-word;
+  line-height: 1.2;
+}
+
+.passport-breakdown {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.passport-breakdown-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.passport-breakdown-label {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.passport-breakdown-bar {
+  width: 84px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  overflow: hidden;
+}
+
+.passport-breakdown-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--teal);
+}
+
+.passport-breakdown-bar.danger > span {
+  background: var(--red);
+}
+
+.passport-backend-strip {
+  display: grid;
+  gap: 8px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(139, 197, 255, 0.2);
+  background: rgba(139, 197, 255, 0.07);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.command-center-page .passport-backend-strip {
+  border-color: rgba(139, 197, 255, 0.22);
+  background: rgba(139, 197, 255, 0.08);
+}
+
+.passport-backend-strip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.passport-backend-strip a {
+  color: var(--teal-strong);
+  text-decoration: underline;
+  word-break: break-all;
+  font-weight: 800;
+}
+
+.passport-mini-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 8px;
+  border: 1px solid var(--teal);
+  background: var(--teal);
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.passport-mini-button.ghost {
+  background: transparent;
+  color: var(--teal-strong);
+}
+
+.passport-mini-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.passport-mini-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.command-center-page .passport-mini-button {
+  background: linear-gradient(135deg, #36e0a4, #9fffe1);
+  color: #06110f;
+  border-color: transparent;
+}
+
+.command-center-page .passport-mini-button.ghost {
+  background: transparent;
+  color: var(--teal-strong);
+  border-color: rgba(54, 224, 164, 0.3);
+}
+
+/* Platform readiness section refined — denser metric, fewer rows */
+.readiness-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.readiness-rows {
+  display: grid;
+  gap: 6px;
+}
+
+.readiness-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(231, 246, 241, 0.06);
+}
+
+.readiness-row-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 0;
+}
+
+.readiness-row-value {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  word-break: break-word;
+  text-align: right;
+}
+
+.readiness-row-value.true {
+  color: var(--green);
+}
+
+.readiness-row-value.false {
+  color: var(--amber);
 }
