@@ -1800,13 +1800,39 @@ textarea {
   border-color: rgba(231, 246, 241, 0.12);
 }
 
-.command-center-page .platform-control-page .metric-icon.success,
-.command-center-page .platform-control-page .metric-icon.warning,
-.command-center-page .platform-control-page .metric-icon.info,
-.command-center-page.platform-control-page .metric-icon.success,
-.command-center-page.platform-control-page .metric-icon.warning,
-.command-center-page.platform-control-page .metric-icon.info {
-  background: rgba(54, 224, 164, 0.1);
-  color: var(--teal);
-  border: 1px solid rgba(54, 224, 164, 0.22);
+.passport-backend-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  background: linear-gradient(135deg, rgba(234, 241, 255, 0.95), rgba(255, 255, 255, 0.78));
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.command-center-page .passport-backend-card {
+  border-color: rgba(139, 197, 255, 0.22);
+  background:
+    linear-gradient(135deg, rgba(139, 197, 255, 0.1), rgba(54, 224, 164, 0.06)),
+    rgba(255, 255, 255, 0.03);
+  color: var(--blue);
+}
+
+.command-center-page .passport-backend-card a {
+  color: var(--teal-strong);
+}
+
+.command-center-page .passport-backend-card .primary-button,
+.command-center-page .passport-backend-card .btn-primary {
+  background: linear-gradient(135deg, #36e0a4, #9fffe1);
+  color: #06110f;
+  border-color: transparent;
+}
+
+.command-center-page .panel.review-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)),
+    rgba(14, 27, 25, 0.92);
 }

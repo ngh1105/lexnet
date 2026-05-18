@@ -396,19 +396,7 @@ function PassportCard({
         <BreakdownRow label="Risk Penalty" value={breakdown.riskPenalty} inverted />
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gap: 10,
-          padding: 14,
-          borderRadius: "var(--radius-md)",
-          border: "1px solid rgba(37,99,235,0.18)",
-          background: "linear-gradient(135deg, rgba(234,241,255,0.95), rgba(255,255,255,0.78))",
-          color: "var(--blue)",
-          fontSize: 12,
-          fontWeight: 800,
-        }}
-      >
+      <div className="passport-backend-card">
         {backendPassport ? (
           <>
             <div>
