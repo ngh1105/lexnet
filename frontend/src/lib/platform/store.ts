@@ -28,6 +28,23 @@ export interface PlatformStoreRepository {
   mutate(mutate: (store: PlatformStore) => void | Promise<void>): Promise<PlatformStore>;
 }
 
+function shouldUsePostgres(env: Record<string, string | undefined> = process.env): boolean {
+  return (
+    env.LEXNET_MANAGED_PERSISTENCE_PROVIDER === "postgres" &&
+    Boolean(env.LEXNET_MANAGED_DATABASE_URL)
+  );
+}
+
+let cachedPostgresRepository: PlatformStoreRepository | undefined;
+
+async function getPostgresRepository(): Promise<PlatformStoreRepository> {
+  if (cachedPostgresRepository) return cachedPostgresRepository;
+  const databaseUrl = process.env.LEXNET_MANAGED_DATABASE_URL!;
+  const { createPostgresPlatformStoreRepository } = await import("./postgres-store");
+  cachedPostgresRepository = createPostgresPlatformStoreRepository({ databaseUrl });
+  return cachedPostgresRepository;
+}
+
 export function createDefaultPlatformStore(
   now = "2026-05-12T00:00:00.000Z",
 ): PlatformStore {
@@ -72,6 +89,11 @@ export function createDefaultPlatformStore(
 export async function readPlatformStore(
   storePath = DEFAULT_PLATFORM_STORE_PATH,
 ): Promise<PlatformStore> {
+  if (shouldUsePostgres()) {
+    const repo = await getPostgresRepository();
+    return repo.read();
+  }
+
   let raw: string;
 
   try {
@@ -108,6 +130,10 @@ export async function writePlatformStore(
   store: PlatformStore,
   storePath = DEFAULT_PLATFORM_STORE_PATH,
 ): Promise<void> {
+  if (shouldUsePostgres()) {
+    const repo = await getPostgresRepository();
+    return repo.write(store);
+  }
   await mkdir(dirname(storePath), { recursive: true });
   await writeFile(storePath, `${JSON.stringify(store, null, 2)}\n`, "utf8");
 }
@@ -118,6 +144,11 @@ export async function mutatePlatformStore(
   mutate: (store: PlatformStore) => void | Promise<void>,
   storePath = DEFAULT_PLATFORM_STORE_PATH,
 ): Promise<PlatformStore> {
+  if (shouldUsePostgres()) {
+    const repo = await getPostgresRepository();
+    return repo.mutate(mutate);
+  }
+
   const run = async () => {
     const store = await readPlatformStore(storePath);
     await mutate(store);
@@ -147,15 +178,29 @@ export function createPlatformStoreRepository(
   env: Record<string, string | undefined> = process.env,
   storePath = DEFAULT_PLATFORM_STORE_PATH,
 ): PlatformStoreRepository {
-  if (env.LEXNET_RUNTIME_MODE !== "production") {
-    return createFilesystemPlatformStoreRepository(storePath);
-  }
-
   if (env.LEXNET_MANAGED_PERSISTENCE_PROVIDER === "postgres" && env.LEXNET_MANAGED_DATABASE_URL) {
-    return createFilesystemPlatformStoreRepository(storePath);
+    const databaseUrl = env.LEXNET_MANAGED_DATABASE_URL;
+    return {
+      read: async () => {
+        const { createPostgresPlatformStoreRepository } = await import("./postgres-store");
+        return createPostgresPlatformStoreRepository({ databaseUrl }).read();
+      },
+      write: async (store) => {
+        const { createPostgresPlatformStoreRepository } = await import("./postgres-store");
+        return createPostgresPlatformStoreRepository({ databaseUrl }).write(store);
+      },
+      mutate: async (mutate) => {
+        const { createPostgresPlatformStoreRepository } = await import("./postgres-store");
+        return createPostgresPlatformStoreRepository({ databaseUrl }).mutate(mutate);
+      },
+    };
   }
 
-  throw new Error("Managed persistence is required in production.");
+  if (env.LEXNET_RUNTIME_MODE === "production") {
+    throw new Error("Managed persistence is required in production.");
+  }
+
+  return createFilesystemPlatformStoreRepository(storePath);
 }
 
 export async function appendAuditEvent(
@@ -381,7 +426,7 @@ export function toSafePassportRecord(passport: PublishedPassport) {
   };
 }
 
-function isPlatformStore(value: unknown): value is PlatformStore {
+export function isPlatformStore(value: unknown): value is PlatformStore {
   if (!isRecord(value)) {
     return false;
   }
