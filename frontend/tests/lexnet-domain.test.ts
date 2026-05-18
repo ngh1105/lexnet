@@ -204,7 +204,7 @@ test("getLexNetContractReadiness reports local fallback when contract address is
   });
 
   assert.equal(readiness.isReady, false);
-  assert.equal(readiness.modeLabel, "Local Verification");
+  assert.equal(readiness.modeLabel, "StudioNet Workspace Verification");
   assert.deepEqual(readiness.blockingReasons, ["Contract address is not configured."]);
 });
 
@@ -219,7 +219,7 @@ test("getLexNetContractReadiness blocks contract execution without wallet", () =
   });
 
   assert.equal(readiness.isReady, false);
-  assert.equal(readiness.modeLabel, "Contract Configured / Local Verification");
+  assert.equal(readiness.modeLabel, "StudioNet Contract Ready / Workspace Verification");
   assert.deepEqual(readiness.blockingReasons, ["Wallet is not connected."]);
 });
 
