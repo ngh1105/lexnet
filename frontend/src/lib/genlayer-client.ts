@@ -13,6 +13,18 @@ export interface GenLayerCreateCaseInput {
   amountReference: number;
 }
 
+export interface GenLayerSubmitEvidenceInput {
+  contractAddress: string;
+  caseId: string;
+  evidenceUrls: string[];
+}
+
+export interface GenLayerSubmitEvidenceRequest {
+  contractAddress: string;
+  method: "submit_evidence";
+  args: string[];
+}
+
 export interface GenLayerReadCaseInput {
   contractAddress: string;
   caseId: string;
@@ -38,7 +50,7 @@ export interface GenLayerGetCaseRequest {
 
 interface GenLayerWriteContractRequest {
   address: `0x${string}`;
-  functionName: "verify_case" | "create_case";
+  functionName: "verify_case" | "create_case" | "submit_evidence";
   args: string[];
   value: bigint;
 }
@@ -79,6 +91,7 @@ export interface GenLayerClientAdapterOptions {
 
 export interface GenLayerClientAdapter {
   createCase(input: GenLayerCreateCaseInput): Promise<GenLayerExecutionResult>;
+  submitEvidence(input: GenLayerSubmitEvidenceInput): Promise<GenLayerExecutionResult>;
   verifyCase(input: GenLayerVerifyCaseInput): Promise<GenLayerExecutionResult>;
   readCase(input: GenLayerReadCaseInput): Promise<GenLayerCaseReadResult>;
 }
@@ -127,6 +140,19 @@ export function buildGenLayerGetCaseRequest({
   };
 }
 
+export function buildGenLayerSubmitEvidenceRequest(
+  input: GenLayerSubmitEvidenceInput,
+): GenLayerSubmitEvidenceRequest {
+  return {
+    contractAddress: input.contractAddress,
+    method: "submit_evidence",
+    args: [
+      input.caseId,
+      JSON.stringify(input.evidenceUrls.map((u) => u.trim()).filter(Boolean)),
+    ],
+  };
+}
+
 export function parseGenLayerCase(raw: unknown): Record<string, unknown> | null {
   if (raw === "") {
     return null;
@@ -172,6 +198,22 @@ export function createGenLayerClientAdapter({
   return {
     async createCase(input) {
       const request = buildGenLayerCreateCaseRequest(input);
+      const execute = client.writeContract ?? client.callContract;
+      if (!execute) {
+        throw new Error("genlayer-js contract execution method is unavailable.");
+      }
+
+      return normalizeExecutionResult(
+        await execute({
+          address: request.contractAddress as `0x${string}`,
+          functionName: request.method,
+          args: request.args,
+          value: 0n,
+        }),
+      );
+    },
+    async submitEvidence(input) {
+      const request = buildGenLayerSubmitEvidenceRequest(input);
       const execute = client.writeContract ?? client.callContract;
       if (!execute) {
         throw new Error("genlayer-js contract execution method is unavailable.");

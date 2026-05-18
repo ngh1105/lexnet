@@ -106,6 +106,23 @@ export default function CaseDetailClient({
     setCommerceCase(updatedCase);
     setEvidenceInput("");
     setMessage(`Added ${updatedCase.evidence.length} evidence item(s).`);
+
+    // Fire-and-forget: submit evidence to GenLayer contract
+    fetch("/api/genlayer/submit-evidence", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-lexnet-operator-id": "operator-demo",
+      },
+      body: JSON.stringify({
+        caseId,
+        evidenceUrls: urls,
+        walletConnected: isConnected,
+        connectedWalletAddress: address,
+      }),
+    }).catch((err) => {
+      console.log("submit_evidence contract call failed:", err);
+    });
   }
 
   async function handleVerifyCase() {

@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 
 import {
   buildGenLayerCreateCaseRequest,
+  buildGenLayerSubmitEvidenceRequest,
   type GenLayerCreateCaseInput,
+  type GenLayerSubmitEvidenceInput,
 } from "../src/lib/genlayer-client";
 
 test("buildGenLayerCreateCaseRequest produces correct args", () => {
@@ -57,4 +59,47 @@ test("buildGenLayerCreateCaseRequest rounds amountReference", () => {
 
   const request = buildGenLayerCreateCaseRequest(input);
   assert.equal(request.args[5], "100");
+});
+
+test("buildGenLayerSubmitEvidenceRequest with 2 URLs produces correct args", () => {
+  const input: GenLayerSubmitEvidenceInput = {
+    contractAddress: "0xcontract",
+    caseId: "lx-10",
+    evidenceUrls: ["https://example.com/proof1", "https://example.com/proof2"],
+  };
+
+  const request = buildGenLayerSubmitEvidenceRequest(input);
+
+  assert.equal(request.contractAddress, "0xcontract");
+  assert.equal(request.method, "submit_evidence");
+  assert.equal(request.args[0], "lx-10");
+  assert.equal(
+    request.args[1],
+    JSON.stringify(["https://example.com/proof1", "https://example.com/proof2"]),
+  );
+});
+
+test("buildGenLayerSubmitEvidenceRequest with empty array produces '[]'", () => {
+  const input: GenLayerSubmitEvidenceInput = {
+    contractAddress: "0xcontract",
+    caseId: "lx-11",
+    evidenceUrls: [],
+  };
+
+  const request = buildGenLayerSubmitEvidenceRequest(input);
+  assert.equal(request.args[1], "[]");
+});
+
+test("buildGenLayerSubmitEvidenceRequest trims whitespace and filters empty URLs", () => {
+  const input: GenLayerSubmitEvidenceInput = {
+    contractAddress: "0xcontract",
+    caseId: "lx-12",
+    evidenceUrls: ["  https://example.com/a  ", "", "  ", "https://example.com/b"],
+  };
+
+  const request = buildGenLayerSubmitEvidenceRequest(input);
+  assert.equal(
+    request.args[1],
+    JSON.stringify(["https://example.com/a", "https://example.com/b"]),
+  );
 });
