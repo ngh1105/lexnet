@@ -4,7 +4,7 @@ import { jsonOk } from "@/lib/platform/api";
 import { authorizePlatformMutation } from "@/lib/platform/auth";
 import { buildPlatformSummary, mutatePlatformStore } from "@/lib/platform/store";
 
-export async function GET() {
+export async function GET(_request: Request) {
   return NextResponse.json(
     { error: "Method Not Allowed" },
     { status: 405, headers: { Allow: "POST" } },
