@@ -82,12 +82,12 @@ textarea {
 
 .sidebar-shell {
   width: 248px;
-  min-height: 100vh;
+  min-height: 100dvh;
   flex-shrink: 0;
   position: sticky;
   top: 0;
   align-self: flex-start;
-  max-height: 100vh;
+  max-height: 100dvh;
   overflow-y: auto;
   background:
     radial-gradient(circle at 20% 0%, rgba(20, 184, 166, 0.22), transparent 18rem),
@@ -202,6 +202,7 @@ textarea {
 .sidebar-footer {
   display: grid;
   gap: 12px;
+  margin-top: auto;
   padding: 14px;
 }
 
@@ -389,6 +390,14 @@ textarea {
   height: 3px;
   border-radius: 999px 999px 0 0;
   background: linear-gradient(90deg, rgba(15, 118, 110, 0.68), rgba(37, 99, 235, 0.52));
+}
+
+.metric-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 10px;
 }
 
 .metric-label {
@@ -2061,7 +2070,9 @@ textarea {
     top: 0;
     left: 0;
     width: min(280px, 84vw);
-    max-height: 100vh;
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
     z-index: 66;
     transform: translateX(-105%);
     transition: transform 0.22s ease;
